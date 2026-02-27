@@ -1,0 +1,326 @@
+---
+// BundleTool component - PDF processing interface
+---
+
+<div id="bundle-tool-container" class="space-y-6">
+  <form id="upload-form" class="space-y-6">
+    <!-- Step 1: Basic Information -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">1</span>
+          Basic Information
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">Enter your bundle details</p>
+      </div>
+
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Claim Number -->
+          <div>
+            <label for="config-claimNumber" class="block text-sm font-medium text-gray-700 mb-2">
+              Claim Number
+            </label>
+            <input
+              type="text"
+              id="config-claimNumber"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="e.g., 2026-ABC-123"
+            />
+          </div>
+
+          <!-- Bundle Title -->
+          <div>
+            <label for="config-bundleTitle" class="block text-sm font-medium text-gray-700 mb-2">
+              Bundle Title <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="config-bundleTitle"
+              value="Bundle"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+          </div>
+
+          <!-- Project Name -->
+          <div>
+            <label for="config-projectName" class="block text-sm font-medium text-gray-700 mb-2">
+              Project Name
+            </label>
+            <input
+              type="text"
+              id="config-projectName"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="e.g., Smith v. Jones"
+            />
+          </div>
+
+          <!-- Confidential Checkbox -->
+          <div class="flex items-center h-full pt-8">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                id="config-confidential"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span class="text-sm font-medium text-gray-700">Mark as Confidential</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Upload PDF Documents -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">2</span>
+          Upload PDF Documents
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">Select multiple PDF files to include in your bundle</p>
+      </div>
+
+      <div class="p-6">
+        <label class="block">
+          <input
+            type="file"
+            id="file-input"
+            multiple
+            accept="application/pdf"
+            class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer"
+          />
+        </label>
+      </div>
+    </div>
+
+    <!-- Documents Table (initially hidden) -->
+    <div id="file-table" class="bg-white rounded-lg shadow-sm border border-gray-200 hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Bundle Documents
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">Drag to reorder • Click titles/dates to edit</p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pages</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="file-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Rows will be added here by frontend.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Controls -->
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+        <button id="add-section-break-btn" type="button" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition">
+          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Section Break
+        </button>
+        <button id="clear-all-rows-btn" type="button" class="inline-flex items-center px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-medium rounded-lg transition">
+          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Clear All Rows
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Configuration Options -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">3</span>
+          Configuration Options
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">Customize formatting and appearance</p>
+      </div>
+
+      <div class="p-6 space-y-6">
+        <!-- Index Options -->
+        <div>
+          <h4 class="text-sm font-semibold text-gray-900 mb-4">Index Options</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Index Font -->
+            <div>
+              <label for="config-fontFace" class="block text-sm font-medium text-gray-700 mb-2">
+                Index Font
+              </label>
+              <select
+                id="config-fontFace"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="sansSerif">Sans Serif</option>
+                <option value="serif">Modern Serif</option>
+                <option value="monospaced">Monospaced</option>
+                <option value="traditional">Traditional Serif</option>
+              </select>
+            </div>
+
+            <!-- Date Format -->
+            <div>
+              <label for="config-dateStyle" class="block text-sm font-medium text-gray-700 mb-2">
+                Date Format
+              </label>
+              <select
+                id="config-dateStyle"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="DD Mon. YYYY" selected>DD Mon. YYYY</option>
+                <option value="DD Month YYYY">DD Month YYYY</option>
+                <option value="Mon. DD, YYYY">Mon. DD, YYYY</option>
+                <option value="Month DD, YYYY">Month DD, YYYY</option>
+                <option value="None">None</option>
+              </select>
+            </div>
+
+            <!-- Outline Style -->
+            <div>
+              <label for="config-outlineItemStyle" class="block text-sm font-medium text-gray-700 mb-2">
+                Outline Style
+              </label>
+              <select
+                id="config-outlineItemStyle"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="plain" selected>Plain</option>
+                <option value="withPage">With Page</option>
+                <option value="withDate">With Date</option>
+                <option value="withDateandPage">With Date and Page</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page Numbering -->
+        <div class="pt-6 border-t border-gray-100">
+          <h4 class="text-sm font-semibold text-gray-900 mb-4">Page Numbering</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Footer Font -->
+            <div>
+              <label for="config-footerFont" class="block text-sm font-medium text-gray-700 mb-2">
+                Footer Font
+              </label>
+              <select
+                id="config-footerFont"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="sansSerif">Sans Serif</option>
+                <option value="serif">Modern Serif</option>
+                <option value="monospaced">Monospaced</option>
+                <option value="traditional">Traditional Serif</option>
+              </select>
+            </div>
+
+            <!-- Page Number Alignment -->
+            <div>
+              <label for="config-alignment" class="block text-sm font-medium text-gray-700 mb-2">
+                Page Number Alignment
+              </label>
+              <select
+                id="config-alignment"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+                <option value="centre">Centre</option>
+              </select>
+            </div>
+
+            <!-- Numbering Style -->
+            <div>
+              <label for="config-numberingStyle" class="block text-sm font-medium text-gray-700 mb-2">
+                Numbering Style
+              </label>
+              <select
+                id="config-numberingStyle"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="PageX">Page X</option>
+                <option value="PageXofY">Page X of Y</option>
+                <option value="X">X</option>
+                <option value="XslashY">X/Y</option>
+                <option value="XofY">X of Y</option>
+                <option value="None">None</option>
+              </select>
+            </div>
+
+            <!-- Footer Prefix -->
+            <div>
+              <label for="config-footerPrefix" class="block text-sm font-medium text-gray-700 mb-2">
+                Footer Prefix
+              </label>
+              <input
+                type="text"
+                id="config-footerPrefix"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Optional prefix text"
+              />
+            </div>
+
+            <!-- Printable Mode -->
+            <div>
+              <label for="config-printableBundle" class="block text-sm font-medium text-gray-700 mb-2">
+                Printable Mode
+              </label>
+              <select
+                id="config-printableBundle"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="false" selected>Digital bundle</option>
+                <option value="true">Add blank pages for printing</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Generate Bundle -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">4</span>
+          Generate Bundle
+        </h3>
+        <p class="mt-1 text-sm text-gray-500">Create and download your court bundle</p>
+      </div>
+
+      <div class="p-6 flex justify-center">
+        <button
+          type="submit"
+          class="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Generate Bundle
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Debug Output (hidden by default) -->
+  <pre id="csv-output" class="hidden mt-8 bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs"></pre>
+</div>
+
+<link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+
+<script type="module" src="/js/frontend.js"></script>

@@ -1,0 +1,231 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="BunTool - Professional Court Bundle Creator" description="Create professional court bundles with on-device PDF processing. Privacy-first, fast, and easy to use.">
+	<Header currentPath="/" />
+	<main>
+		<!-- Hero Section -->
+		<section class="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white">
+			<div class="max-w-6xl mx-auto px-4 py-20 md:py-28">
+				<div class="text-center">
+					<div class="inline-flex items-center px-4 py-2 bg-blue-800 rounded-full text-sm font-semibold mb-6">
+						<svg class="w-4 h-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+						</svg>
+						Free & Open Source
+					</div>
+					<h1 class="text-4xl md:text-6xl font-bold mb-6">
+						Create Professional Court Bundles in Minutes
+					</h1>
+					<p class="text-xl md:text-2xl text-blue-100 mb-4 max-w-3xl mx-auto">
+						Privacy-first PDF processing designed for legal professionals.
+					</p>
+					<p class="text-lg md:text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
+						Merge documents, create indexed tables of contents, and generate court-ready bundles—all in your browser, completely private.
+					</p>
+					<div class="flex flex-col sm:flex-row gap-4 justify-center">
+						<a href="/app" class="inline-block px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-blue-50 transition duration-150">
+							Try BunTool Now
+						</a>
+						<a href="#features" class="inline-block px-8 py-4 bg-blue-800 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition duration-150">
+							Learn More
+						</a>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Privacy Notice -->
+		<section class="py-4 bg-blue-50 border-b border-blue-200">
+			<div class="max-w-6xl mx-auto px-4">
+				<div class="flex items-center justify-center space-x-2 text-blue-800">
+					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+					</svg>
+					<p class="text-sm font-medium">
+						<strong>100% Private:</strong> All processing happens in your browser. Your files never leave your device.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- Key Benefits -->
+		<section class="py-16 bg-white">
+			<div class="max-w-6xl mx-auto px-4">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+					<div class="text-center">
+						<div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+							<svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+							</svg>
+						</div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">100% Private</h3>
+						<p class="text-gray-600">Your files never leave your device. All processing happens in your browser with no uploads.</p>
+					</div>
+
+					<div class="text-center">
+						<div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+							<svg class="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+						</div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Completely Free</h3>
+						<p class="text-gray-600">No subscriptions, no hidden fees, no limits. Create unlimited bundles at no cost.</p>
+					</div>
+
+					<div class="text-center">
+						<div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+							<svg class="w-8 h-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+						</div>
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Lightning Fast</h3>
+						<p class="text-gray-600">Process large bundles in seconds. No waiting for uploads or server processing.</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Features Section -->
+		<section id="features" class="py-20 bg-gray-50">
+			<div class="max-w-6xl mx-auto px-4">
+				<div class="text-center mb-16">
+					<h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Everything You Need for Court Bundles</h2>
+					<p class="text-xl text-gray-600">Professional features purpose-built for legal practice</p>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+					<!-- Feature 1 -->
+					<div class="p-6 bg-white border border-gray-200 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">PDF Merging & Indexing</h3>
+						<p class="text-gray-600">Automatically merge multiple PDFs with a professional table of contents and page numbering.</p>
+					</div>
+
+					<!-- Feature 2 -->
+					<div class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">Hyperlinked Table of Contents</h3>
+						<p class="text-gray-600">Clickable index that jumps directly to each document for easy navigation.</p>
+					</div>
+
+					<!-- Feature 3 -->
+					<div class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">Extensive Customization</h3>
+						<p class="text-gray-600">Choose fonts, page numbering styles, date formats, and more to match court requirements.</p>
+					</div>
+
+					<!-- Feature 4 -->
+					<div class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">Printable Mode</h3>
+						<p class="text-gray-600">Adds blank pages for double-sided printing with hardcopy tab dividers.</p>
+					</div>
+
+					<!-- Feature 5 -->
+					<div class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">PDF Bookmarks</h3>
+						<p class="text-gray-600">Automatic outline generation for easy navigation in PDF readers.</p>
+					</div>
+
+					<!-- Feature 6 -->
+					<div class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg transition">
+						<div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+							<svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+						</div>
+						<h3 class="text-xl font-semibold mb-2">Fast & Efficient</h3>
+						<p class="text-gray-600">Process large bundles quickly with in-browser PDF manipulation.</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- How It Works -->
+		<section class="py-20 bg-gray-50">
+			<div class="max-w-6xl mx-auto px-4">
+				<div class="text-center mb-16">
+					<h2 class="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+					<p class="text-xl text-gray-600">Create your bundle in four simple steps</p>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+					<div class="text-center">
+						<div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div>
+						<h3 class="text-lg font-semibold mb-2">Configure</h3>
+						<p class="text-gray-600">Set your bundle title, claim number, and formatting preferences</p>
+					</div>
+
+					<div class="text-center">
+						<div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div>
+						<h3 class="text-lg font-semibold mb-2">Upload</h3>
+						<p class="text-gray-600">Select your PDF files and let BunTool auto-parse titles and dates</p>
+					</div>
+
+					<div class="text-center">
+						<div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div>
+						<h3 class="text-lg font-semibold mb-2">Review</h3>
+						<p class="text-gray-600">Edit document titles and dates in the interactive table</p>
+					</div>
+
+					<div class="text-center">
+						<div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">4</div>
+						<h3 class="text-lg font-semibold mb-2">Download</h3>
+						<p class="text-gray-600">Click submit and download your professional court bundle</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- CTA Section -->
+		<section class="py-20 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white">
+			<div class="max-w-4xl mx-auto px-4 text-center">
+				<h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to Create Your First Bundle?</h2>
+				<p class="text-xl text-blue-100 mb-6">Join legal professionals using BunTool for court-ready documents</p>
+				<p class="text-sm text-blue-200 mb-8 max-w-2xl mx-auto">No account required. No installation needed. Just open the app and start creating professional court bundles in minutes.</p>
+				<div class="flex flex-col sm:flex-row gap-4 justify-center">
+					<a href="/app" class="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-blue-50 transition duration-150">
+						<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+						</svg>
+						Get Started Now
+					</a>
+					<a href="/privacy" class="inline-flex items-center justify-center px-8 py-4 bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-600 transition duration-150">
+						<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+						</svg>
+						Learn About Privacy
+					</a>
+				</div>
+			</div>
+		</section>
+
+	</main>
+	<Footer />
+</Layout>

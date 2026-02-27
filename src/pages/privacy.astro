@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Privacy Policy - BunTool" description="BunTool's privacy policy - your files never leave your device">
+	<Header currentPath="/privacy" />
+	<main class="min-h-screen bg-gray-50">
+
+		<!-- Content -->
+		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+			<article class="prose prose-lg max-w-none">
+				<h1 class="text-4xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
+				<p class="text-gray-600 mb-8">Last updated: February 2026</p>
+
+				<div class="bg-blue-50 border-l-4 border-blue-600 p-6 mb-8">
+					<h2 class="text-xl font-semibold text-blue-900 mt-0 mb-2">Privacy First</h2>
+					<p class="text-blue-800 mb-0">BunTool is designed with privacy as the foundation. All PDF processing happens entirely in your browser. Your files never leave your device, and we never see your documents.</p>
+				</div>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">What BunTool Does</h2>
+				<p class="text-gray-700">BunTool is a client-side application that runs entirely in your web browser. When you use BunTool:</p>
+				<ul class="text-gray-700 space-y-2">
+					<li>All PDF processing happens on your device using JavaScript</li>
+					<li>Your files are never uploaded to our servers</li>
+					<li>Your document content, metadata, and bundle configurations remain on your device</li>
+					<li>Generated bundles are created and downloaded directly from your browser</li>
+				</ul>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Data We Do NOT Collect</h2>
+				<p class="text-gray-700">We do not collect, store, or have access to:</p>
+				<ul class="text-gray-700 space-y-2">
+					<li>Your PDF files or their contents</li>
+					<li>Document titles, dates, or metadata you enter</li>
+					<li>Bundle configurations or settings</li>
+					<li>Generated court bundles</li>
+					<li>Personal information about your cases or clients</li>
+				</ul>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Website Analytics (Optional)</h2>
+				<p class="text-gray-700">We may use basic, privacy-respecting analytics to understand:</p>
+				<ul class="text-gray-700 space-y-2">
+					<li>Number of visitors to the website</li>
+					<li>Pages visited (but not what you do on those pages)</li>
+					<li>General geographic region (country level only)</li>
+					<li>Browser and device type for compatibility purposes</li>
+				</ul>
+				<p class="text-gray-700">We do not use cookies for tracking and do not share analytics data with third parties.</p>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Third-Party Services</h2>
+				<p class="text-gray-700">BunTool uses the following third-party resources:</p>
+				<ul class="text-gray-700 space-y-2">
+					<li><strong>PDF Libraries:</strong> We load open-source PDF processing libraries (pdf-lib, jsPDF) from CDNs. These are loaded from your browser and do not transmit your data.</li>
+					<li><strong>Fonts:</strong> Custom fonts may be loaded from CDN services for PDF generation. No personal data is transmitted.</li>
+				</ul>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Your Data Security</h2>
+				<p class="text-gray-700">Since all processing happens on your device:</p>
+				<ul class="text-gray-700 space-y-2">
+					<li>Your data security depends on your device and browser security</li>
+					<li>We recommend using BunTool on trusted devices with up-to-date browsers</li>
+					<li>Clear your browser cache if using a shared computer</li>
+					<li>Generated bundles are downloaded to your device's default download location</li>
+				</ul>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Open Source</h2>
+				<p class="text-gray-700">BunTool is open source. You can review our code to verify that we do what we say - all processing happens client-side with no data transmission to servers.</p>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Changes to This Policy</h2>
+				<p class="text-gray-700">We may update this privacy policy to reflect changes in our practices or for legal reasons. We will post any changes on this page with an updated revision date.</p>
+
+				<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">Contact</h2>
+				<p class="text-gray-700">If you have questions about this privacy policy or BunTool's privacy practices, please contact us through our GitHub repository.</p>
+
+				<div class="bg-green-50 border-l-4 border-green-600 p-6 mt-8">
+					<p class="text-green-900 font-semibold mb-2">Simple Truth</p>
+					<p class="text-green-800 mb-0">We built BunTool this way specifically so we never have access to your sensitive legal documents. Your privacy isn't a feature - it's the architecture.</p>
+				</div>
+			</article>
+		</div>
+	</main>
+	<Footer />
+</Layout>
