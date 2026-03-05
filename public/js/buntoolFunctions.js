@@ -18,10 +18,10 @@ const FONT_CONFIG = {
     helvetica: { standard: pdflib.StandardFonts.Helvetica },
     times: { standard: pdflib.StandardFonts.TimesRoman },
     courier: { standard: pdflib.StandardFonts.Courier },
-    serif: { url: './fonts//serif/NotoSerif-Regular.ttf' },
-    sansSerif: { url: './fonts//sans/static/PlusJakartaSans-Regular.ttf' },
-    monospaced: { url: './fonts//mono/UbuntuMono-Regular.ttf' },
-    traditional: { url: './fonts//trad/EBGaramond-VariableFont_wght.ttf' },
+    serif: { url: '/fonts/serif/NotoSerif-Regular.ttf' },
+    sansSerif: { url: '/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
+    monospaced: { url: '/fonts/mono/UbuntuMono-Regular.ttf' },
+    traditional: { url: '/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
 };
 
 
@@ -744,7 +744,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       
       case "serif":
         //Get and set main font:
-        fontForIndexBytes = await fetch('./fonts//serif/NotoSerif-Regular.ttf').then(res => res.arrayBuffer());
+        fontForIndexBytes = await fetch('/fonts/serif/NotoSerif-Regular.ttf').then(res => res.arrayBuffer());
         const base64SerifFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -753,7 +753,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForIndex = 'NotoSerif';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('./fonts//serif/NotoSerif-Bold.ttf').then(res => res.arrayBuffer());
+        fontForTitleBytes = await fetch('/fonts/serif/NotoSerif-Bold.ttf').then(res => res.arrayBuffer());
         const base64SerifTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -770,7 +770,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         break;
 
       case "sansSerif":
-          fontForIndexBytes = await fetch('./fonts//sans/static/PlusJakartaSans-Regular.ttf').then(res => res.arrayBuffer());
+          fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => res.arrayBuffer());
           const base64SansFont = btoa(
             new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
           );
@@ -778,7 +778,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
           doc.addFont('PlusJakartaSans.ttf', 'PlusJakartaSans', 'normal');
           fontForIndex = 'PlusJakartaSans';
 
-          fontForTitleBytes = await fetch('./fonts/sans/static/PlusJakartaSans-Bold.ttf').then(res => res.arrayBuffer());
+          fontForTitleBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Bold.ttf').then(res => res.arrayBuffer());
           const base64SansTitleFont = btoa(
             new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
           );
@@ -797,7 +797,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
 
       case "monospaced":
         //Get and set main font:
-        fontForIndexBytes = await fetch('./fonts//mono/UbuntuMono-Regular.ttf').then(res => res.arrayBuffer());
+        fontForIndexBytes = await fetch('/fonts/mono/UbuntuMono-Regular.ttf').then(res => res.arrayBuffer());
         const base64MonoFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -806,7 +806,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForIndex = 'UnbuntuMono';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('./fonts//mono/UbuntuMono-Bold.ttf').then(res => res.arrayBuffer());
+        fontForTitleBytes = await fetch('/fonts/mono/UbuntuMono-Bold.ttf').then(res => res.arrayBuffer());
         const base64MonoTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -824,7 +824,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       
         case "traditional":
         //Get and set main font:
-        fontForIndexBytes = await fetch('./fonts//trad/EBGaramond-VariableFont_wght.ttf').then(res => res.arrayBuffer());
+        fontForIndexBytes = await fetch('/fonts/trad/EBGaramond-VariableFont_wght.ttf').then(res => res.arrayBuffer());
         const base64TradFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -833,7 +833,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForIndex = 'EBGaramond';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('./fonts//trad/EBGaramond-Bold.ttf').then(res => res.arrayBuffer());
+        fontForTitleBytes = await fetch('/fonts/trad/EBGaramond-Bold.ttf').then(res => res.arrayBuffer());
         const base64TradTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -849,7 +849,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         break;
 
         default:
-        fontForIndexBytes = await fetch('./fonts//sans/static/PlusJakartaSans-Regular.ttf').then(res => res.arrayBuffer());
+        fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => res.arrayBuffer());
         const base64DefaultFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
