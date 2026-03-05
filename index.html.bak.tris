@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>File Upload MVP Tester</title>
+  <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+</head>
+<body>
+  <h1>File Upload MVP</h1>
+  <form id="upload-form">
+    <fieldset>
+      <legend>Buntool Config</legend>
+      <label>Claim Number: <input type="text" id="config-claimNumber" /></label><br>
+      <label>Bundle Title: <input type="text" id="config-bundleTitle" value="Bundle" /></label><br>
+      <label>Project Name: <input type="text" id="config-projectName" /></label><br>
+      <label>Confidential: <input type="checkbox" id="config-confidential" /></label><br>
+      <label>Footer Font: <select id="config-footerFont">
+        <option value="sansSerif">Sans Serif</option>
+        <option value="serif">Modern Serif</option>
+        <option value="monospaced">Monospaced</option>
+        <option value="traditional">Traditional Serif</option>
+
+      </select></label><br>
+      <label>Alignment: <select id="config-alignment">
+        <option value="right">Right</option>
+        <option value="left">Left</option>
+        <option value="centre">Centre</option>
+        <option value="center">Center</option>
+      </select></label><br>
+      <label>Numbering Style: <select id="config-numberingStyle">
+        <option value="PageX">PageX</option>
+        <option value="PageXofY">PageXofY</option>
+        <option value="X">X</option>
+        <option value="XslashY">XslashY</option>
+        <option value="XofY">XofY</option>
+        <option value="None">None</option>
+      </select></label><br>
+      <label>Footer Prefix: <input type="text" id="config-footerPrefix" /></label><br>
+      <label>Index Font Face: <select id="config-fontFace">
+        <option value="sansSerif">Sans Serif</option>
+        <option value="serif">Modern Serif</option>
+        <option value="monospaced">Monospaced</option>
+        <option value="traditional">Traditional Serif</option>
+      </select></label><br>
+      <label>Date Style: <select id="config-dateStyle">
+        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+        <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+        <option value="DD Mon. YYYY" selected>DD Mon. YYYY</option>
+        <option value="DD Month YYYY">DD Month YYYY</option>
+        <option value="Mon. DD, YYYY">Mon. DD, YYYY</option>
+        <option value="Month DD, YYYY">Month DD, YYYY</option>
+        <option value="None">None</option>
+      </select></label><br>
+      <label>Outline Item Style: <select id="config-outlineItemStyle">
+        <option value="plain" selected>Plain</option>
+        <option value="withPage">With Page</option>
+        <option value="withDate">With Date</option>
+        <option value="withDateandPage">With Date and Page</option>
+      </select></label><br>
+      <label>Add pagebreaks for Printing: <select id="config-printableBundle">
+        <option value="true">Add page breaks if needed for hardcopy tabs</option>
+        <option value="false" selected>Don't add page breaks</option>
+      </select></label><br>
+    </fieldset>
+    <input type="file" id="file-input" multiple accept="application/pdf" />
+    <button type="submit">Submit</button>
+  </form>
+  <table id="file-table" border="1" style="display:none; margin-top:20px;">
+    <thead>
+      <tr>
+        <th>Filename</th>
+        <th>Title</th>
+        <th>Date</th>
+        <th>Pages</th>
+      </tr>
+    </thead>
+    <tbody id="file-table-body">
+      <!-- Rows will be added here -->
+    </tbody>
+  </table>
+  <pre id="csv-output" style="margin-top:20px;"></pre>
+  <script type="module" src="./js/frontend.js"></script>
+
+
+</body>
+</html>

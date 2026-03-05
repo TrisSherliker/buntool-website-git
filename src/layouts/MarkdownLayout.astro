@@ -1,0 +1,83 @@
+---
+import Layout from './Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const { frontmatter } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+<Layout title={frontmatter.title}>
+	<Header currentPath={currentPath} />
+
+	<main class="min-h-screen bg-gray-50">
+		<section class="py-12">
+			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+				<article class="prose prose-lg prose-slate max-w-none">
+					<slot />
+				</article>
+
+				<div class="mt-12 text-center">
+					<a href="/" class="inline-flex items-center px-6 py-3 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg shadow-sm transition">
+						← Back to Home
+					</a>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+</Layout>
+
+<style is:global>
+	.prose h1 {
+		font-size: 2.25rem;
+		font-weight: 700;
+		color: #111827;
+		margin-bottom: 2rem;
+	}
+	.prose h2 {
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: #111827;
+		margin-bottom: 1rem;
+		margin-top: 2rem;
+	}
+	.prose h3 {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #111827;
+		margin-bottom: 0.75rem;
+		margin-top: 1.5rem;
+	}
+	.prose p {
+		font-size: 1.125rem;
+		color: #374151;
+		line-height: 1.75;
+		margin-bottom: 1rem;
+	}
+	.prose ul {
+		list-style-type: disc;
+		list-style-position: inside;
+		font-size: 1.125rem;
+		color: #374151;
+		margin-bottom: 1rem;
+	}
+	.prose ul li {
+		margin-bottom: 0.5rem;
+	}
+	.prose a {
+		color: #334155;
+		text-decoration: underline;
+		font-weight: 500;
+	}
+	.prose a:hover {
+		color: #0f172a;
+	}
+	.prose a[href*="ko-fi"] {
+		color: #e628e6;
+	}
+	.prose a[href*="ko-fi"]:hover {
+		color: #cc1acc;
+	}
+</style>

@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@theme {
+  --color-pink-50: rgb(254 242 254);
+  --color-pink-100: rgb(253 230 253);
+  --color-pink-200: rgb(252 205 252);
+  --color-pink-300: rgb(251 170 251);
+  --color-pink-400: rgb(250 135 250);
+  --color-pink-500: rgb(255 120 255);
+  --color-pink-600: rgb(230 108 230);
+  --color-pink-700: rgb(204 96 204);
+  --color-pink-800: rgb(179 84 179);
+  --color-pink-900: rgb(153 72 153);
+}

@@ -5,34 +5,38 @@ import Footer from '../components/Footer.astro';
 import BundleTool from '../components/BundleTool.astro';
 ---
 
-<Layout title="BunTool - Create Your Bundle" description="Upload PDFs and create a court bundle. All processing happens on your device for complete privacy.">
+<Layout title="BunTool - Create Your Bundle" description="Select PDFs and create a court bundle. All processing happens on your device for complete privacy.">
 	<Header currentPath="/app" />
 
-	<main class="min-h-screen bg-gray-50">
+	<main class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
 		<!-- Privacy Banner -->
-		<div class="bg-blue-50 border-b border-blue-100">
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-				<div class="flex items-center justify-center space-x-2 text-sm">
-					<svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-					</svg>
-					<span class="text-blue-900">
-						<strong>100% Private:</strong> All processing happens in your browser. Your files never leave your device.
-					</span>
+		<div class="bg-gradient-to-r from-slate-700 to-slate-800 border-b border-slate-900">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+				<div class="flex items-center justify-center space-x-3 text-sm">
+					<div class="flex items-center space-x-2 bg-slate-600/30 px-4 py-2 rounded-lg">
+						<svg class="h-5 w-5 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+						</svg>
+						<span class="text-white font-medium">
+							100% Private - All processing happens in your browser
+						</span>
+					</div>
 				</div>
 			</div>
 		</div>
 
 		<!-- Main Content -->
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 			<!-- Page Header -->
-			<div class="mb-8">
-				<h2 class="text-2xl font-bold text-gray-900 mb-2">Create Your Court Bundle</h2>
-				<p class="text-gray-600">Configure your bundle settings, upload PDFs, and generate a professional court-ready document.</p>
+			<div class="mb-10 text-center">
+				<h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Create Your Court Bundle</h1>
+				<p class="text-xl text-gray-600 max-w-3xl mx-auto">Configure your bundle settings, choose your PDFs, and generate a professional court-ready document in seconds.</p>
 			</div>
 
 			<!-- App Interface -->
-			<BundleTool />
+			<div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+				<BundleTool />
+			</div>
 		</div>
 	</main>
 

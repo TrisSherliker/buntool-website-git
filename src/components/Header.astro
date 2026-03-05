@@ -13,11 +13,7 @@ const { currentPath = '/' } = Astro.props;
 			<!-- Logo -->
 			<div class="flex items-center space-x-3">
 				<a href="/" class="flex items-center space-x-3 hover:opacity-80 transition">
-					<div class="flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
-						<svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-						</svg>
-					</div>
+					<img src="/images/buntool-logo-small.png" alt="BunTool Logo" class="h-10" />
 					<div>
 						<h1 class="text-xl font-bold text-gray-900">BunTool</h1>
 						<p class="text-xs text-gray-500">Court Bundle Creator</p>
@@ -26,45 +22,57 @@ const { currentPath = '/' } = Astro.props;
 			</div>
 
 			<!-- Desktop Navigation -->
-			<nav class="hidden md:flex items-center space-x-6">
-				<a
-					href="/"
-					class={`text-sm font-medium transition ${currentPath === '/' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
-				>
-					Home
-				</a>
+			<nav class="hidden md:flex items-center space-x-10">
 				<a
 					href="/app"
-					class={`text-sm font-medium transition ${currentPath === '/app' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
+					class="text-base font-medium px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition"
 				>
 					Create Bundle
 				</a>
 				<a
 					href="/#features"
-					class="text-sm font-medium text-gray-600 hover:text-blue-600 transition"
+					class="text-base font-medium text-gray-600 hover:text-pink-600 transition"
 				>
 					Features
 				</a>
 				<a
-					href="/privacy"
-					class={`text-sm font-medium transition ${currentPath === '/privacy' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
+					href="/#pricing"
+					class="text-base font-medium text-gray-600 hover:text-pink-600 transition"
+				>
+					Pricing
+				</a>
+				<a
+					href="/about"
+					class={`text-base font-medium transition ${currentPath === '/about' ? 'text-pink-600' : 'text-gray-600 hover:text-pink-600'}`}
+				>
+					About
+				</a>
+				<a
+					href="/legal"
+					class={`text-base font-medium transition ${currentPath === '/legal' ? 'text-pink-600' : 'text-gray-600 hover:text-pink-600'}`}
 				>
 					Privacy
 				</a>
+				<!-- More Info Dropdown -->
+				<div class="relative group">
+					<button
+						type="button"
+						class="text-base font-medium text-gray-600 hover:text-pink-600 transition flex items-center space-x-1"
+					>
+						<span>More Info</span>
+						<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					</button>
+					<div class="absolute right-0 mt-2 w-56 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+						<div class="py-2">
+							<a href="/guide" class="block px-4 py-2 text-base text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition">How-to Guide</a>
+							<a href="/resources" class="block px-4 py-2 text-base text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition">Other Resources</a>
+								<a href="/contact" class="block px-4 py-2 text-base text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition">Contact</a>
+						</div>
+					</div>
+				</div>
 			</nav>
-
-			<!-- CTA Button -->
-			<div class="hidden md:flex items-center space-x-4">
-				<a
-					href="/app"
-					class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition"
-				>
-					<svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-					</svg>
-					New Bundle
-				</a>
-			</div>
 
 			<!-- Mobile menu button -->
 			<div class="md:hidden">
@@ -80,15 +88,16 @@ const { currentPath = '/' } = Astro.props;
 	<!-- Mobile Navigation -->
 	<div id="mobile-menu" class="hidden md:hidden border-t border-gray-200 bg-white">
 		<div class="px-4 py-3 space-y-3">
-			<a href="/" class="block text-sm font-medium text-gray-600 hover:text-blue-600 transition">Home</a>
-			<a href="/app" class="block text-sm font-medium text-gray-600 hover:text-blue-600 transition">Create Bundle</a>
-			<a href="/#features" class="block text-sm font-medium text-gray-600 hover:text-blue-600 transition">Features</a>
-			<a href="/privacy" class="block text-sm font-medium text-gray-600 hover:text-blue-600 transition">Privacy</a>
-			<a href="/terms" class="block text-sm font-medium text-gray-600 hover:text-blue-600 transition">Terms</a>
-			<div class="pt-3 border-t border-gray-200">
-				<a href="/app" class="block w-full text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition">
-					New Bundle
-				</a>
+			<a href="/app" class="block w-full text-center px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg transition">Create Bundle</a>
+			<a href="/#features" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">Features</a>
+			<a href="/#pricing" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">Pricing</a>
+			<a href="/about" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">About</a>
+			<a href="/legal" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">Legal</a>
+			<div class="pt-2 border-t border-gray-200">
+				<p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">More Info</p>
+				<a href="/guide" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">How-to Guide</a>
+				<a href="/resources" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">Other Resources</a>
+				<a href="/contact" class="block text-sm font-medium text-gray-600 hover:text-pink-600 transition">Contact</a>
 			</div>
 		</div>
 	</div>

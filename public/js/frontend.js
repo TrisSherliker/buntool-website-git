@@ -4,7 +4,6 @@ let chrono;
 let draggedRow = null;
 
 import Config from './buntoolConfig.js';
-console.log('frontend.js loaded');
 
 const fileInput = document.getElementById('file-input');
 const fileTable = document.getElementById('file-table');
@@ -74,6 +73,46 @@ fileInput.addEventListener('change', async (e) => {
 
   const files = Array.from(e.target.files);
 
+  // Check total filesize (including existing files)
+  let totalSize = 0;
+
+  // Add existing files' sizes
+  for (const existingFile of filesMap.values()) {
+    totalSize += existingFile.size;
+  }
+
+  // Add new files' sizes
+  for (const file of files) {
+    totalSize += file.size;
+  }
+
+  const totalSizeMB = totalSize / (1024 * 1024);
+
+  // Block if over 500MB
+  if (totalSizeMB > 500) {
+    alert(
+      `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle.\n\n` +
+      `This is too big to be handled reliably, and exceeds the permitted file size.\n\n` +
+      `Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`
+    );
+    fileInput.value = '';
+    return;
+  }
+
+  // Warn if over 100MB
+  if (totalSizeMB > 100) {
+    const proceed = confirm(
+      `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle.\n\n` +
+      `Normally, it is better to split the documents into multiple volumes to avoid huge file sizes (often labelled 'A', 'B' etc).\n\n` +
+      `Would you like to proceed to create a very large bundle, or select documents again?`
+    );
+
+    if (!proceed) {
+      fileInput.value = '';
+      return;
+    }
+  }
+
   // Show table if we have files (existing or new)
   if (files.length > 0) {
     fileTable.style.display = 'block';
@@ -107,15 +146,20 @@ fileInput.addEventListener('change', async (e) => {
           <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
         </svg>
       </td>
-      <td class="px-6 py-3 text-sm text-gray-900">${file.name}</td>
-      <td class="px-6 py-3">
-        <input type="text" class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${file.name}" value="${displayTitle}" />
+      <td class="px-4 py-3 text-sm text-gray-500 filename-cell">${file.name}</td>
+      <td class="px-4 py-3 title-cell">
+        <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${file.name}" rows="1">${displayTitle}</textarea>
       </td>
-      <td class="px-6 py-3">
+      <td class="px-4 py-3 date-cell">
         <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${file.name}" value="${dateParseObj.date || ''}" />
       </td>
-      <td class="px-6 py-3 text-sm text-gray-900">${pageCount}</td>
-      <td class="px-6 py-3">
+      <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell">${pageCount}</td>
+      <td class="px-4 py-3 flex gap-2 actions-cell">
+        <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+        <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+        <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="${file.name}" title="Download this PDF">
+          💾
+        </button>
         <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="${file.name}" title="Delete row">
           ❌
         </button>
@@ -147,8 +191,49 @@ fileTableBody.addEventListener('input', (e) => {
   }
 });
 
-// Handle delete row button clicks
+// Handle download, delete, and move button clicks
 fileTableBody.addEventListener('click', (e) => {
+  // Handle move up button
+  if (e.target.classList.contains('move-up-btn')) {
+    const row = e.target.closest('tr');
+    const prev = row.previousElementSibling;
+    if (prev) {
+      row.parentNode.insertBefore(row, prev);
+    }
+  }
+
+  // Handle move down button
+  if (e.target.classList.contains('move-down-btn')) {
+    const row = e.target.closest('tr');
+    const next = row.nextElementSibling;
+    if (next) {
+      row.parentNode.insertBefore(next, row);
+    }
+  }
+
+  // Handle download button for extracted PDFs
+  if (e.target.classList.contains('download-pdf-btn')) {
+    const filename = e.target.getAttribute('data-filename');
+    const file = filesMap.get(filename);
+
+    if (file) {
+      // Create download link
+      const blob = new Blob([file], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log(`Downloaded: ${filename}`);
+    } else {
+      console.error(`File not found in filesMap: ${filename}`);
+    }
+  }
+
   if (e.target.classList.contains('delete-row-btn')) {
     const filename = e.target.getAttribute('data-filename');
 
@@ -202,10 +287,12 @@ addSectionBreakBtn?.addEventListener('click', () => {
         <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
       </svg>
     </td>
-    <td colspan="4" class="px-6 py-3 text-center">
-      <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="— SECTION BREAK —" placeholder="Section name..."/>
+    <td colspan="4" class="px-6 py-3">
+      <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-align-left focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Type section name e.g. 'Part 1: Evidence'"/>
     </td>
-    <td class="px-6 py-3">
+    <td class="px-6 py-3 flex gap-2">
+      <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+      <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
       <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">
         ❌
       </button>
@@ -225,8 +312,191 @@ addSectionBreakBtn?.addEventListener('click', () => {
   fileTable.style.display = 'block';
 });
 
+// Handle "Upload Bundle" input
+const bundleInput = document.getElementById('bundle-input');
+
+bundleInput?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  console.log('Processing bundle upload...');
+
+  try {
+    // Read bundle PDF
+    const arrayBuffer = await file.arrayBuffer();
+    const bundleBytes = new Uint8Array(arrayBuffer);
+
+    // Import unpacking functions from buntoolRestore.js
+    const { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata } =
+      await import('./buntoolRestore.js');
+
+    // Extract metadata
+    console.log('Extracting metadata from bundle...');
+    const metadata = extractBundleMetadata(bundleBytes);
+    if (!metadata || metadata.length === 0) {
+      alert('No BunTool metadata found in this PDF. Please upload a bundle created with BunTool.');
+      bundleInput.value = '';
+      return;
+    }
+
+    // Parse config from PDF metadata
+    console.log('Parsing configuration from bundle...');
+    const extractedConfig = parseConfigFromMetadata(bundleBytes);
+
+    // Populate form fields with extracted config
+    document.getElementById('config-claimNumber').value = extractedConfig.heading.claimNumber || '';
+    document.getElementById('config-bundleTitle').value = extractedConfig.heading.bundleTitle || '';
+    document.getElementById('config-projectName').value = extractedConfig.heading.projectName || '';
+    document.getElementById('config-confidential').checked = extractedConfig.heading.confidential || false;
+
+    // Populate other config fields with defaults from extracted config
+    document.getElementById('config-fontFace').value = extractedConfig.index.fontFace || 'sansSerif';
+    document.getElementById('config-dateStyle').value = extractedConfig.index.dateStyle || 'DD Mon. YYYY';
+    document.getElementById('config-outlineItemStyle').value = extractedConfig.index.outlineItemStyle || 'plain';
+    document.getElementById('config-footerFont').value = extractedConfig.page.footerFont || 'sansSerif';
+    document.getElementById('config-alignment').value = extractedConfig.page.alignment || 'centre';
+    document.getElementById('config-numberingStyle').value = extractedConfig.page.numberingStyle || 'PageX';
+    document.getElementById('config-footerPrefix').value = extractedConfig.page.footerPrefix || '';
+
+    // Split bundle into individual PDFs
+    console.log('Splitting bundle into individual documents...');
+    const extractedFiles = await splitBundlePdf(bundleBytes, metadata);
+
+    // Clear existing table
+    fileTableBody.innerHTML = '';
+    filesMap.clear();
+    Object.keys(frontendInputData).forEach(key => delete frontendInputData[key]);
+
+    // Process each extracted document and section break in order
+    for (const entry of metadata) {
+      if (entry.section) {
+        // This is a section break - recreate it
+        const sectionBreakRow = document.createElement('tr');
+        sectionBreakRow.draggable = true;
+        sectionBreakRow.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
+        sectionBreakRow.dataset.sectionBreak = 'true';
+        sectionBreakRow.innerHTML = `
+          <td class="px-2 py-3 cursor-move">
+            <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
+            </svg>
+          </td>
+          <td colspan="4" class="px-6 py-3 text-center">
+            <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="${entry.title || '— SECTION BREAK —'}" placeholder="Section name..."/>
+          </td>
+          <td class="px-6 py-3 flex gap-2">
+            <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+            <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+            <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">
+              ❌
+            </button>
+          </td>
+        `;
+
+        // Add drag event listeners
+        sectionBreakRow.addEventListener('dragstart', handleDragStart);
+        sectionBreakRow.addEventListener('dragover', handleDragOver);
+        sectionBreakRow.addEventListener('drop', handleDrop);
+        sectionBreakRow.addEventListener('dragend', handleDragEnd);
+
+        fileTableBody.appendChild(sectionBreakRow);
+      } else {
+        // This is a document entry
+        const filename = entry.filename;
+        const pdfBytes = extractedFiles.get(filename);
+
+        if (!pdfBytes) {
+          console.warn(`Could not find extracted PDF for: ${filename}`);
+          continue;
+        }
+
+        // Create File object from extracted bytes
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const extractedFile = new File([blob], filename, { type: 'application/pdf' });
+
+        // Add to filesMap
+        filesMap.set(filename, extractedFile);
+
+        // Count pages
+        if (!countPdfPages) {
+          ({ countPdfPages } = await import('./buntoolFunctions.js'));
+        }
+        const pageCount = await countPdfPages(extractedFile);
+
+        // Store in frontendInputData
+        frontendInputData[filename] = {
+          title: entry.title,
+          date: entry.date || '',
+          pageCount: pageCount
+        };
+
+        // Create table row
+        const row = document.createElement('tr');
+        row.draggable = true;
+        row.dataset.filename = filename;
+        row.classList.add('hover:bg-gray-50', 'transition');
+        row.innerHTML = `
+          <td class="px-2 py-3 cursor-move">
+            <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
+            </svg>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-500 filename-cell">${filename}</td>
+          <td class="px-4 py-3 title-cell">
+            <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${filename}" rows="1">${entry.title}</textarea>
+          </td>
+          <td class="px-4 py-3 date-cell">
+            <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${filename}" value="${entry.date || ''}" />
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell">${pageCount}</td>
+          <td class="px-4 py-3 flex gap-2 actions-cell">
+            <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+            <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+            <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="${filename}" title="Download this PDF">
+              💾
+            </button>
+            <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="${filename}" title="Delete row">
+              ❌
+            </button>
+          </td>
+        `;
+
+        // Add drag event listeners
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('drop', handleDrop);
+        row.addEventListener('dragend', handleDragEnd);
+
+        fileTableBody.appendChild(row);
+      }
+    }
+
+    // Show table
+    fileTable.style.display = 'block';
+
+    console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted, ${metadata.filter(e => e.section).length} section breaks restored`);
+    alert(`Bundle successfully unpacked!\n${extractedFiles.size} documents extracted\n${metadata.filter(e => e.section).length} section breaks restored`);
+
+  } catch (error) {
+    console.error('Failed to process bundle:', error);
+    alert(`Failed to process bundle: ${error.message}`);
+  }
+
+  // Reset input
+  bundleInput.value = '';
+});
+
+// Debug: Add click listener to all submit buttons
+document.querySelectorAll('button[type="submit"]').forEach((btn, i) => {
+  console.log(`Submit button ${i}:`, btn, 'Inside form:', btn.closest('form'));
+  btn.addEventListener('click', (e) => {
+    console.log('Submit button clicked!', e.target);
+  });
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+  console.log('Form submit triggered!');
   //dynamic (lazy) load the main module
   if (!processTheBundle) {
     ({ processTheBundle } = await import('./buntoolMain.js'));
@@ -299,9 +569,26 @@ form.addEventListener('submit', async (e) => {
 
     const returnedBlob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(returnedBlob);
+
+    // Generate filename: title-claimno-case-date.pdf
+    const sanitize = (str) => str.replace(/[<>:"/\\|?*.]/g, '-'); // Remove invalid filename chars
+    const truncate = (str, maxLen) => str.length > maxLen ? str.slice(0, maxLen) : str;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const parts = [
+      configOptions.heading.bundleTitle?.trim(),
+      configOptions.heading.claimNumber?.trim(),
+      configOptions.heading.projectName?.trim(),
+      today
+    ].filter(p => p); // Remove empty parts
+    let bundleFilename = sanitize(parts.join('-')) + '.pdf';
+    // Truncate if over max filename length (255 bytes, leave room for .pdf)
+    if (bundleFilename.length > 251) {
+      bundleFilename = truncate(sanitize(parts.join('-')), 247) + '.pdf';
+    }
+
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'burnBundleTest.pdf';
+    a.download = bundleFilename;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {

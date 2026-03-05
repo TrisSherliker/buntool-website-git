@@ -258,8 +258,8 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
       'XslashY': `${pageIdx + 1}/${totalPageCount}`
     };
     const baseFooterText = footerTextFormats[pageNumberingStyle] || footerTextFormats['PageX'];
-    //add zero-width space for later searchability, plus any footerLabelText prefix
-    const footerText = `\u200B${footerLabelText ? `${footerLabelText} ` : ''}${baseFooterText}`;
+    //add zero-width spaces for later searchability, plus any footerLabelText prefix
+    const footerText = `\u200B\u200B${footerLabelText ? `${footerLabelText} ` : ''}${baseFooterText}`;
 
     //alignment calcs
     const marginSidePadding = 30;
@@ -458,17 +458,18 @@ export function setMetadata(pdfBytes, tocEntries, config) {
       : ""
   );
 
-  // add custom document metadata field "Bundle Index" which stores tocEntries object: 
+  // add custom document metadata field "Bundle Index" which stores tocEntries object:
   const buntoolIndexMetadata = tocEntries.map(entry => ({
-    // new index property for ordering (based on position within tocEntries): 
+    // new index property for ordering (based on position within tocEntries):
     index:  tocEntries.indexOf(entry),
-    tab: entry.section ? null : entry.tabNumber,
+    tab: entry.sectionBreak ? null : entry.tabNumber,
     title: entry.title,
-    date: entry.section ? null : entry.date,
-    section: entry.section,
-    page: entry.section ? null : entry.thisPage,
+    date: entry.sectionBreak ? null : entry.date,
+    section: entry.sectionBreak ? true : false,
+    // Use actualStartPage (includes TOC offset) instead of thisPage
+    page: entry.sectionBreak ? null : (entry.actualStartPage || entry.thisPage),
     // make new filename to avoid betraying data:
-    filename: entry.section ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf` 
+    filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`
   }));
   doc.setMetaData("Bundle Index", JSON.stringify(buntoolIndexMetadata));
 

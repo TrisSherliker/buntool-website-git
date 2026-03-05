@@ -3,18 +3,18 @@
 ---
 
 <div id="bundle-tool-container" class="space-y-6">
-  <form id="upload-form" class="space-y-6">
+  <form id="upload-form" class="space-y-8">
     <!-- Step 1: Basic Information -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">1</span>
+    <div class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
+      <div class="px-6 py-5 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-xl font-bold text-white flex items-center">
+          <span class="inline-flex items-center justify-center w-10 h-10 bg-pink-500 text-white rounded-full mr-3 text-base font-bold shadow-lg">1</span>
           Basic Information
         </h3>
-        <p class="mt-1 text-sm text-gray-500">Enter your bundle details</p>
+        <p class="mt-2 text-sm text-slate-200">Enter the basic bundle details to identify the case and bunde. This will appear at the top of the first page.</p>
       </div>
 
-      <div class="p-6">
+      <div class="p-6 space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Claim Number -->
           <div>
@@ -25,27 +25,27 @@
               type="text"
               id="config-claimNumber"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="e.g., 2026-ABC-123"
+              placeholder="e.g., 2026-ABC-123 or HP-2026-000001"
             />
           </div>
 
           <!-- Bundle Title -->
           <div>
             <label for="config-bundleTitle" class="block text-sm font-medium text-gray-700 mb-2">
-              Bundle Title <span class="text-red-500">*</span>
+              Bundle Title
             </label>
             <input
               type="text"
               id="config-bundleTitle"
-              value="Bundle"
+              placeholder="e.g., Bundle A: Statements of Case"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
           </div>
 
-          <!-- Project Name -->
+          <!-- Project Name (Case Name) -->
           <div>
             <label for="config-projectName" class="block text-sm font-medium text-gray-700 mb-2">
-              Project Name
+              Case Name
             </label>
             <input
               type="text"
@@ -63,58 +63,95 @@
                 id="config-confidential"
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <span class="text-sm font-medium text-gray-700">Mark as Confidential</span>
+              <span class="text-sm font-medium text-gray-700">Mark as <span class="text-red-500">Confidential</span>?</span>
             </label>
           </div>
         </div>
+
+        <!--
+          Edit Existing Bundle Button
+          <div class="pt-4 border-t border-gray-200">
+            <p class="text-sm text-gray-600 mb-3">
+              To edit an existing bundle:
+            </p>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Select Existing Bundle
+              </label>
+              <input
+                type="file"
+                id="bundle-input"
+                accept="application/pdf"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 transition cursor-pointer"
+              />
+              <p class="mt-2 text-xs text-gray-500">
+                Select a previously-created BunTool bundle to extract and edit its documents
+              </p>
+            </div>
+        </div>
+        -->
       </div>
     </div>
 
-    <!-- Step 2: Upload PDF Documents -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">2</span>
-          Upload PDF Documents
+    <!-- Step 2: Select Documents -->
+    <div class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
+      <div class="px-6 py-5 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-xl font-bold text-white flex items-center">
+          <span class="inline-flex items-center justify-center w-10 h-10 bg-pink-500 text-white rounded-full mr-3 text-base font-bold shadow-lg">2</span>
+          Select Documents
         </h3>
-        <p class="mt-1 text-sm text-gray-500">Select multiple PDF files to include in your bundle</p>
+        <p class="mt-2 text-sm text-slate-200">Start by choosing the PDF files to include in your bundle. You can rearrange and change them later.</p>
       </div>
 
       <div class="p-6">
-        <label class="block">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Choose PDF documents
+          </label>
           <input
             type="file"
             id="file-input"
             multiple
             accept="application/pdf"
-            class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer"
+            class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 transition cursor-pointer"
           />
-        </label>
+          <p class="mt-2 text-xs text-gray-500">
+            Select one or more PDF files to include in your bundle. They aren't uploaded anywhere - it all stays on your device.
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- Documents Table (initially hidden) -->
-    <div id="file-table" class="bg-white rounded-lg shadow-sm border border-gray-200 hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Bundle Documents
+    <!-- Step 3: Review Table (initially hidden) -->
+    <div id="file-table" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+      <div class="px-6 py-5 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-xl font-bold text-white flex items-center">
+          <span class="inline-flex items-center justify-center w-10 h-10 bg-pink-500 text-white rounded-full mr-3 text-base font-bold shadow-lg">3</span>
+          Review Table
         </h3>
-        <p class="mt-1 text-sm text-gray-500">Drag to reorder • Click titles/dates to edit</p>
+        <p class="mt-2 text-sm text-slate-200">Drag to reorder • Click titles/dates to edit</p>
       </div>
 
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <colgroup>
+            <col style="width: 40px;">
+            <col style="width: 25%;">
+            <col style="width: 50%;">
+            <col style="width: 180px;">
+            <col style="width: 60px;">
+            <col style="width: 80px;">
+          </colgroup>
+          <thead class="bg-slate-100">
             <tr>
-              <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pages</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Actions</th>
+              <th class="px-2 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                <span class="sr-only">Drag</span>
+              </th>
+              <th class="px-3 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Filename</th>
+              <th class="px-4 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Title</th>
+              <th class="px-4 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date</th>
+              <th class="px-4 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Pages</th>
+              <th class="px-4 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody id="file-table-body" class="bg-white divide-y divide-gray-200">
@@ -140,14 +177,52 @@
       </div>
     </div>
 
-    <!-- Step 3: Configuration Options -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">3</span>
-          Configuration Options
+    <!-- Step 4: Generate or Configure -->
+    <div id="step-4-choice" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+      <div class="px-6 py-5 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-xl font-bold text-white flex items-center">
+          <span class="inline-flex items-center justify-center w-10 h-10 bg-pink-500 text-white rounded-full mr-3 text-base font-bold shadow-lg">4</span>
+          Create Bundle
         </h3>
-        <p class="mt-1 text-sm text-gray-500">Customize formatting and appearance</p>
+        <p class="mt-2 text-sm text-slate-200">Whe you're ready, generate your bundle with default options - or choose fonts, page numbers and more in advanced settings if you prefer</p>
+      </div>
+
+      <div class="p-8 flex flex-col sm:flex-row gap-4 justify-center">
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center px-10 py-4 bg-pink-500 hover:bg-pink-600 text-white text-lg font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
+        >
+          <svg class="w-6 h-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Create Bundle
+        </button>
+
+        <button
+          id="show-advanced-btn"
+          type="button"
+          class="inline-flex items-center justify-center px-10 py-4 bg-slate-700 hover:bg-slate-800 text-white text-lg font-semibold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+        >
+          <svg class="w-6 h-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Advanced Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Advanced Settings (initially hidden) -->
+    <div id="advanced-settings" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+      <div class="px-6 py-5 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-xl font-bold text-white flex items-center">
+          <svg class="w-6 h-6 mr-3 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Advanced Settings
+        </h3>
+        <p class="mt-2 text-sm text-slate-200">Customise formatting and appearance (optional)</p>
       </div>
 
       <div class="p-6 space-y-6">
@@ -293,25 +368,17 @@
       </div>
     </div>
 
-    <!-- Step 4: Generate Bundle -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900 flex items-center">
-          <span class="inline-flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full mr-3 text-sm font-bold">4</span>
-          Generate Bundle
-        </h3>
-        <p class="mt-1 text-sm text-gray-500">Create and download your court bundle</p>
-      </div>
-
-      <div class="p-6 flex justify-center">
+    <!-- Submit button in Advanced Settings -->
+    <div id="advanced-submit" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+      <div class="p-8 flex justify-center">
         <button
           type="submit"
-          class="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          class="inline-flex items-center px-10 py-4 bg-pink-500 hover:bg-pink-600 text-white text-lg font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
         >
-          <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-6 h-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Generate Bundle
+          Create Bundle
         </button>
       </div>
     </div>
@@ -321,6 +388,270 @@
   <pre id="csv-output" class="hidden mt-8 bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs"></pre>
 </div>
 
+<style is:global>
+  /* make the review table use a fixed layout so the colgroup widths are respected */
+  #file-table table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  /* ensure headers and cells wrap text rather than expanding the column */
+  #file-table th,
+  #file-table td {
+    word-break: break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
+  /* explicitly constrain the drag handle column (1st) */
+  #file-table tbody td:nth-child(1) {
+    max-width: 40px;
+    width: 40px;
+  }
+
+  /* filename column (2nd) - 25% */
+  #file-table tbody td:nth-child(2) {
+    width: 25%;
+    overflow: hidden;
+  }
+
+  /* title column (3rd) - 50% */
+  #file-table tbody td:nth-child(3) {
+    width: 50%;
+  }
+
+  /* Table cell styling for proper wrapping and prominence */
+  #file-table-body td {
+    vertical-align: top;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Title field styling - make it prominent */
+  #file-table-body .title-cell {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1e293b;
+    line-height: 1.5;
+    min-height: 2.5rem;
+  }
+
+  #file-table-body .title-cell:hover {
+    background-color: #fce7f3;
+    cursor: pointer;
+  }
+
+  /* Date field styling - make it prominent */
+  #file-table-body .date-cell {
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #475569;
+    line-height: 1.5;
+    white-space: normal;
+  }
+
+  #file-table-body .date-cell:hover {
+    background-color: #fce7f3;
+    cursor: pointer;
+  }
+
+  /* Filename styling - force wrapping */
+  #file-table-body .filename-cell {
+    font-size: 0.875rem;
+    color: #64748b;
+    line-height: 1.4;
+    white-space: normal;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    overflow: hidden;
+  }
+
+  /* Title cell - use textarea for multiline */
+  #file-table-body .title-cell {
+    width: 50%;
+  }
+
+  #file-table-body .title-cell textarea {
+    min-width: 0;
+    width: 100%;
+    resize: vertical;
+    min-height: 1.5rem;
+    line-height: 1.4;
+    field-sizing: content;
+  }
+
+  /* Date cell - constrain width */
+  #file-table-body .date-cell {
+    max-width: 180px;
+    width: 180px;
+  }
+
+  #file-table-body .date-cell input {
+    min-width: 0;
+  }
+
+  /* Pages styling */
+  #file-table-body .pages-cell {
+    font-size: 0.875rem;
+    color: #64748b;
+    text-align: center;
+    max-width: 80px;
+    width: 80px;
+  }
+
+  /* Row hover effect */
+  #file-table-body tr:hover {
+    background-color: #f8fafc;
+  }
+
+  /* Hide move buttons on desktop */
+  .move-up-btn, .move-down-btn {
+    display: none;
+  }
+
+  /* Mobile card layout */
+  @media (max-width: 767px) {
+    /* Show move buttons on mobile */
+    .move-up-btn, .move-down-btn {
+      display: inline-block;
+    }
+
+    /* Reset table display to block elements */
+    #file-table table {
+      display: block;
+      table-layout: auto;
+    }
+
+    #file-table colgroup {
+      display: none;
+    }
+
+    #file-table thead {
+      display: none;
+    }
+
+    #file-table tbody {
+      display: block;
+    }
+
+    /* Make rows into cards */
+    #file-table tbody tr {
+      display: flex !important;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      background: white;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Reset all table cells */
+    #file-table tbody td {
+      display: block;
+      border: none;
+      padding: 0.25rem 0;
+      width: auto;
+      max-width: none;
+    }
+
+    /* Hide drag handle on mobile */
+    #file-table tbody td:nth-child(1) {
+      display: none;
+    }
+
+    /* Row 1: Filename (grow) */
+    #file-table tbody td:nth-child(2) {
+      order: 1;
+      flex: 1 1 auto;
+      font-weight: 500;
+      padding-right: 0.5rem;
+      min-width: 0;
+    }
+
+    /* Row 1: Actions (shrink) */
+    #file-table tbody td:nth-child(6) {
+      order: 2;
+      flex: 0 0 auto;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* Row 2: Title (full width) */
+    #file-table tbody td:nth-child(3) {
+      order: 3;
+      flex: 1 1 100%;
+      margin-top: 0.5rem;
+    }
+
+    /* Row 3: Date */
+    #file-table tbody td:nth-child(4) {
+      order: 4;
+      flex: 1 1 55%;
+      margin-top: 0.5rem;
+    }
+
+    /* Row 3: Pages */
+    #file-table tbody td:nth-child(5) {
+      order: 5;
+      flex: 1 1 40%;
+      text-align: right;
+      margin-top: 0.5rem;
+    }
+
+    /* Make inputs full width on mobile */
+    #file-table-body .title-cell textarea,
+    #file-table-body .date-cell input {
+      width: 100%;
+    }
+
+    /* Pages label for mobile */
+    #file-table-body .pages-cell::before {
+      content: "Pages: ";
+      color: #64748b;
+    }
+  }
+</style>
+
 <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+
+<script>
+  // Progressive disclosure: Show Step 4 when table has files
+  const fileTableBody = document.getElementById('file-table-body');
+  const step4Choice = document.getElementById('step-4-choice');
+
+  // Observer to watch for changes in the table
+  const observer = new MutationObserver(() => {
+    const hasFiles = fileTableBody.querySelectorAll('tr').length > 0;
+    if (hasFiles) {
+      step4Choice?.classList.remove('hidden');
+    } else {
+      step4Choice?.classList.add('hidden');
+    }
+  });
+
+  if (fileTableBody) {
+    observer.observe(fileTableBody, { childList: true });
+  }
+
+  // Advanced Settings toggle
+  const showAdvancedBtn = document.getElementById('show-advanced-btn');
+  const advancedSettings = document.getElementById('advanced-settings');
+  const advancedSubmit = document.getElementById('advanced-submit');
+
+  showAdvancedBtn?.addEventListener('click', () => {
+    advancedSettings?.classList.remove('hidden');
+    advancedSubmit?.classList.remove('hidden');
+    step4Choice?.classList.add('hidden');
+
+    // Scroll to advanced settings
+    advancedSettings?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
 
 <script type="module" src="/js/frontend.js"></script>
