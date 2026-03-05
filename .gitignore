@@ -26,9 +26,9 @@ pnpm-debug.log*
 .idea/
 
 # internal notes and development images
-/notes/*
-/development-images-dir/*
-/git-clone-for-deployment/*
-/.claude
+notes/
+development-images-dir/
+git-clone-for-deployment/
+.claude/
 index.html.archived
 index.html.bak.tris
