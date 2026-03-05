@@ -124,8 +124,7 @@ export async function processTheBundle(filesMap, indexData, config){
     throw error;
   } 
 
-  console.log('Clearing file references from memory.');
-  filesMap.clear(); // Clear the map to free up memory
+  // Note: filesMap is owned by the frontend — do not clear it here
 
   console.log('[7/11] Merging TOC with content PDF...');
   try {

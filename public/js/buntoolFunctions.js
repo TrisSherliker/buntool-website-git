@@ -314,7 +314,7 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries) {
       const tocEntry = tabNumber 
         ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null //blank for section beaks, no hyperlink needed
       if (!tocEntry) continue; // skip if no matching TOC entry is found
-      const destinationPageNumber = tocEntry.actualStartPage ? tocEntry.actualStartPage : tocEntry.thisPage; // no need to adjust for 0-indexed pages
+      const destinationPageNumber = (tocEntry.actualStartPage || tocEntry.thisPage) - 1; // mupdf pages are 0-indexed
 
       page.createLink(
         [x * pts, y * pts, x * pts + width * pts, y * pts + height * pts],
@@ -401,7 +401,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
   
   tocEntries.forEach(entry => {
     const formattedTitle = formatOutlineItem(entry, config);
-    const outlinePage = entry.actualStartPage ? entry.actualStartPage : entry.thisPage; 
+    const outlinePage = (entry.actualStartPage || entry.thisPage) - 1; // mupdf pages are 0-indexed
     if (entry.sectionBreak) {
         outlineIterator.insert({
         title: `${formattedTitle}`,
@@ -980,12 +980,17 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding;
     
     // Prepare table data
+    // Set actualStartPage on original tocEntries so addHyperlinks/addOutlineItems can use them
+    for (const entry of tocEntries) {
+      entry.actualStartPage = Number(entry.thisPage) + expectedTocLength;
+    }
+
     const body = tocEntries.map(({ filename, ...rest }) => rest); // Remove the filename field from the tocEntries
-    for (const entry of body) { // Clear page number for section breaks
+    for (const entry of body) { // Clear page number for section breaks in table display
       if (entry.sectionBreak) {
-        entry.thisPage = ''; 
+        entry.thisPage = '';
+        entry.actualStartPage = '';
       }
-      else entry.actualStartPage = entry.thisPage + expectedTocLength;
     }
 
     //define autotable content by reference to headers
