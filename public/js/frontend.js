@@ -2,6 +2,7 @@ let processTheBundle;
 let countPdfPages;
 let chrono;
 let draggedRow = null;
+let reorderMode = 'drag'; // 'drag' | 'arrows'
 
 import Config from './buntoolConfig.js';
 
@@ -29,6 +30,23 @@ window.addEventListener('DOMContentLoaded', () => {
   import('./buntoolFunctions.js').then(m => countPdfPages = m.countPdfPages);
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
   import('https://esm.sh/chrono-node').then(m => chrono = m);
+
+  document.getElementById('reorder-toggle-btn')?.addEventListener('click', () => {
+    reorderMode = reorderMode === 'drag' ? 'arrows' : 'drag';
+    const btn = document.getElementById('reorder-toggle-btn');
+    const table = document.getElementById('file-table');
+    if (reorderMode === 'arrows') {
+      table.classList.add('arrow-mode');
+      btn.textContent = 'Use drag instead of buttons';
+      btn.setAttribute('aria-pressed', 'true');
+      fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = false);
+    } else {
+      table.classList.remove('arrow-mode');
+      btn.textContent = 'Use buttons instead of drag';
+      btn.setAttribute('aria-pressed', 'false');
+      fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = true);
+    }
+  });
 });
 
 // Drag and Drop Handlers
@@ -116,6 +134,8 @@ fileInput.addEventListener('change', async (e) => {
   // Show table if we have files (existing or new)
   if (files.length > 0) {
     fileTable.style.display = 'block';
+    const hint = document.getElementById('file-input-hint');
+    if (hint) hint.style.display = 'none';
   }
 
   // Process each new file
@@ -137,11 +157,11 @@ fileInput.addEventListener('change', async (e) => {
     frontendInputData[file.name] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
 
     const row = document.createElement('tr');
-    row.draggable = true;
+    row.draggable = reorderMode === 'drag';
     row.dataset.filename = file.name;
     row.classList.add('hover:bg-gray-50', 'transition');
     row.innerHTML = `
-      <td class="px-2 py-3 cursor-move">
+      <td class="drag-handle px-2 py-3 cursor-move">
         <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
         </svg>
@@ -278,11 +298,11 @@ clearAllRowsBtn?.addEventListener('click', () => {
 // Handle "Add Section Break" button
 addSectionBreakBtn?.addEventListener('click', () => {
   const sectionBreakRow = document.createElement('tr');
-  sectionBreakRow.draggable = true;
+  sectionBreakRow.draggable = reorderMode === 'drag';
   sectionBreakRow.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
   sectionBreakRow.dataset.sectionBreak = 'true';
   sectionBreakRow.innerHTML = `
-    <td class="px-2 py-3 cursor-move">
+    <td class="drag-handle px-2 py-3 cursor-move">
       <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
         <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
       </svg>
@@ -372,11 +392,11 @@ bundleInput?.addEventListener('change', async (e) => {
       if (entry.section) {
         // This is a section break - recreate it
         const sectionBreakRow = document.createElement('tr');
-        sectionBreakRow.draggable = true;
+        sectionBreakRow.draggable = reorderMode === 'drag';
         sectionBreakRow.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
         sectionBreakRow.dataset.sectionBreak = 'true';
         sectionBreakRow.innerHTML = `
-          <td class="px-2 py-3 cursor-move">
+          <td class="drag-handle px-2 py-3 cursor-move">
             <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
             </svg>
@@ -432,11 +452,11 @@ bundleInput?.addEventListener('change', async (e) => {
 
         // Create table row
         const row = document.createElement('tr');
-        row.draggable = true;
+        row.draggable = reorderMode === 'drag';
         row.dataset.filename = filename;
         row.classList.add('hover:bg-gray-50', 'transition');
         row.innerHTML = `
-          <td class="px-2 py-3 cursor-move">
+          <td class="drag-handle px-2 py-3 cursor-move">
             <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
             </svg>
