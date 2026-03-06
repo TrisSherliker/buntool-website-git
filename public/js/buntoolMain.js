@@ -113,6 +113,15 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to generate TOC pages: `, error.message);
     throw error;
   }
+  
+  if (config.getOption('index.justTheIndex')) {
+    console.log('Config option justTheIndex is true - returning TOC PDF without merging content PDFs');
+
+    const paginatedTocPdf = await addPageNumberingToPdf(tocPdf, config);
+    console.log(`...added page numbering - TOC PDF size: ${paginatedTocPdf?.length || 0} bytes`)
+    return paginatedTocPdf;
+  }
+
 
 // PDF HANDLING:
   console.log('[6/11] Merging input PDFs...');

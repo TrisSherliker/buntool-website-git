@@ -78,6 +78,10 @@ export const validPrintableBundle = [
     false,
   ];
 
+export const justTheIndex = [
+    true,
+    false,
+  ];
 
 class Config {
   /* 
@@ -101,6 +105,7 @@ class Config {
         fontFace: "helvetica", // Default: helvetica
         dateStyle: "YYYY-MM-DD", // Default: YYYY-MM-DD
         outlineItemStyle: "withPage", // Default: with page
+        justTheIndex: false, // Default: false
       },
       pageOptions: {
         printableBundle: false, // Default: false
@@ -148,6 +153,10 @@ class Config {
     if (!validPrintableBundle.includes(this.options.pageOptions.printableBundle)) {
       throw new Error(`Invalid printable bundle option: ${this.options.pageOptions.printableBundle}`);
     }
+
+    if (!justTheIndex.includes(this.options.index.justTheIndex)) {
+      throw new Error(`Invalid justTheIndex option: ${this.options.index.justTheIndex}`);
+    }
   }
       
   /**
@@ -159,7 +168,7 @@ class Config {
     const requiredPaths = {
       heading: ["claimNumber", "bundleTitle", "projectName", "confidential"],
       pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix"],
-      index: ["fontFace", "dateStyle", "outlineItemStyle"],
+      index: ["fontFace", "dateStyle", "outlineItemStyle", "justTheIndex"],
       pageOptions: ["printableBundle"],
     };
     

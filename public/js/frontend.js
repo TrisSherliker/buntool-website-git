@@ -1,5 +1,7 @@
 let processTheBundle;
 let countPdfPages;
+let bundleConfirmed = false;
+let pendingConfirmAction = null;
 let chrono;
 let draggedRow = null;
 let reorderMode = 'drag'; // 'drag' | 'arrows'
@@ -30,6 +32,41 @@ window.addEventListener('DOMContentLoaded', () => {
   import('./buntoolFunctions.js').then(m => countPdfPages = m.countPdfPages);
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
   import('https://esm.sh/chrono-node').then(m => chrono = m);
+
+  // Column header sort
+  let sortCol = null;
+  let sortDir = 'asc';
+  document.querySelector('#file-table thead')?.addEventListener('click', (e) => {
+    const th = e.target.closest('[data-sort-col]');
+    if (!th) return;
+    const col = th.dataset.sortCol;
+    sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
+    sortCol = col;
+    document.querySelectorAll('#file-table thead [data-sort-col]').forEach(h => {
+      h.querySelector('.sort-indicator').textContent = '';
+    });
+    th.querySelector('.sort-indicator').textContent = sortDir === 'asc' ? '▲' : '▼';
+    const rows = Array.from(fileTableBody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+      const aSection = a.dataset.sectionBreak === 'true';
+      const bSection = b.dataset.sectionBreak === 'true';
+      if (aSection && bSection) return 0;
+      if (aSection) return 1;
+      if (bSection) return -1;
+      let aVal, bVal;
+      if (col === 'pages') {
+        aVal = parseInt(a.querySelector('.pages-cell')?.textContent || '0', 10);
+        bVal = parseInt(b.querySelector('.pages-cell')?.textContent || '0', 10);
+        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      if (col === 'filename') { aVal = a.dataset.filename || ''; bVal = b.dataset.filename || ''; }
+      else if (col === 'title') { aVal = a.querySelector('.title-input')?.value || ''; bVal = b.querySelector('.title-input')?.value || ''; }
+      else if (col === 'date') { aVal = a.querySelector('.date-input')?.value || ''; bVal = b.querySelector('.date-input')?.value || ''; }
+      const cmp = aVal.localeCompare(bVal, undefined, { sensitivity: 'base', numeric: true });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    rows.forEach(row => fileTableBody.appendChild(row));
+  });
 
   document.getElementById('reorder-toggle-btn')?.addEventListener('click', () => {
     reorderMode = reorderMode === 'drag' ? 'arrows' : 'drag';
@@ -514,9 +551,54 @@ document.querySelectorAll('button[type="submit"]').forEach((btn, i) => {
   });
 });
 
+const bundleInfoFields = [
+  { id: 'config-bundleTitle', label: 'bundle title' },
+  { id: 'config-claimNumber', label: 'claim number' },
+  { id: 'config-projectName', label: 'case name' },
+];
+
+function showMissingInfoModal(actionType) {
+  const missing = bundleInfoFields.filter(f => !document.getElementById(f.id).value.trim()).map(f => f.label);
+  if (missing.length === 0) return false;
+  const formatted = missing.length === 1
+    ? missing[0]
+    : missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1];
+  document.getElementById('bundle-confirm-msg').textContent =
+    `Are you sure you want to leave out the ${formatted}?`;
+  pendingConfirmAction = actionType;
+  document.getElementById('bundle-confirm-modal').classList.remove('hidden');
+  return true;
+}
+
+document.getElementById('bundle-confirm-sure')?.addEventListener('click', () => {
+  document.getElementById('bundle-confirm-modal').classList.add('hidden');
+  if (pendingConfirmAction === 'bundle') {
+    bundleConfirmed = true;
+    form.requestSubmit();
+  } else if (pendingConfirmAction === 'preview') {
+    runPreviewIndex();
+  }
+  pendingConfirmAction = null;
+});
+
+document.getElementById('bundle-confirm-addinfo')?.addEventListener('click', () => {
+  document.getElementById('bundle-confirm-modal').classList.add('hidden');
+  const first = bundleInfoFields.find(f => !document.getElementById(f.id).value.trim());
+  if (first) {
+    const el = document.getElementById(first.id);
+    el.focus();
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   console.log('Form submit triggered!');
+
+  if (!bundleConfirmed) {
+    if (showMissingInfoModal('bundle')) return;
+  }
+  bundleConfirmed = false;
   //dynamic (lazy) load the main module
   if (!processTheBundle) {
     ({ processTheBundle } = await import('./buntoolMain.js'));
@@ -620,6 +702,87 @@ form.addEventListener('submit', async (e) => {
     alert(`Failed to generate bundle:\n\n${error.message}\n\nCheck the browser console for more details.`);
   }
   
+});
+
+async function runPreviewIndex() {
+  if (!processTheBundle) {
+    ({ processTheBundle } = await import('./buntoolMain.js'));
+  }
+
+  const configOptions = {
+    heading: {
+      claimNumber: stripUnsuitableChars(document.getElementById('config-claimNumber').value),
+      bundleTitle: stripUnsuitableChars(document.getElementById('config-bundleTitle').value),
+      projectName: stripUnsuitableChars(document.getElementById('config-projectName').value),
+      confidential: document.getElementById('config-confidential').checked,
+    },
+    pageNumbering: {
+      footerFont: document.getElementById('config-footerFont').value,
+      alignment: document.getElementById('config-alignment').value,
+      numberingStyle: document.getElementById('config-numberingStyle').value,
+      footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
+    },
+    index: {
+      fontFace: document.getElementById('config-fontFace').value,
+      dateStyle: document.getElementById('config-dateStyle').value,
+      outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
+      justTheIndex: true,
+    },
+    pageOptions: {
+      printableBundle: document.getElementById('config-printableBundle').value === 'true',
+    }
+  };
+
+  config.updateOptions(configOptions);
+
+  indexData.length = 0;
+  const rows = fileTableBody.querySelectorAll('tr');
+  rows.forEach(row => {
+    if (row.dataset.sectionBreak === 'true') {
+      const sectionTitleInput = row.querySelector('.section-break-title');
+      indexData.push({ sectionMarker: 1, title: sectionTitleInput ? sectionTitleInput.value : '—' });
+    } else {
+      const filenameTd = row.querySelectorAll('td')[1];
+      if (filenameTd) {
+        const filename = filenameTd.textContent.trim();
+        if (frontendInputData[filename]) {
+          indexData.push({
+            filename,
+            title: frontendInputData[filename].title,
+            date: frontendInputData[filename].date,
+            pageCount: frontendInputData[filename].pageCount,
+            sectionMarker: 0
+          });
+        }
+      }
+    }
+  });
+
+  try {
+    const pdfBytes = await processTheBundle(filesMap, indexData, config);
+    if (!pdfBytes || !(pdfBytes instanceof Uint8Array) || pdfBytes.length === 0) {
+      throw new Error('Preview returned invalid or empty PDF data');
+    }
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const today = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `index-preview-${today}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  } catch (error) {
+    console.error('[FRONTEND ERROR] Index preview failed:', error);
+    alert(`Failed to generate index preview:\n\n${error.message}\n\nCheck the browser console for more details.`);
+  } finally {
+    config.updateOptions({ index: { justTheIndex: false } });
+  }
+}
+
+document.getElementById('preview-index-btn')?.addEventListener('click', () => {
+  if (showMissingInfoModal('preview')) return;
+  runPreviewIndex();
 });
 
 
