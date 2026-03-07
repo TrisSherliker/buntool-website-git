@@ -2,6 +2,19 @@ let processTheBundle;
 let countPdfPages;
 let bundleConfirmed = false;
 let pendingConfirmAction = null;
+
+const BUNDLE_LOG_URL = 'https://trissherliker--cf20f90c1a4811f1b20642dde27851f2.web.val.run';
+
+async function logBundleEvent(payload) {
+  if (!['buntool.co.uk', 'www.buntool.co.uk'].includes(window.location.hostname)) return;
+  try {
+    await fetch(BUNDLE_LOG_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch { /* non-critical */ }
+}
 let chrono;
 let draggedRow = null;
 let reorderMode = 'drag'; // 'drag' | 'arrows'
@@ -599,6 +612,8 @@ form.addEventListener('submit', async (e) => {
     if (showMissingInfoModal('bundle')) return;
   }
   bundleConfirmed = false;
+  const bundleUuid = crypto.randomUUID();
+  const bundleTsStart = Date.now();
   //dynamic (lazy) load the main module
   if (!processTheBundle) {
     ({ processTheBundle } = await import('./buntoolMain.js'));
@@ -661,6 +676,8 @@ form.addEventListener('submit', async (e) => {
     }
   });
 
+  logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
+
   try {
     const pdfBytes = await processTheBundle(filesMap, indexData, config);
 
@@ -697,6 +714,13 @@ form.addEventListener('submit', async (e) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 0);
+
+    logBundleEvent({
+      event: 'complete',
+      uuid: bundleUuid,
+      duration_ms: Date.now() - bundleTsStart,
+      page_count: indexData.filter(e => !e.sectionMarker).reduce((sum, e) => sum + (e.pageCount || 0), 0),
+    });
   } catch (error) {
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
     alert(`Failed to generate bundle:\n\n${error.message}\n\nCheck the browser console for more details.`);

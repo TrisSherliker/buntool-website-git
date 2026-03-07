@@ -23,6 +23,18 @@ All bundle processing happens entirely in your web browser on your own device. B
 - Are not stored anywhere except your device
 - Are processed only in your browser's memory
 
+### What is tracked?
+
+
+When a bundle is requested, the app logs: 
+
+- the fact that a bundle was requested and when
+- whether or not the bundle successfully completed and when
+- how many pages and how many pdfs were included
+- nothing else.
+
+Also by default, the web hosting provider tracks a basic count of how many visits/requests were made to the website over time and the general location (eg 'United Kingdom'), but no other analytics are used.
+
 ### GDPR Compliance
 
 We comply with GDPR by not collecting or processing any personal data. There is no need for cookie banners or consent forms because we simply don't collect anything. Since we don't collect any data about you, there is no data to:
