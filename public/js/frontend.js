@@ -804,10 +804,12 @@ async function runPreviewIndex() {
   }
 }
 
-document.getElementById('preview-index-btn')?.addEventListener('click', () => {
-  if (showMissingInfoModal('preview')) return;
-  runPreviewIndex();
-});
+for (const id of ['preview-index-btn', 'preview-index-btn-advanced']) {
+  document.getElementById(id)?.addEventListener('click', () => {
+    if (showMissingInfoModal('preview')) return;
+    runPreviewIndex();
+  });
+}
 
 
 /***********************************
