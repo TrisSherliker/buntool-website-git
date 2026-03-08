@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('news');
+	return posts.map(post => ({
+		params: { slug: post.slug },
+		props: { post },
+	}));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+---
+
+<Layout title={`${post.data.title} - BunTool`} description={post.data.description}>
+	<Header currentPath="/news" />
+
+	<main class="min-h-screen bg-gray-50">
+		<article class="py-12">
+			<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+				<a href="/news" class="text-sm text-gray-400 hover:text-pink-600 transition">&larr; All news</a>
+				<p class="mt-4 text-sm text-gray-400">{post.data.date}</p>
+				<h1 class="mt-2 text-4xl font-bold text-gray-900">{post.data.title}</h1>
+				<div class="mt-8 prose prose-lg max-w-none text-gray-700">
+					<Content />
+				</div>
+			</div>
+		</article>
+	</main>
+
+	<Footer />
+</Layout>

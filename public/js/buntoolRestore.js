@@ -6,7 +6,7 @@
  */
 
 import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.3.6/dist/mupdf.js';
-import { PDFDocument, PDFName } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
+import { PDFDocument } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 /**
  * Extracts BunTool metadata from a bundle PDF's hidden annotation.
@@ -20,24 +20,9 @@ export function extractBundleMetadata(pdfBytes) {
     const pdfCopy = new Uint8Array(pdfBytes);
     let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
-    // Try to get metadata from document metadata field first
-    const metadataString = doc.getMetaData("Bundle Index");
-    if (metadataString) {
-      console.log('Found Bundle Index in PDF metadata');
-      console.log('Raw metadata string length:', metadataString.length);
-      const parsed = JSON.parse(metadataString);
-      console.log('Parsed metadata:', parsed);
-      console.log('Is array?', Array.isArray(parsed), 'Length:', parsed?.length);
-      // Ensure we return an array
-      if (Array.isArray(parsed)) {
-        return parsed;
-      } else {
-        console.warn('Bundle Index metadata is not an array, wrapping it');
-        return [parsed];
-      }
-    }
-
-    // Fall back to reading from hidden annotation
+    // Entries are stored in the hidden annotation below.
+    // info:BundleIndex contains only config (no entries) to stay under mupdf's ~500-char limit.
+    // Read from hidden annotation (all bundles):
     const firstPage = doc.loadPage(0);
     const annotations = firstPage.getAnnotations();
 
@@ -85,18 +70,8 @@ export function extractBundleMetadata(pdfBytes) {
         }
 
         const jsonString = contents.substring(startIdx, endIdx);
-        console.log('Found BundleIndexData in annotation');
-        console.log('Extracted JSON string length:', jsonString.length);
         const parsed = JSON.parse(jsonString);
-        console.log('Parsed annotation data:', parsed);
-        console.log('Is array?', Array.isArray(parsed), 'Length:', parsed?.length);
-        // Ensure we return an array
-        if (Array.isArray(parsed)) {
-          return parsed;
-        } else {
-          console.warn('BundleIndexData is not an array, wrapping it');
-          return [parsed];
-        }
+        return Array.isArray(parsed) ? parsed : [parsed];
       }
     }
 
@@ -199,243 +174,67 @@ export async function splitBundlePdf(bundleBytes, metadata) {
   }
 }
 
+// Unique RGB colour applied to buntool page number footers by pdf-lib.
+// In the content stream this appears as: 0.072 0.021 0.073 rg
+const BUNTOOL_COLOUR_RE = /0\.072\s+0\.021\s+0\.073\s+rg/;
+// Matches the enclosing q...Q graphics state block containing the unique colour.
+// pdf-lib wraps each drawText call in its own self-contained q/Q block (no nesting),
+// so the non-greedy match is safe.
+const FOOTER_BLOCK_RE = /q\b[\s\S]*?0\.072\s+0\.021\s+0\.073\s+rg[\s\S]*?Q\b[ \t]*\n?/g;
+
 /**
- * Removes page numbering from a PDF by finding text containing zero-width space marker
- * and redacting those areas. Page numbers use zero-width space U+200B as identifier.
+ * Removes buntool page number footers from a PDF by targeting the unique colour
+ * (0.072 0.021 0.073) used when drawing footer text via pdf-lib. Operates directly
+ * on mupdf content streams — no redaction or over-drawing.
  *
  * @param {Uint8Array} pdfBytes - The PDF as a Uint8Array
- * @returns {Promise<Uint8Array>} The PDF with page numbers removed
+ * @returns {Promise<Uint8Array>} The PDF with page number footers removed
  */
 async function removePageNumbering(pdfBytes) {
   try {
-    // Step 1: Use muPDF to find pages with page numbers
     const pdfCopy = new Uint8Array(pdfBytes);
     const doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+    const pageCount = doc.countPages();
+    let pagesModified = 0;
 
-    const pagesWithPageNumbers = [];
+    for (let i = 0; i < pageCount; i++) {
+      const pageDict = doc.findPage(i);
+      const contentsRef = pageDict.get('Contents');
+      if (!contentsRef || contentsRef.isNull()) continue;
 
-    for (let pageNum = 0; pageNum < doc.countPages(); pageNum++) {
-      const page = doc.loadPage(pageNum);
-      const stext = page.toStructuredText();
-      const pageText = stext.asText();
+      // Contents can be a single stream or an array of indirect stream refs.
+      // Do NOT call .resolve() — the indirect ref retains isStream()=true,
+      // but resolve() returns only the dictionary and loses stream access.
+      const streamRefs = contentsRef.isArray()
+        ? Array.from({ length: contentsRef.length }, (_, j) => contentsRef.get(j))
+        : [contentsRef];
 
-      if (pageText.includes('\u200B')) {
-        pagesWithPageNumbers.push(pageNum);
+      let pageModified = false;
+
+      for (const streamRef of streamRefs) {
+        if (!streamRef.isStream()) continue;
+        const text = streamRef.readStream().asString();
+        if (!BUNTOOL_COLOUR_RE.test(text)) continue;
+        FOOTER_BLOCK_RE.lastIndex = 0;
+        const cleaned = text.replace(FOOTER_BLOCK_RE, '');
+        if (cleaned === text) continue;
+        streamRef.writeStream(cleaned);
+        pageModified = true;
       }
+
+      if (pageModified) pagesModified++;
     }
 
-    if (pagesWithPageNumbers.length === 0) {
-      return pdfBytes; // No page numbers to remove
-    }
+    if (pagesModified === 0) return pdfBytes;
 
-    // Step 2: Use pdf-lib to parse and modify content streams
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pages = pdfDoc.getPages();
-
-    for (const pageIndex of pagesWithPageNumbers) {
-      const page = pages[pageIndex];
-
-      // Get the page's content stream
-      const contentStream = page.node.Contents();
-
-      // Parse content stream into operators
-      const operators = parseContentStream(contentStream);
-
-      // Filter out operators that draw page number text
-      const filteredOperators = filterPageNumberOperators(operators);
-
-      // Rebuild content stream
-      const newContentStream = buildContentStream(filteredOperators, pdfDoc);
-
-      // Set the modified content stream back to the page
-      page.node.set(PDFName.of('Contents'), newContentStream);
-    }
-
-    const modifiedBytes = await pdfDoc.save();
-    console.log(`Removed page numbers from ${pagesWithPageNumbers.length} pages`);
-    return new Uint8Array(modifiedBytes);
+    const saved = doc.saveToBuffer("incremental");
+    console.log(`Removed page numbers from ${pagesModified}/${pageCount} pages`);
+    return saved.asUint8Array().slice(); // .slice() copies out of WASM heap before it's reallocated
 
   } catch (error) {
     console.error('Error removing page numbering:', error);
-    return pdfBytes; // Return original if deletion fails
+    return pdfBytes;
   }
-}
-
-/**
- * Parse content stream into operator objects
- * @param {PDFStream|Array<PDFStream>} contentStream - The content stream(s) from the page
- * @returns {Array} Array of operator objects with {operator: string, operands: Array}
- */
-function parseContentStream(contentStream) {
-  const operators = [];
-  const streams = Array.isArray(contentStream) ? contentStream : [contentStream];
-
-  for (const stream of streams) {
-    try {
-      const bytes = stream.decode(); // Get decompressed bytes
-      const content = new TextDecoder().decode(bytes);
-
-      // Parse PDF operators using simple tokenization
-      const tokens = tokenizePDFContent(content);
-      operators.push(...tokens);
-    } catch (error) {
-      console.warn('Failed to parse content stream:', error);
-    }
-  }
-
-  return operators;
-}
-
-/**
- * Tokenize PDF content stream into operators
- * @param {string} content - The decompressed content stream text
- * @returns {Array} Array of operator objects
- */
-function tokenizePDFContent(content) {
-  const operators = [];
-  const lines = content.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Simple parser - matches operators like "Tj", "TJ", "'", etc.
-    // Operands come before the operator on the same line
-    const parts = trimmed.split(/\s+/);
-    if (parts.length === 0) continue;
-
-    const operator = parts[parts.length - 1];
-    const operands = parts.slice(0, -1);
-
-    // Parse operands to extract strings and handle special cases
-    const parsedOperands = [];
-    let currentString = '';
-    let inString = false;
-
-    for (const part of operands) {
-      if (part.startsWith('(')) {
-        inString = true;
-        currentString = part.substring(1);
-        if (part.endsWith(')')) {
-          parsedOperands.push(currentString.substring(0, currentString.length - 1));
-          currentString = '';
-          inString = false;
-        }
-      } else if (inString) {
-        if (part.endsWith(')')) {
-          currentString += ' ' + part.substring(0, part.length - 1);
-          parsedOperands.push(currentString);
-          currentString = '';
-          inString = false;
-        } else {
-          currentString += ' ' + part;
-        }
-      } else {
-        parsedOperands.push(part);
-      }
-    }
-
-    operators.push({
-      operator: operator,
-      operands: parsedOperands,
-      rawLine: trimmed
-    });
-  }
-
-  return operators;
-}
-
-/**
- * Filter out text operators containing zero-width space
- * @param {Array} operators - Array of operator objects
- * @returns {Array} Filtered operators without page number text
- */
-function filterPageNumberOperators(operators) {
-  const filtered = [];
-  let inTextObject = false;
-  let skipUntilET = false;
-
-  for (let i = 0; i < operators.length; i++) {
-    const op = operators[i];
-
-    // Track text object boundaries
-    if (op.operator === 'BT') {
-      inTextObject = true;
-      filtered.push(op);
-      continue;
-    }
-
-    if (op.operator === 'ET') {
-      if (!skipUntilET) {
-        filtered.push(op);
-      }
-      inTextObject = false;
-      skipUntilET = false;
-      continue;
-    }
-
-    // Check if this text operator contains zero-width space
-    if (inTextObject && isTextOperator(op.operator)) {
-      if (containsZeroWidthSpace(op.operands)) {
-        // Skip this operator and mark to skip entire text object
-        skipUntilET = true;
-        continue;
-      }
-    }
-
-    // Keep all other operators
-    if (!skipUntilET) {
-      filtered.push(op);
-    }
-  }
-
-  return filtered;
-}
-
-/**
- * Check if operator is a text-showing operator
- * @param {string} op - The operator name
- * @returns {boolean} True if this is a text operator
- */
-function isTextOperator(op) {
-  return ['Tj', 'TJ', "'", '"'].includes(op);
-}
-
-/**
- * Check if operands contain zero-width space marker
- * @param {Array} operands - The operator's operands
- * @returns {boolean} True if zero-width space found
- */
-function containsZeroWidthSpace(operands) {
-  for (const operand of operands) {
-    if (typeof operand === 'string' && operand.includes('\u200B')) {
-      return true;
-    }
-    // Handle array operands (for TJ operator)
-    if (Array.isArray(operand)) {
-      for (const item of operand) {
-        if (typeof item === 'string' && item.includes('\u200B')) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Rebuild content stream from operators
- * @param {Array} operators - Filtered operator objects
- * @param {PDFDocument} pdfDoc - The PDF document (for creating streams)
- * @returns {PDFStream} New content stream
- */
-function buildContentStream(operators, pdfDoc) {
-  const lines = operators.map(op => op.rawLine);
-  const content = lines.join('\n');
-
-  // Create new stream with the modified content
-  const bytes = new TextEncoder().encode(content);
-  return pdfDoc.context.stream(bytes);
 }
 
 /**
@@ -445,73 +244,46 @@ function buildContentStream(operators, pdfDoc) {
  * @param {Uint8Array} pdfBytes - The bundle PDF as a Uint8Array
  * @returns {Object} Config object with heading, index, page, and outline options
  */
+const DEFAULT_CONFIG = {
+  heading: { claimNumber: "", bundleTitle: "", projectName: "", confidential: false },
+  pageNumbering: { footerFont: "sansSerif", alignment: "centre", numberingStyle: "PageX", footerPrefix: "" },
+  index: { fontFace: "sansSerif", dateStyle: "DD Mon. YYYY", outlineItemStyle: "plain" },
+  pageOptions: { printableBundle: false },
+};
+
 export function parseConfigFromMetadata(pdfBytes) {
   try {
     const pdfCopy = new Uint8Array(pdfBytes);
     let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
-    // Extract standard metadata fields
+    // Primary path: full config embedded in bundle index (v2+ bundles).
+    // Wrapped in its own try/catch so a truncated/corrupt JSON falls through to the fallback below.
+    try {
+      const bundleIndexStr = doc.getMetaData("info:BundleIndex");
+      if (bundleIndexStr) {
+        const bundleData = JSON.parse(bundleIndexStr);
+        if (bundleData && bundleData.version === 2 && bundleData.config) {
+          return bundleData.config;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not parse info:BundleIndex (truncated or malformed), falling back to standard fields:', e.message);
+    }
+
+    // Fallback: reconstruct from individual metadata fields (older bundles)
     const title = doc.getMetaData("Title") || "";
     const subject = doc.getMetaData("Subject") || "";
-
-    // Parse confidential flag from title
+    const keywords = doc.getMetaData("Keywords") || "";
     const isConfidential = title.startsWith("CONFIDENTIAL ");
     const bundleTitle = isConfidential ? title.substring("CONFIDENTIAL ".length) : title;
 
-    // Build config object matching Config class structure
-    const config = {
-      heading: {
-        claimNumber: "", // Not stored in PDF metadata - user will need to re-enter
-        bundleTitle: bundleTitle,
-        projectName: subject,
-        confidential: isConfidential
-      },
-      // Default values - these aren't stored in PDF metadata
-      index: {
-        fontFace: "sansSerif",
-        dateStyle: "DD Mon. YYYY",
-        outlineItemStyle: "plain"
-      },
-      page: {
-        footerFont: "sansSerif",
-        alignment: "centre",
-        numberingStyle: "PageX", // Valid option from validNumberingStyles
-        footerPrefix: "",
-        prefaceRomanNumerals: false
-      },
-      outline: {
-        outlineItemStyle: "plain"
-      }
+    return {
+      ...DEFAULT_CONFIG,
+      heading: { claimNumber: keywords, bundleTitle, projectName: subject, confidential: isConfidential },
     };
-
-    console.log('Parsed config from PDF metadata:', config);
-    return config;
 
   } catch (error) {
     console.error('Error parsing config from metadata:', error);
-    // Return default config on error
-    return {
-      heading: {
-        claimNumber: "",
-        bundleTitle: "",
-        projectName: "",
-        confidential: false
-      },
-      index: {
-        fontFace: "sansSerif",
-        dateStyle: "DD Mon. YYYY",
-        outlineItemStyle: "plain"
-      },
-      page: {
-        footerFont: "sansSerif",
-        alignment: "centre",
-        numberingStyle: "PageX", // Valid option from validNumberingStyles
-        footerPrefix: "",
-        prefaceRomanNumerals: false
-      },
-      outline: {
-        outlineItemStyle: "plain"
-      }
-    };
+    return DEFAULT_CONFIG;
   }
 }

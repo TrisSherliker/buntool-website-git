@@ -385,11 +385,23 @@ addSectionBreakBtn?.addEventListener('click', () => {
 // Handle "Upload Bundle" input
 const bundleInput = document.getElementById('bundle-input');
 
+function showProcessingOverlay(msg) {
+  const el = document.getElementById('processing-overlay-msg');
+  if (el) el.textContent = msg || 'Processing…';
+  document.getElementById('processing-overlay')?.classList.remove('hidden');
+}
+
+function hideProcessingOverlay() {
+  document.getElementById('processing-overlay')?.classList.add('hidden');
+}
+
 bundleInput?.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   console.log('Processing bundle upload...');
+
+  showProcessingOverlay('Reading bundle…');
 
   try {
     // Read bundle PDF
@@ -404,7 +416,11 @@ bundleInput?.addEventListener('change', async (e) => {
     console.log('Extracting metadata from bundle...');
     const metadata = extractBundleMetadata(bundleBytes);
     if (!metadata || metadata.length === 0) {
-      alert('No BunTool metadata found in this PDF. Please upload a bundle created with BunTool.');
+      hideProcessingOverlay();
+      showErrorModal({
+        title: 'Not a BunTool bundle',
+        message: 'BunTool couldn\'t find its data in this PDF. Please check that you have selected a bundle created with the latest version of BunTool, not any other PDF.',
+      });
       bundleInput.value = '';
       return;
     }
@@ -419,17 +435,26 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-projectName').value = extractedConfig.heading.projectName || '';
     document.getElementById('config-confidential').checked = extractedConfig.heading.confidential || false;
 
-    // Populate other config fields with defaults from extracted config
-    document.getElementById('config-fontFace').value = extractedConfig.index.fontFace || 'sansSerif';
-    document.getElementById('config-dateStyle').value = extractedConfig.index.dateStyle || 'DD Mon. YYYY';
-    document.getElementById('config-outlineItemStyle').value = extractedConfig.index.outlineItemStyle || 'plain';
-    document.getElementById('config-footerFont').value = extractedConfig.page.footerFont || 'sansSerif';
-    document.getElementById('config-alignment').value = extractedConfig.page.alignment || 'centre';
-    document.getElementById('config-numberingStyle').value = extractedConfig.page.numberingStyle || 'PageX';
-    document.getElementById('config-footerPrefix').value = extractedConfig.page.footerPrefix || '';
+    // Populate advanced config fields
+    const pn = extractedConfig.pageNumbering || extractedConfig.page || {};
+    document.getElementById('config-fontFace').value = extractedConfig.index?.fontFace || 'sansSerif';
+    document.getElementById('config-dateStyle').value = extractedConfig.index?.dateStyle || 'DD Mon. YYYY';
+    document.getElementById('config-outlineItemStyle').value = extractedConfig.index?.outlineItemStyle || 'plain';
+    document.getElementById('config-footerFont').value = pn.footerFont || 'sansSerif';
+    document.getElementById('config-alignment').value = pn.alignment || 'centre';
+    document.getElementById('config-numberingStyle').value = pn.numberingStyle || 'PageX';
+    document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
+    document.getElementById('config-printableBundle').value =
+      (extractedConfig.pageOptions?.printableBundle === true) ? 'true' : 'false';
+
+    // Expand advanced settings so the user can review/edit them
+    document.getElementById('advanced-settings')?.classList.remove('hidden');
+    document.getElementById('advanced-submit')?.classList.remove('hidden');
+    document.getElementById('step-4-choice')?.classList.add('hidden');
 
     // Split bundle into individual PDFs
     console.log('Splitting bundle into individual documents...');
+    showProcessingOverlay('Extracting documents…');
     const extractedFiles = await splitBundlePdf(bundleBytes, metadata);
 
     // Clear existing table
@@ -544,12 +569,18 @@ bundleInput?.addEventListener('change', async (e) => {
     // Show table
     fileTable.style.display = 'block';
 
-    console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted, ${metadata.filter(e => e.section).length} section breaks restored`);
-    alert(`Bundle successfully unpacked!\n${extractedFiles.size} documents extracted\n${metadata.filter(e => e.section).length} section breaks restored`);
+    const sectionCount = metadata.filter(e => e.section).length;
+    console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted, ${sectionCount} section breaks restored`);
+    hideProcessingOverlay();
 
   } catch (error) {
+    hideProcessingOverlay();
     console.error('Failed to process bundle:', error);
-    alert(`Failed to process bundle: ${error.message}`);
+    showErrorModal({
+      title: 'Failed to open bundle',
+      message: 'Something went wrong while opening the bundle. If this keeps happening, please send a bug report with the details below.',
+      error,
+    });
   }
 
   // Reset input
@@ -569,6 +600,35 @@ const bundleInfoFields = [
   { id: 'config-claimNumber', label: 'claim number' },
   { id: 'config-projectName', label: 'case name' },
 ];
+
+function showErrorModal({ title, message, error } = {}) {
+  const modal = document.getElementById('error-modal');
+  const titleEl = document.getElementById('error-modal-title');
+  const msgEl = document.getElementById('error-modal-msg');
+  const detailsWrapper = document.getElementById('error-modal-details-wrapper');
+  const detailsEl = document.getElementById('error-modal-details');
+  const copyBtn = document.getElementById('error-modal-copy-btn');
+
+  if (titleEl) titleEl.textContent = title || 'Something went wrong';
+  if (msgEl) msgEl.textContent = message || '';
+
+  if (error) {
+    const details = [
+      `Time: ${new Date().toISOString()}`,
+      `Browser: ${navigator.userAgent}`,
+      `Error: ${error.message || error}`,
+      error.stack ? `Stack:\n${error.stack}` : '',
+    ].filter(Boolean).join('\n');
+    if (detailsEl) detailsEl.value = details;
+    detailsWrapper?.classList.remove('hidden');
+    copyBtn?.classList.remove('hidden');
+  } else {
+    detailsWrapper?.classList.add('hidden');
+    copyBtn?.classList.add('hidden');
+  }
+
+  modal?.classList.remove('hidden');
+}
 
 function showMissingInfoModal(actionType) {
   const missing = bundleInfoFields.filter(f => !document.getElementById(f.id).value.trim()).map(f => f.label);
@@ -723,7 +783,11 @@ form.addEventListener('submit', async (e) => {
     });
   } catch (error) {
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
-    alert(`Failed to generate bundle:\n\n${error.message}\n\nCheck the browser console for more details.`);
+    showErrorModal({
+      title: 'Bundle generation failed',
+      message: 'Something went wrong while creating your bundle. If this keeps happening, please send a bug report with the details below.',
+      error,
+    });
   }
   
 });
@@ -798,7 +862,11 @@ async function runPreviewIndex() {
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
   } catch (error) {
     console.error('[FRONTEND ERROR] Index preview failed:', error);
-    alert(`Failed to generate index preview:\n\n${error.message}\n\nCheck the browser console for more details.`);
+    showErrorModal({
+      title: 'Index preview failed',
+      message: 'Something went wrong while generating the index preview. If this keeps happening, please send a bug report with the details below.',
+      error,
+    });
   } finally {
     config.updateOptions({ index: { justTheIndex: false } });
   }

@@ -67,29 +67,28 @@
           </div>
         </div>
 
-        <!--
-          Edit Existing Bundle Button
-          <div class="pt-4 border-t border-gray-200">
-            <p class="text-sm text-gray-600 mb-3">
-              To edit an existing bundle:
-            </p>
-            <div>
-              <label class="block text-xs font-medium text-gray-600 mb-1">
-                Select Existing Bundle
-              </label>
-              <input
-                type="file"
-                id="bundle-input"
-                accept="application/pdf"
-                class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 transition cursor-pointer"
-              />
-              <p class="mt-2 text-xs text-gray-500">
-                Select a previously-created BunTool bundle to extract and edit its documents
-              </p>
-            </div>
-        </div>
-        -->
       </div>
+    </div>
+
+    <!-- OR: Edit existing bundle -->
+    <div class="flex items-center gap-4 py-1">
+      <div class="flex-1 border-t border-gray-300"></div>
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">or</span>
+      <div class="flex-1 border-t border-gray-300"></div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-green-200 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-gray-800">Edit an existing BunTool bundle</p>
+        <p class="text-xs text-gray-500 mt-0.5">Open a previously created bundle to pick up where you left off.</p>
+      </div>
+      <label for="bundle-input" class="inline-flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition whitespace-nowrap shrink-0">
+        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        Choose existing bundle to edit
+      </label>
+      <input type="file" id="bundle-input" accept="application/pdf" class="sr-only" />
     </div>
 
     <!-- Step 2: Select Documents -->
@@ -419,6 +418,61 @@
   </div>
 </div>
 
+<!-- New feature announcement modal (shown until end of June 2026) -->
+<div id="new-feature-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
+    <div class="flex items-start gap-3 mb-4">
+      <span class="text-2xl leading-none mt-0.5">✨</span>
+      <div>
+        <h3 class="text-base font-bold text-gray-800 mb-2">New feature: edit existing bundles</h3>
+        <p class="text-sm text-gray-700 mb-2">
+          You can now use BunTool to make edits to PDF bundles it created, without needing to start again!
+          Just click <strong>"Choose existing bundle to edit"</strong> and go from there.
+        </p>
+        <p class="text-xs text-gray-400">
+          This will only work with bundles created with the latest version of BunTool.
+        </p>
+      </div>
+    </div>
+    <div class="flex justify-end">
+      <button id="new-feature-modal-close" type="button" class="px-4 py-2 text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 rounded-lg transition">
+        Got it
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Processing spinner -->
+<div id="processing-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 px-8 py-7 flex flex-col items-center gap-4 max-w-xs w-full mx-4">
+    <svg class="animate-spin w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+    </svg>
+    <p id="processing-overlay-msg" class="text-sm font-medium text-gray-700 text-center">Opening bundle…</p>
+  </div>
+</div>
+
+<!-- Error modal -->
+<div id="error-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-lg w-full mx-4">
+    <h3 id="error-modal-title" class="text-base font-bold text-gray-800 mb-2">Something went wrong</h3>
+    <p id="error-modal-msg" class="text-sm text-gray-700 mb-4"></p>
+    <div id="error-modal-details-wrapper" class="hidden mb-4">
+      <p class="text-xs font-medium text-gray-500 mb-1">Please copy and paste the details below into a bug report email to <a href="mailto:hello@buntool.co.uk" class="underline">hello@buntool.co.uk</a>:</p>
+      <textarea id="error-modal-details" class="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded p-2 resize-none focus:outline-none" rows="6" readonly></textarea>
+    </div>
+    <div class="flex gap-3 justify-end">
+      <button id="error-modal-copy-btn" type="button" class="hidden px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+        Copy details
+      </button>
+      <button id="error-modal-close" type="button" class="px-4 py-2 text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 rounded-lg transition">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
 <style is:global>
   /* make the review table use a fixed layout so the colgroup widths are respected */
   #file-table table {
@@ -714,6 +768,28 @@
   if (fileTableBody) {
     observer.observe(fileTableBody, { childList: true });
   }
+
+  // New feature announcement modal
+  const newFeatureKey = 'buntool_edit_feature_seen';
+  const featureExpiry = new Date('2026-07-01').getTime();
+  if (Date.now() < featureExpiry && !localStorage.getItem(newFeatureKey)) {
+    document.getElementById('new-feature-modal')?.classList.remove('hidden');
+  }
+  document.getElementById('new-feature-modal-close')?.addEventListener('click', () => {
+    document.getElementById('new-feature-modal')?.classList.add('hidden');
+    localStorage.setItem(newFeatureKey, '1');
+  });
+
+  // Error modal
+  document.getElementById('error-modal-close')?.addEventListener('click', () => {
+    document.getElementById('error-modal')?.classList.add('hidden');
+  });
+  document.getElementById('error-modal-copy-btn')?.addEventListener('click', () => {
+    const details = (document.getElementById('error-modal-details') as HTMLTextAreaElement)?.value;
+    if (details) navigator.clipboard.writeText(details).catch(() => {});
+    const btn = document.getElementById('error-modal-copy-btn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy details'; }, 2000); }
+  });
 
   // Advanced Settings toggle
   const showAdvancedBtn = document.getElementById('show-advanced-btn');

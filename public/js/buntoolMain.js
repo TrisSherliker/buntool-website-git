@@ -9,7 +9,6 @@ import {
   addHyperlinks,
   addOutlineItems,
   setMetadata,
-  getBundleIndexMetadata,
 } from './buntoolFunctions.js';
 
 /**

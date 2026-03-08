@@ -457,6 +457,12 @@ export function setMetadata(pdfBytes, tocEntries, config) {
       ? config.getOption('heading.projectName')
       : ""
   );
+  doc.setMetaData(
+    "Keywords",
+    config.getOption('heading.claimNumber')
+      ? config.getOption('heading.claimNumber')
+      : ""
+  );
 
   // add custom document metadata field "Bundle Index" which stores tocEntries object:
   const buntoolIndexMetadata = tocEntries.map(entry => ({
@@ -471,7 +477,33 @@ export function setMetadata(pdfBytes, tocEntries, config) {
     // make new filename to avoid betraying data:
     filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`
   }));
-  doc.setMetaData("Bundle Index", JSON.stringify(buntoolIndexMetadata));
+  // Store only config in info:BundleIndex (entries are in the annotation below).
+  // mupdf getMetaData truncates at ~500 chars; config alone is ~290 chars and fits safely.
+  doc.setMetaData("info:BundleIndex", JSON.stringify({
+    version: 2,
+    config: {
+      heading: {
+        claimNumber: config.getOption('heading.claimNumber') || '',
+        bundleTitle: config.getOption('heading.bundleTitle') || '',
+        projectName: config.getOption('heading.projectName') || '',
+        confidential: config.getOption('heading.confidential') || false,
+      },
+      pageNumbering: {
+        footerFont: config.getOption('pageNumbering.footerFont') || 'sansSerif',
+        alignment: config.getOption('pageNumbering.alignment') || 'centre',
+        numberingStyle: config.getOption('pageNumbering.numberingStyle') || 'PageX',
+        footerPrefix: config.getOption('pageNumbering.footerPrefix') || '',
+      },
+      index: {
+        fontFace: config.getOption('index.fontFace') || 'sansSerif',
+        dateStyle: config.getOption('index.dateStyle') || 'DD Mon. YYYY',
+        outlineItemStyle: config.getOption('index.outlineItemStyle') || 'plain',
+      },
+      pageOptions: {
+        printableBundle: config.getOption('pageOptions.printableBundle') ?? false,
+      },
+    },
+  }));
 
   // add invisibile annotation to first page which stores buntoolIndex as metadata (the annot itself is empty):  
   const firstPage = doc.loadPage(0);
@@ -487,31 +519,6 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   console.log(`Metadata added`);
   const outputPdf = doc.saveToBuffer("incremental").asUint8Array()
   return outputPdf;
-}
-
-/**
- * Sketch of a function not currently suitable for bundle creation pipeline. 
- * Problem - Interacts with muPDF buffer clearing - yuck
- * Retrieves bundle index metadata from a PDF's hidden annotations.
- * Searches for a FreeText annotation containing "BundleIndexData" on the first page.
- * @param {Uint8Array} pdfBytes - The PDF document as a Uint8Array
- * @returns {string|null} The bundle index metadata JSON string, or null if not found
- */
-export function getBundleIndexMetadata(pdfBytes) {
-  const pdfCopy = new Uint8Array(pdfBytes);  
-  let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
-  const firstPage = doc.loadPage(0);
-  const annotations = firstPage.getAnnotations();
-  for (const annot of annotations) {
-    const contents = annot.getContents();
-    console.log(`Annotation contents: ${contents}`);
-    if (typeof contents === 'string' && contents.includes("BundleIndexData:")) {
-      const metadata = contents;
-      console.log(`BundleIndexData found in annotation: ${metadata}`);
-      return metadata;
-    }
-  }
-  return null; // Return null if no matching annotation is found
 }
 
 /*******************************************************
