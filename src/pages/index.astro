@@ -25,17 +25,10 @@ import Footer from '../components/Footer.astro';
 				<img src="/images/filesonshelf.png" alt="" class="w-full h-full object-cover" />
 			</div>
 			<!-- Content -->
-			<div class="relative max-w-7xl mx-auto px-4 py-12 md:py-16">
-				<div class="grid md:grid-cols-2 gap-12 items-center">
-					<!-- Hero animation -->
-					<div class="flex justify-center md:justify-start">
-						<video autoplay loop muted playsinline class="max-w-full w-full max-h-[30rem] object-contain rounded-lg shadow-xl">
-							<source src="/images/buntool-animation-web.webm" type="video/webm" />
-							<img src="/images/example-bundle.png" alt="Example BunTool bundle" class="max-w-full w-full max-h-[30rem] object-contain rounded-lg shadow-xl" />
-						</video>
-					</div>
-					<!-- Text Right -->
-					<div class="text-center md:text-left">
+			<div class="relative max-w-7xl mx-auto">
+				<div class="grid md:grid-cols-2 gap-y-0 gap-x-8 md:gap-8 items-center">
+					<!-- Text — first on mobile, second (right) on desktop -->
+					<div class="order-1 md:order-2 text-center md:text-left px-4 pt-8 pb-0 md:py-0">
 						<h1 class="text-4xl md:text-6xl font-bold mb-6">
 							BunTool: Make legal bundles in minutes, for free
 						</h1>
@@ -53,6 +46,13 @@ import Footer from '../components/Footer.astro';
 								How-to Guide
 							</a>
 						</div>
+					</div>
+					<!-- Hero animation — second on mobile (below text), first (left) on desktop -->
+					<div class="order-2 md:order-1 flex justify-center md:justify-start">
+						<video autoplay loop muted playsinline class="w-full max-h-90 md:max-h-[42rem] object-contain rounded-lg shadow-xl">
+							<source src="/images/buntool-animation-web.webm" type="video/webm" />
+							<img src="/images/example-bundle.png" alt="Example BunTool bundle" class="w-full max-h-90 md:max-h-[42rem] object-contain rounded-lg shadow-xl" />
+						</video>
 					</div>
 				</div>
 			</div>
@@ -79,13 +79,9 @@ import Footer from '../components/Footer.astro';
 						</p>
 					</div>
 
-					<!-- Image on Right -->
-					<div class="flex justify-center md:justify-end">
+					<!-- Images side by side -->
+					<div class="flex flex-row gap-4 justify-center md:justify-end">
 						<img src="/images/merge-pdfs.png" alt="Merge PDFs" class="rounded-lg shadow-lg" style="height:250px;width:auto;" />
-					</div>
-
-					<!-- Example bundle -->
-					<div class="flex justify-center">
 						<img src="/images/example-bundle.png" alt="Example BunTool bundle" class="rounded-lg shadow-lg" style="height:250px;width:auto;" />
 					</div>
 
