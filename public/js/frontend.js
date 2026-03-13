@@ -410,9 +410,9 @@ const BUNDLE_STEPS = [
   'Merging documents…',
   'Merging index with documents…',
   'Adding page numbering…',
-  'Adding index hyperlinks…',
-  'Adding PDF bookmarks…',
-  'Saving bundle…',
+  'Adding hyperlinks…',
+  'Adding bookmarks…',
+  'Preparing file for save…',
 ];
 let _trackInitialized = false;
 
@@ -480,6 +480,7 @@ function showProcessingOverlay(msg) {
     _updateTrack(-1);
   } else if (stepIndex !== -1) {
     if (!_trackInitialized) _buildTrack();
+    document.getElementById('processing-track')?.classList.remove('hidden');
     _updateTrack(stepIndex);
   } else {
     // Import path — no track needed
@@ -845,7 +846,7 @@ form.addEventListener('submit', async (e) => {
     if (showMissingInfoModal('bundle')) return;
   }
   bundleConfirmed = false;
-  const bundleUuid = crypto.randomUUID();
+  const bundleUuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
   const bundleTsStart = Date.now();
   //dynamic (lazy) load the main module
   if (!processTheBundle) {

@@ -177,7 +177,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
     console.error(`[ERROR] Failed to add outline items: `, error.message);
     throw error;
   }
-  onProgress?.('Saving bundle…');
+  onProgress?.('Preparing file for save…');
 
   console.log('[11/11] Setting PDF metadata...');
   try {
