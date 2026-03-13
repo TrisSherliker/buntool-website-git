@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 # internal notes and development images
 /notes/
+/public/testpdfs/
 /development-images-dir/
 /git-clone-for-deployment/
 /.claude/
