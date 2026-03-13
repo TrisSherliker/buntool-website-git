@@ -397,14 +397,161 @@ addSectionBreakBtn?.addEventListener('click', () => {
 // Handle "Upload Bundle" input
 const bundleInput = document.getElementById('bundle-input');
 
+// Ordered steps emitted by processTheBundle via onProgress
+const BUNDLE_STEPS = [
+  'Validating configuration…',
+  'Creating table of contents…',
+  'Generating index pages…',
+  'Merging documents…',
+  'Merging index with documents…',
+  'Adding page numbering…',
+  'Adding index hyperlinks…',
+  'Adding PDF bookmarks…',
+  'Saving bundle…',
+];
+let _trackInitialized = false;
+
+function _buildTrack() {
+  const track = document.getElementById('processing-track');
+  if (!track) return;
+  track.innerHTML = BUNDLE_STEPS.map((step, i) => {
+    const isLast = i === BUNDLE_STEPS.length - 1;
+    return `<div class="flex gap-3 items-stretch">
+      <div class="flex flex-col items-center w-5 flex-shrink-0">
+        <div id="station-dot-${i}" class="w-4 h-4 rounded-full border-2 border-gray-300 bg-white flex-shrink-0"></div>
+        ${!isLast ? `<div id="station-line-${i}" class="w-px flex-1 bg-gray-200 mt-1"></div>` : ''}
+      </div>
+      <div class="${!isLast ? 'pb-3' : ''}">
+        <span id="station-label-${i}" class="text-xs text-gray-400">${step}</span>
+      </div>
+    </div>`;
+  }).join('');
+  track.classList.remove('hidden');
+  _trackInitialized = true;
+}
+
+function _updateTrack(activeIndex) {
+  BUNDLE_STEPS.forEach((_, i) => {
+    const dot   = document.getElementById(`station-dot-${i}`);
+    const line  = document.getElementById(`station-line-${i}`);
+    const label = document.getElementById(`station-label-${i}`);
+    if (!dot) return;
+    if (i < activeIndex) {
+      dot.className = 'w-4 h-4 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center';
+      dot.innerHTML = '<svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+      if (line)  line.className  = 'w-px flex-1 bg-green-400 mt-1';
+      if (label) label.className = 'text-xs text-green-600 font-medium';
+    } else if (i === activeIndex) {
+      dot.className = 'w-4 h-4 rounded-full bg-green-500 flex-shrink-0 animate-pulse';
+      dot.innerHTML = '';
+      if (line)  line.className  = 'w-px flex-1 bg-gray-200 mt-1';
+      if (label) label.className = 'text-xs text-gray-800 font-semibold';
+    } else {
+      dot.className = 'w-4 h-4 rounded-full border-2 border-gray-300 bg-white flex-shrink-0';
+      dot.innerHTML = '';
+      if (line)  line.className  = 'w-px flex-1 bg-gray-200 mt-1';
+      if (label) label.className = 'text-xs text-gray-400';
+    }
+  });
+}
+
+let _overlayOriginalHTML = null;
+
 function showProcessingOverlay(msg) {
+  const overlay = document.getElementById('processing-overlay');
+  if (!overlay) return;
+
+  // Capture original inner HTML on first call so we can restore it on hide
+  const inner = overlay.querySelector(':scope > div');
+  if (inner && !_overlayOriginalHTML) _overlayOriginalHTML = inner.innerHTML;
+
   const el = document.getElementById('processing-overlay-msg');
   if (el) el.textContent = msg || 'Processing…';
-  document.getElementById('processing-overlay')?.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+
+  const stepIndex = BUNDLE_STEPS.indexOf(msg);
+  if (msg === 'Building bundle…' || msg === 'Building index preview…') {
+    _buildTrack();
+    _updateTrack(-1);
+  } else if (stepIndex !== -1) {
+    if (!_trackInitialized) _buildTrack();
+    _updateTrack(stepIndex);
+  } else {
+    // Import path — no track needed
+    document.getElementById('processing-track')?.classList.add('hidden');
+  }
 }
 
 function hideProcessingOverlay() {
-  document.getElementById('processing-overlay')?.classList.add('hidden');
+  const overlay = document.getElementById('processing-overlay');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  // Restore original spinner/track structure for next use
+  const inner = overlay.querySelector(':scope > div');
+  if (inner && _overlayOriginalHTML) inner.innerHTML = _overlayOriginalHTML;
+  _trackInitialized = false;
+}
+
+function _triggerDownload(pdfBytes, filename) {
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+function showBundleReadyState(pdfBytes, filename) {
+  // Tick all remaining stations before showing success
+  _updateTrack(BUNDLE_STEPS.length);
+
+  setTimeout(() => {
+    const overlay = document.getElementById('processing-overlay');
+    const inner = overlay?.querySelector(':scope > div');
+    if (!inner) return;
+
+    inner.innerHTML = `
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-6 h-6 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <p class="text-sm font-semibold text-gray-800 flex-1">Bundle ready!</p>
+        <button id="overlay-close-x" class="text-gray-400 hover:text-gray-600 transition" aria-label="Close">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="flex flex-col gap-2">
+        <button id="overlay-save-btn" class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Save bundle
+        </button>
+        <button id="overlay-edit-btn" class="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">
+          Close and edit
+        </button>
+      </div>
+      <div class="flex items-center gap-1.5 mt-4 pt-3 border-t border-gray-100">
+        <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+        </svg>
+        <p class="text-xs text-gray-400">Processing locally. No information is shared.</p>
+      </div>
+    `;
+
+    document.getElementById('overlay-save-btn')?.addEventListener('click', () => {
+      _triggerDownload(pdfBytes, filename);
+      hideProcessingOverlay();
+    });
+    document.getElementById('overlay-close-x')?.addEventListener('click', () => hideProcessingOverlay());
+    document.getElementById('overlay-edit-btn')?.addEventListener('click', () => hideProcessingOverlay());
+  }, 800);
 }
 
 bundleInput?.addEventListener('change', async (e) => {
@@ -765,34 +912,20 @@ form.addEventListener('submit', async (e) => {
       throw new Error('Bundle processing returned invalid or empty PDF data');
     }
 
-    const returnedBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(returnedBlob);
-
     // Generate filename: title-claimno-case-date.pdf
-    const sanitize = (str) => str.replace(/[<>:"/\\|?*.]/g, '-'); // Remove invalid filename chars
+    const sanitize = (str) => str.replace(/[<>:"/\\|?*.]/g, '-');
     const truncate = (str, maxLen) => str.length > maxLen ? str.slice(0, maxLen) : str;
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10);
     const parts = [
       configOptions.heading.bundleTitle?.trim(),
       configOptions.heading.claimNumber?.trim(),
       configOptions.heading.projectName?.trim(),
       today
-    ].filter(p => p); // Remove empty parts
+    ].filter(p => p);
     let bundleFilename = sanitize(parts.join('-')) + '.pdf';
-    // Truncate if over max filename length (255 bytes, leave room for .pdf)
     if (bundleFilename.length > 251) {
       bundleFilename = truncate(sanitize(parts.join('-')), 247) + '.pdf';
     }
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = bundleFilename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 0);
 
     logBundleEvent({
       event: 'complete',
@@ -800,6 +933,9 @@ form.addEventListener('submit', async (e) => {
       duration_ms: Date.now() - bundleTsStart,
       page_count: indexData.filter(e => !e.sectionMarker).reduce((sum, e) => sum + (e.pageCount || 0), 0),
     });
+
+    showBundleReadyState(pdfBytes, bundleFilename);
+    return; // keep overlay open — hideProcessingOverlay handled by the modal buttons
   } catch (error) {
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
     if (error.message === '__timeout__') {
@@ -814,7 +950,6 @@ form.addEventListener('submit', async (e) => {
         error,
       });
     }
-  } finally {
     hideProcessingOverlay();
   }
 
