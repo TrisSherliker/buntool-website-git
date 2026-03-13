@@ -228,25 +228,30 @@ fileInput.addEventListener('change', async (e) => {
           <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
         </svg>
       </td>
-      <td class="px-4 py-3 text-sm text-gray-500 filename-cell">${file.name}</td>
+      <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
       <td class="px-4 py-3 title-cell">
-        <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${file.name}" rows="1">${displayTitle}</textarea>
+        <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
       </td>
       <td class="px-4 py-3 date-cell">
-        <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${file.name}" value="${dateParseObj.date || ''}" />
+        <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
       </td>
-      <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell">${pageCount}</td>
+      <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
       <td class="px-4 py-3 flex gap-2 actions-cell">
         <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
         <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-        <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="${file.name}" title="Download this PDF">
+        <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">
           💾
         </button>
-        <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="${file.name}" title="Delete row">
+        <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">
           ❌
         </button>
       </td>
     `;
+    row.querySelector('.filename-cell').textContent = file.name;
+    row.querySelector('.title-input').value = displayTitle;
+    row.querySelector('.date-input').value = dateParseObj.date ? dateParseObj.date.toISOString().slice(0, 10) : '';
+    row.querySelector('.pages-cell').textContent = pageCount ?? '';
+    row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = file.name);
 
     // Add drag event listeners
     row.addEventListener('dragstart', handleDragStart);
@@ -636,7 +641,7 @@ bundleInput?.addEventListener('change', async (e) => {
             </svg>
           </td>
           <td colspan="4" class="px-6 py-3 text-center">
-            <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="${entry.title || '— SECTION BREAK —'}" placeholder="Section name..."/>
+            <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Section name..."/>
           </td>
           <td class="px-6 py-3 flex gap-2">
             <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
@@ -646,6 +651,7 @@ bundleInput?.addEventListener('change', async (e) => {
             </button>
           </td>
         `;
+        sectionBreakRow.querySelector('.section-break-title').value = entry.title || '— SECTION BREAK —';
 
         // Add drag event listeners
         sectionBreakRow.addEventListener('dragstart', handleDragStart);
@@ -695,25 +701,30 @@ bundleInput?.addEventListener('change', async (e) => {
               <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
             </svg>
           </td>
-          <td class="px-4 py-3 text-sm text-gray-500 filename-cell">${filename}</td>
+          <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
           <td class="px-4 py-3 title-cell">
-            <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${filename}" rows="1">${entry.title}</textarea>
+            <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
           </td>
           <td class="px-4 py-3 date-cell">
-            <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="${filename}" value="${entry.date || ''}" />
+            <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
           </td>
-          <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell">${pageCount}</td>
+          <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
           <td class="px-4 py-3 flex gap-2 actions-cell">
             <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
             <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-            <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="${filename}" title="Download this PDF">
+            <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">
               💾
             </button>
-            <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="${filename}" title="Delete row">
+            <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">
               ❌
             </button>
           </td>
         `;
+        row.querySelector('.filename-cell').textContent = filename;
+        row.querySelector('.title-input').value = entry.title || '';
+        row.querySelector('.date-input').value = entry.date || '';
+        row.querySelector('.pages-cell').textContent = pageCount ?? '';
+        row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = filename);
 
         // Add drag event listeners
         row.addEventListener('dragstart', handleDragStart);
