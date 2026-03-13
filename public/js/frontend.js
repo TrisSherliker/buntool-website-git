@@ -196,6 +196,18 @@ fileInput.addEventListener('change', async (e) => {
       continue;
     }
 
+    // Validate PDF magic bytes (%PDF-)
+    const headerBytes = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+    const isPdf = headerBytes[0] === 0x25 && headerBytes[1] === 0x50 &&
+                  headerBytes[2] === 0x44 && headerBytes[3] === 0x46 && headerBytes[4] === 0x2D;
+    if (!isPdf) {
+      showErrorModal({
+        title: 'Not a PDF file',
+        message: `"${file.name}" does not appear to be a PDF file. Please check the file and try again.`,
+      });
+      continue;
+    }
+
     filesMap.set(file.name, file);
     const prettyTitle = prettifyTitle(file.name);
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
@@ -738,8 +750,15 @@ form.addEventListener('submit', async (e) => {
 
   logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
 
+  const BUNDLE_TIMEOUT_MS = 120_000;
+  showProcessingOverlay('Building bundle…');
   try {
-    const pdfBytes = await processTheBundle(filesMap, indexData, config);
+    const pdfBytes = await Promise.race([
+      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label)),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
+      ),
+    ]);
 
     // Validate that we got valid PDF bytes
     if (!pdfBytes || !(pdfBytes instanceof Uint8Array) || pdfBytes.length === 0) {
@@ -783,13 +802,22 @@ form.addEventListener('submit', async (e) => {
     });
   } catch (error) {
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
-    showErrorModal({
-      title: 'Bundle generation failed',
-      message: 'Something went wrong while creating your bundle. If this keeps happening, please send a bug report with the details below.',
-      error,
-    });
+    if (error.message === '__timeout__') {
+      showErrorModal({
+        title: 'Bundle generation timed out',
+        message: 'Your bundle took too long to generate. The browser may be running low on memory. Try closing other tabs, or split your documents into smaller batches.',
+      });
+    } else {
+      showErrorModal({
+        title: 'Bundle generation failed',
+        message: 'Something went wrong while creating your bundle. If this keeps happening, please send a bug report with the details below.',
+        error,
+      });
+    }
+  } finally {
+    hideProcessingOverlay();
   }
-  
+
 });
 
 async function runPreviewIndex() {
@@ -846,8 +874,15 @@ async function runPreviewIndex() {
     }
   });
 
+  const BUNDLE_TIMEOUT_MS = 120_000;
+  showProcessingOverlay('Building index preview…');
   try {
-    const pdfBytes = await processTheBundle(filesMap, indexData, config);
+    const pdfBytes = await Promise.race([
+      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label)),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
+      ),
+    ]);
     if (!pdfBytes || !(pdfBytes instanceof Uint8Array) || pdfBytes.length === 0) {
       throw new Error('Preview returned invalid or empty PDF data');
     }
@@ -862,12 +897,20 @@ async function runPreviewIndex() {
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
   } catch (error) {
     console.error('[FRONTEND ERROR] Index preview failed:', error);
-    showErrorModal({
-      title: 'Index preview failed',
-      message: 'Something went wrong while generating the index preview. If this keeps happening, please send a bug report with the details below.',
-      error,
-    });
+    if (error.message === '__timeout__') {
+      showErrorModal({
+        title: 'Index preview timed out',
+        message: 'The index preview took too long to generate. The browser may be running low on memory. Try closing other tabs.',
+      });
+    } else {
+      showErrorModal({
+        title: 'Index preview failed',
+        message: 'Something went wrong while generating the index preview. If this keeps happening, please send a bug report with the details below.',
+        error,
+      });
+    }
   } finally {
+    hideProcessingOverlay();
     config.updateOptions({ index: { justTheIndex: false } });
   }
 }

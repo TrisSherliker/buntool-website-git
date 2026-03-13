@@ -18,7 +18,7 @@ import {
  * @param {*} config
  * @returns {Uint8Array} The processed payload PDF as a Uint8Array.
  */
-export async function processTheBundle(filesMap, indexData, config){
+export async function processTheBundle(filesMap, indexData, config, onProgress){
 
   if (!filesMap || filesMap.size === 0) {
     throw new Error('Error: No files provided');
@@ -73,6 +73,7 @@ export async function processTheBundle(filesMap, indexData, config){
       throw error;
   }
   console.log('[1/11]...done')
+  onProgress?.('Validating configuration…');
 
   console.log('[2/11] Validating configuration options...');
   try { //validate options with method from buntoolConfig
@@ -82,6 +83,7 @@ export async function processTheBundle(filesMap, indexData, config){
       throw error;
   }
   console.log('[2/11]...done')
+  onProgress?.('Creating table of contents…');
 
   console.log('[3/11] Creating TOC entries...');
   let tocEntries;
@@ -92,6 +94,7 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to create TOC entries: `, error.message);
     throw error;
   }
+  onProgress?.('Generating index pages…');
 
   console.log('[4/11] Generating dummy TOC pages...');
   let expectedLengthOfToc = 0;
@@ -112,15 +115,16 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to generate TOC pages: `, error.message);
     throw error;
   }
-  
+
   if (config.getOption('index.justTheIndex')) {
     console.log('Config option justTheIndex is true - returning TOC PDF without merging content PDFs');
-
+    onProgress?.('Adding page numbering…');
     const paginatedTocPdf = await addPageNumberingToPdf(tocPdf, config);
     console.log(`...added page numbering - TOC PDF size: ${paginatedTocPdf?.length || 0} bytes`)
     return paginatedTocPdf;
   }
 
+  onProgress?.('Merging documents…');
 
 // PDF HANDLING:
   console.log('[6/11] Merging input PDFs...');
@@ -130,9 +134,10 @@ export async function processTheBundle(filesMap, indexData, config){
   } catch (error) {
     console.error(`[ERROR] Failed to merge input PDFs: `, error.message);
     throw error;
-  } 
+  }
 
   // Note: filesMap is owned by the frontend — do not clear it here
+  onProgress?.('Merging index with documents…');
 
   console.log('[7/11] Merging TOC with content PDF...');
   try {
@@ -142,6 +147,7 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to merge TOC with content: `, error.message);
     throw error;
   }
+  onProgress?.('Adding page numbering…');
 
   console.log('[8/11] Adding page numbering...');
   try {
@@ -151,6 +157,7 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to add page numbering: `, error.message);
     throw error;
   }
+  onProgress?.('Adding hyperlinks…');
 
   console.log('[9/11] Adding hyperlinks to TOC entries...');
   try {
@@ -160,6 +167,7 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to add hyperlinks: `, error.message);
     throw error;
   }
+  onProgress?.('Adding bookmarks…');
 
   console.log('[10/11] Adding outline items and metadata...');
   try {
@@ -169,6 +177,7 @@ export async function processTheBundle(filesMap, indexData, config){
     console.error(`[ERROR] Failed to add outline items: `, error.message);
     throw error;
   }
+  onProgress?.('Saving bundle…');
 
   console.log('[11/11] Setting PDF metadata...');
   try {
