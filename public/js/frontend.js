@@ -249,7 +249,7 @@ fileInput.addEventListener('change', async (e) => {
     `;
     row.querySelector('.filename-cell').textContent = file.name;
     row.querySelector('.title-input').value = displayTitle;
-    row.querySelector('.date-input').value = dateParseObj.date ? dateParseObj.date.toISOString().slice(0, 10) : '';
+    row.querySelector('.date-input').value = dateParseObj.date || '';
     row.querySelector('.pages-cell').textContent = pageCount ?? '';
     row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = file.name);
 
