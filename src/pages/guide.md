@@ -7,6 +7,14 @@ title: "How-to Guide - BunTool"
 
 Creating a legal bundle with BunTool is simple and takes just a few minutes. Follow this step-by-step guide to create professional, court-ready bundles.
 
+<div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;margin:1.5rem 0;">
+  <video autoplay loop muted playsinline style="height:280px;width:auto;border-radius:0.5rem;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
+    <source src="/images/buntool-animation-web.webm" type="video/webm" />
+    <img src="/images/example-bundle.png" alt="BunTool demo" style="height:280px;width:auto;border-radius:0.5rem;" />
+  </video>
+  <img src="/images/example-bundle.png" alt="Example BunTool bundle" style="height:280px;width:auto;border-radius:0.5rem;box-shadow:0 4px 16px rgba(0,0,0,0.15);" />
+</div>
+
 ## Prepare Your Documents
 
 You'll need all your documents ready as PDFs on your computer (or whichever device you're using).

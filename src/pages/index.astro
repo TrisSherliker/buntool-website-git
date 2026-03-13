@@ -27,9 +27,12 @@ import Footer from '../components/Footer.astro';
 			<!-- Content -->
 			<div class="relative max-w-7xl mx-auto px-4 py-12 md:py-16">
 				<div class="grid md:grid-cols-2 gap-12 items-center">
-					<!-- Logo Left -->
+					<!-- Hero animation -->
 					<div class="flex justify-center md:justify-start">
-						<img src="/images/buntool-logo.png" alt="BunTool Logo" class="max-w-full w-full max-h-96 object-contain" />
+						<video autoplay loop muted playsinline class="max-w-full w-full max-h-[30rem] object-contain rounded-lg shadow-xl">
+							<source src="/images/buntool-animation-web.webm" type="video/webm" />
+							<img src="/images/example-bundle.png" alt="Example BunTool bundle" class="max-w-full w-full max-h-[30rem] object-contain rounded-lg shadow-xl" />
+						</video>
 					</div>
 					<!-- Text Right -->
 					<div class="text-center md:text-left">
@@ -80,6 +83,12 @@ import Footer from '../components/Footer.astro';
 					<div class="flex justify-center md:justify-end">
 						<img src="/images/merge-pdfs.png" alt="Merge PDFs" class="rounded-lg shadow-lg" style="height:250px;width:auto;" />
 					</div>
+
+					<!-- Example bundle -->
+					<div class="flex justify-center">
+						<img src="/images/example-bundle.png" alt="Example BunTool bundle" class="rounded-lg shadow-lg" style="height:250px;width:auto;" />
+					</div>
+
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
