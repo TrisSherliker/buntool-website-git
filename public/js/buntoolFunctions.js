@@ -1076,7 +1076,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
             width: tableWidthSetting,  // Width of the row (=entire table width)
             height: data.row.height, // Height of the row
             pageNumber: data.pageNumber, // Page number where the row is located
-            sectionMarker: tocEntries[data.row.index].sectionBreak ? true : false // Whether this row is a section break
+            sectionMarker: data.row.raw.sectionBreak ? true : false // Whether this row is a section break
           };
           rowCoordinates.push(rowInfo);
         }
