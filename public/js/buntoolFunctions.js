@@ -1001,10 +1001,11 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     }
 
     //define autotable content by reference to headers
+    const showDate = config.getOption('index.dateStyle') !== 'None';
     const headers = {
       tabNumber: 'Tab',
       title: 'Title',
-      formattedDate: 'Date',
+      ...(showDate && {formattedDate: 'Date'}),
       actualStartPage: 'Page'
     }
 
@@ -1042,9 +1043,9 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       },
       // Customize colums
       columnStyles: {
-        0: { halign: 'right' }, // Right-align the first column (index 0)
-        2: { minCellWidth: 28 }, // Minimum width for the date column
-        3: { halign: 'right' }, // Right-align the last column (index 3)
+        0: { halign: 'right' },
+        ...(showDate && { 2: { minCellWidth: 28 } }), //date if exists
+        [showDate ? 3 : 2]: { halign: 'right' }, //index shifts ith showdate
       },
       tableWidth: tableWidthSetting,
       
