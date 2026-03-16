@@ -1043,7 +1043,8 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       // Customize colums
       columnStyles: {
         0: { halign: 'right' }, // Right-align the first column (index 0)
-        3: { halign: 'right' }, // Right-align the last column (index 3)  
+        2: { minCellWidth: 28 }, // Minimum width for the date column
+        3: { halign: 'right' }, // Right-align the last column (index 3)
       },
       tableWidth: tableWidthSetting,
       
