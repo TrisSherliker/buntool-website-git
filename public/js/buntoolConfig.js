@@ -23,6 +23,12 @@ export const fontDisplayNames = {
   "courier": "Courier"
 };
 
+export const validFontSize = [
+  "small",
+  "medium",
+  "large"
+  ];
+
 export const validAlignments = [
     "left", 
     "centre", 
@@ -71,8 +77,11 @@ export const outlineStyleDisplayNames = {
     "withPage": "Document title [page no]",
     "withDate": "Document title [date]",
     "withDateandPage": "Document title (date) [page no]",
-};
-
+  };
+export const validTableBorders = [
+    true,
+    false,
+  ];
 export const validPrintableBundle = [
     true,
     false,
@@ -94,6 +103,7 @@ class Config {
         bundleTitle: "Bundle", // Default: "Bundle"
         projectName: "", // Default: blank
         confidential: false, // Default: false
+        fontSize: "medium", // Default: medium
       },
       pageNumbering: {
         footerFont: "helvetica", // Default: helvetica
@@ -103,8 +113,10 @@ class Config {
       },
       index: {
         fontFace: "helvetica", // Default: helvetica
+        fontSize: "medium", // Default: medium
         dateStyle: "YYYY-MM-DD", // Default: YYYY-MM-DD
         outlineItemStyle: "withPage", // Default: with page
+        showTableBorders: true, // Default: true
         justTheIndex: false, // Default: false
       },
       pageOptions: {
@@ -138,6 +150,12 @@ class Config {
     if (!validFonts.includes(this.options.pageNumbering.footerFont)) {
         throw new Error(`Invalid footer font: ${this.options.pageNumbering.footerFont}`);
     }
+    if (!validFontSize.includes(this.options.heading.fontSize)) {
+      throw new Error(`Invalid heading font size: ${this.options.heading.fontSize}`);
+    }
+    if (!validFontSize.includes(this.options.index.fontSize)) {
+      throw new Error(`Invalid index font size: ${this.options.index.fontSize}`);
+    }
     if (!validAlignments.includes(this.options.pageNumbering.alignment)) {
       throw new Error(`Invalid alignment: ${this.options.pageNumbering.alignment}`);
     }
@@ -153,7 +171,9 @@ class Config {
     if (!validPrintableBundle.includes(this.options.pageOptions.printableBundle)) {
       throw new Error(`Invalid printable bundle option: ${this.options.pageOptions.printableBundle}`);
     }
-
+    if (!validTableBorders.includes(this.options.index.showTableBorders)) {
+      throw new Error(`Invalid show table borders option: ${this.options.index.showTableBorders}`);
+    }
     if (!justTheIndex.includes(this.options.index.justTheIndex)) {
       throw new Error(`Invalid justTheIndex option: ${this.options.index.justTheIndex}`);
     }
@@ -166,9 +186,9 @@ class Config {
   */  
  validateStructure() {
     const requiredPaths = {
-      heading: ["claimNumber", "bundleTitle", "projectName", "confidential"],
+      heading: ["claimNumber", "bundleTitle", "projectName", "confidential", "fontSize"],
       pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix"],
-      index: ["fontFace", "dateStyle", "outlineItemStyle", "justTheIndex"],
+      index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex"],
       pageOptions: ["printableBundle"],
     };
     

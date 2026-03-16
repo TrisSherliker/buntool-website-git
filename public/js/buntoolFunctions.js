@@ -674,9 +674,7 @@ function formatDate(entryDate, style) {
  * @param {string} options.color.headerText - Text color for header row (default: '#000000')
  * @param {string} options.color.text - Main text color (default: '#000000')
  * @param {Object} options.table - Table configuration
- * @param {boolean} options.table.showBorders - Whether to show table borders (default: true)
  * @param {number} options.table.cellPadding - Cell padding in mm (default: 3)
- * @param {number} options.table.lineHeight - Line height multiplier (default: 1.2)
  * @param {Object} options.margins - Page margin configuration in mm
  * @param {number} options.margins.top - Top margin (default: 20)
  * @param {number} options.margins.right - Right margin (default: 15)
@@ -690,6 +688,10 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
   const project = config.getOption('heading.projectName');
   const claimNumber = config.getOption('heading.claimNumber');
   const dateStyle = config.getOption('index.dateStyle');
+  const indexFontSize = config.getOption('index.fontSize');
+  const titleFontSize = config.getOption('heading.fontSize');
+  const showBorders = config.getOption('index.showTableBorders');
+  const lineHeight = {large: 1.2, medium: 1.1, small: 1}[indexFontSize] || 1.2;
 
   // First, add formattedDate property
   tocEntries.forEach(entry => {
@@ -705,9 +707,9 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const tocInternalConfig = {
       font: {
         family: options.font?.family || 'helvetica',
-        sizeTitle: options.font?.sizeTitle || 20,
-        sizeProject: options.font?.sizeProject || 14,
-        sizeClaimNumber: options.font?.sizeClaimNumber || 12,
+        sizeTitle: options.font?.sizeTitle || 24,
+        sizeProject: options.font?.sizeProject || 18,
+        sizeClaimNumber: options.font?.sizeClaimNumber || 14,
         sizeTable: options.font?.sizeTable || 12
       },
       color: {
@@ -716,12 +718,11 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         text: options.color?.text || 0,
       },
       table: {
-        showBorders: options.table?.showBorders !== undefined ? options.table.showBorders : true,
         cellPadding: options.table?.cellPadding || 3,
-        lineHeight: options.table?.lineHeight || 1.2
+        // lineHeight: options.table?.lineHeight || 1.2
       },
       margins: {
-        top: options.margins?.top || 20,
+        top: options.margins?.top || 10,
         right: options.margins?.right || 25,
         bottom: options.margins?.bottom || 20,
         left: options.margins?.left || 25,
@@ -769,12 +770,12 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForTitle = 'NotoSerifBold';
 
         //set font sizes for serif:
-        tocInternalConfig.font.sizeClaimNumber = 16;
-        tocInternalConfig.font.sizeTitle = 24;
-        tocInternalConfig.font.sizeProject = 20;
+        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
+        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
+        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
         //set table font size:
-        tocInternalConfig.font.sizeTable = 12;
-        break;
+        tocInternalConfig.font.sizeTable = { large: 13, medium: 12, small: 10 } [indexFontSize] || 12;
+      break;
 
       case "sansSerif":
           fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
@@ -793,14 +794,13 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
           doc.addFont('PlusJakartaSansBold.ttf', 'PlusJakartaSansBold', 'bold');
           fontForTitle = 'PlusJakartaSansBold';
 
-          //set font sizes for sans serif:
-          tocInternalConfig.font.sizeClaimNumber = 16;
-          tocInternalConfig.font.sizeTitle = 22;
-          tocInternalConfig.font.sizeProject = 18;
-
+          //set font sizes for sans-serif:
+          tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
+          tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
+          tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
           //set table font size:
-          tocInternalConfig.font.sizeTable = 12;
-        break;
+          tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
+      break;
 
       case "monospaced":
         //Get and set main font:
@@ -821,15 +821,15 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         doc.addFont('UnbuntuMonoBold.ttf', 'UnbuntuMonoBold', 'bold');
         fontForTitle = 'UnbuntuMonoBold';
         //set font sizes for mono:
-        tocInternalConfig.font.sizeClaimNumber = 16;
-        tocInternalConfig.font.sizeTitle = 24;
-        tocInternalConfig.font.sizeProject = 20;
+        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
+        tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
+        tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
         //set table font size:
-        tocInternalConfig.font.sizeTable = 13;
-        break;
+        tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
+      break;
       
       
-        case "traditional":
+      case "traditional":
         //Get and set main font:
         fontForIndexBytes = await fetch('/fonts/trad/static/EBGaramond-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64TradFont = btoa(
@@ -847,15 +847,15 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         doc.addFileToVFS('EBGaramondBold.ttf', base64TradTitleFont);
         doc.addFont('EBGaramondBold.ttf', 'EBGaramondBold', 'bold');
         fontForTitle = 'EBGaramondBold';
-        //set font sizes for serif:
-        tocInternalConfig.font.sizeClaimNumber = 16;
-        tocInternalConfig.font.sizeTitle = 24;
-        tocInternalConfig.font.sizeProject = 20;
+        //set font sizes for trad:
+        tocInternalConfig.font.sizeClaimNumber = { large: 18, medium: 16, small: 14 }[titleFontSize] || 16;
+        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
+        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
         //set table font size:
-        tocInternalConfig.font.sizeTable = 13;
-        break;
+        tocInternalConfig.font.sizeTable = { large: 14, medium: 13, small: 12 } [indexFontSize] || 13;
+      break;
 
-        default:
+      default:
         fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64DefaultFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
@@ -863,14 +863,14 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         doc.addFileToVFS('PlusJakartaSans.ttf', base64DefaultFont);
         doc.addFont('PlusJakartaSans.ttf', 'PlusJakartaSans', 'normal');
         fontForIndex = 'PlusJakartaSans';
-        break;
+      break;
     }
 
     doc.setFont(fontForIndex);
 
     // Get page dimensions
     const pageWidth = doc.internal.pageSize.getWidth();
-    const border = { top: 0, right: 0, bottom: 1, left: 0 };
+    const borderToggle = { top: 0, right: 0, bottom: 0.1, left: 0 };
 
     // Add Claim No, right-aligned at the top: 
     doc.setFontSize(tocInternalConfig.font.sizeClaimNumber);
@@ -898,7 +898,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       { maxWidth: pageWidth * 0.9, align: 'center' }
     );
 
-    //measure dims for positioning of next element
+    //measure dims forr positioning of next elements
     const projectNameDimensions = doc.getTextDimensions(project, {
       maxWidth: pageWidth * 0.9,
       align: 'center',
@@ -984,7 +984,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     );
 
     // Now move on to set up the table of entries:
-    const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding;
+    const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding - 4;
     
     // Prepare table data
     // Set actualStartPage on original tocEntries so addHyperlinks/addOutlineItems can use them
@@ -1026,12 +1026,13 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       styles: {
         fontSize: tocInternalConfig.font.sizeTable,
         cellPadding: tocInternalConfig.table.cellPadding,
+        lineColor: showBorders ? tocInternalConfig.color.text : false,
         // lineColor: tocInternalConfig.table.showBorders ? 40 : false,
         // lineWidth: tocInternalConfig.table.showBorders ? 0.1 : 0,
-        lineWidth: border,
+        lineWidth: showBorders ? borderToggle : 0,
         font: fontForIndex,
         textColor: tocInternalConfig.color.text,
-        lineHeight: tocInternalConfig.table.lineHeight
+        lineHeight: lineHeight
       },
       headStyles: {
         fillColor: tocInternalConfig.color.headerFill,

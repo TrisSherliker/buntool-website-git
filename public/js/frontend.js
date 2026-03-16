@@ -860,6 +860,7 @@ form.addEventListener('submit', async (e) => {
       bundleTitle: stripUnsuitableChars(document.getElementById('config-bundleTitle').value),
       projectName: stripUnsuitableChars(document.getElementById('config-projectName').value),
       confidential: document.getElementById('config-confidential').checked,
+      fontSize: document.getElementById('config-headingFontSize').value,
     },
     pageNumbering: {
       footerFont: document.getElementById('config-footerFont').value,
@@ -871,6 +872,8 @@ form.addEventListener('submit', async (e) => {
       fontFace: document.getElementById('config-fontFace').value,
       dateStyle: document.getElementById('config-dateStyle').value,
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
+      fontSize: document.getElementById('config-indexFontSize').value,
+      showTableBorders: document.getElementById('config-showTableBorders').value === 'true',
     },
     pageOptions: {
       printableBundle: document.getElementById('config-printableBundle').value === 'true',
@@ -981,6 +984,7 @@ async function runPreviewIndex() {
       bundleTitle: stripUnsuitableChars(document.getElementById('config-bundleTitle').value),
       projectName: stripUnsuitableChars(document.getElementById('config-projectName').value),
       confidential: document.getElementById('config-confidential').checked,
+      fontSize: document.getElementById('config-headingFontSize').value,
     },
     pageNumbering: {
       footerFont: document.getElementById('config-footerFont').value,
@@ -992,6 +996,8 @@ async function runPreviewIndex() {
       fontFace: document.getElementById('config-fontFace').value,
       dateStyle: document.getElementById('config-dateStyle').value,
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
+      fontSize: document.getElementById('config-indexFontSize').value,
+      showTableBorders: document.getElementById('config-showTableBorders').value === 'true',
       justTheIndex: true,
     },
     pageOptions: {

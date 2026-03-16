@@ -286,6 +286,53 @@
               </select>
             </div>
           </div>
+
+          <!-- Row 2: font sizes + borders -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+            <!-- Heading Font Size -->
+            <div>
+              <label for="config-headingFontSize" class="block text-xs font-medium text-gray-600 mb-1">
+                Heading Font Size
+              </label>
+              <select
+                id="config-headingFontSize"
+                class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </div>
+
+            <!-- Index Font Size -->
+            <div>
+              <label for="config-indexFontSize" class="block text-xs font-medium text-gray-600 mb-1">
+                Index Font Size
+              </label>
+              <select
+                id="config-indexFontSize"
+                class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </div>
+
+            <!-- Table Borders -->
+            <div>
+              <label for="config-showTableBorders" class="block text-xs font-medium text-gray-600 mb-1">
+                Table Borders
+              </label>
+              <select
+                id="config-showTableBorders"
+                class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="true" selected>Show borders</option>
+                <option value="false">No borders</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- Page Numbering -->
