@@ -81,19 +81,14 @@ window.addEventListener('DOMContentLoaded', () => {
     rows.forEach(row => fileTableBody.appendChild(row));
   });
 
-  document.getElementById('reorder-toggle-btn')?.addEventListener('click', () => {
-    reorderMode = reorderMode === 'drag' ? 'arrows' : 'drag';
-    const btn = document.getElementById('reorder-toggle-btn');
+  document.getElementById('reorder-toggle-btn')?.addEventListener('change', (e) => {
+    reorderMode = e.target.checked ? 'drag' : 'arrows';
     const table = document.getElementById('file-table');
     if (reorderMode === 'arrows') {
       table.classList.add('arrow-mode');
-      btn.textContent = 'Use drag instead of buttons';
-      btn.setAttribute('aria-pressed', 'true');
       fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = false);
     } else {
       table.classList.remove('arrow-mode');
-      btn.textContent = 'Use buttons instead of drag';
-      btn.setAttribute('aria-pressed', 'false');
       fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = true);
     }
   });
@@ -873,13 +868,13 @@ form.addEventListener('submit', async (e) => {
       dateStyle: document.getElementById('config-dateStyle').value,
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
       fontSize: document.getElementById('config-indexFontSize').value,
-      showTableBorders: document.getElementById('config-showTableBorders').value === 'true',
+      showTableBorders: document.getElementById('config-showTableBorders').checked,
     },
     pageOptions: {
-      printableBundle: document.getElementById('config-printableBundle').value === 'true',
+      printableBundle: document.getElementById('config-printableBundle').checked,
     }
   };
-  
+
   config.updateOptions(configOptions);
   console.log('Config pushed:',JSON.stringify(config));
 
@@ -997,11 +992,11 @@ async function runPreviewIndex() {
       dateStyle: document.getElementById('config-dateStyle').value,
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
       fontSize: document.getElementById('config-indexFontSize').value,
-      showTableBorders: document.getElementById('config-showTableBorders').value === 'true',
+      showTableBorders: document.getElementById('config-showTableBorders').checked,
       justTheIndex: true,
     },
     pageOptions: {
-      printableBundle: document.getElementById('config-printableBundle').value === 'true',
+      printableBundle: document.getElementById('config-printableBundle').checked,
     }
   };
 
