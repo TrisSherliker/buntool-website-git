@@ -1117,8 +1117,8 @@ async function parseDateFromFilename(filename) {
   let filenameWithoutDate = filename;
 
   // Check for filenames that start with YYYY-MM-DD or DD-MM-YYYY
-  const yearFirstDateRegex = /[\[\(]{0,1}(1\d{3}|20\d{2})[-._]?(0[1-9]|1[0-2])[-._]?(0[1-9]|[12][0-9]|3[01])[\]\)]{0,1}/;
-  const yearLastDateRegex = /[\[\(]{0,1}(0[1-9]|[12][0-9]|3[01])[-._]?(0[1-9]|1[0-2])[-._]?(1\d{3}|20\d{2})[\]\)]{0,1}/;
+  const yearFirstDateRegex = /(?<!\d)[\[\(]{0,1}(1\d{3}|20\d{2})[-._]?(0[1-9]|1[0-2])[-._]?(0[1-9]|[12][0-9]|3[01])[\]\)]{0,1}(?!\d)/;
+  const yearLastDateRegex = /(?<!\d)[\[\(]{0,1}(0[1-9]|[12][0-9]|3[01])[-._]?(0[1-9]|1[0-2])[-._]?(1\d{3}|20\d{2})[\]\)]{0,1}(?!\d)/;
 
   const yearFirstMatch = filename.match(yearFirstDateRegex);
   if (yearFirstMatch) {
