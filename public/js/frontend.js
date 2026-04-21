@@ -142,9 +142,7 @@ function handleDragEnd(e) {
   this.style.opacity = '1';
 }
 
-fileInput.addEventListener('change', async (e) => {
-
-  const files = Array.from(e.target.files);
+async function processFiles(files) {
 
   // Check total filesize (including existing files)
   let totalSize = 0;
@@ -168,7 +166,6 @@ fileInput.addEventListener('change', async (e) => {
       `This is too big to be handled reliably, and exceeds the permitted file size.\n\n` +
       `Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`
     );
-    fileInput.value = '';
     return;
   }
 
@@ -181,7 +178,6 @@ fileInput.addEventListener('change', async (e) => {
     );
 
     if (!proceed) {
-      fileInput.value = '';
       return;
     }
   }
@@ -261,9 +257,30 @@ fileInput.addEventListener('change', async (e) => {
 
     fileTableBody.appendChild(row);
   };
+}
 
+fileInput.addEventListener('change', async (e) => {
+  await processFiles(Array.from(e.target.files));
   // Reset file input so same file can be selected again if needed
   fileInput.value = '';
+});
+
+// Drop zone for dragging files from the OS onto the add-documents panel
+const dropZone = document.getElementById('file-drop-zone');
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('ring-2', 'ring-pink-400');
+});
+dropZone.addEventListener('dragleave', (e) => {
+  // Only remove highlight when leaving the drop zone entirely (not a child element)
+  if (!dropZone.contains(e.relatedTarget)) {
+    dropZone.classList.remove('ring-2', 'ring-pink-400');
+  }
+});
+dropZone.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('ring-2', 'ring-pink-400');
+  await processFiles(Array.from(e.dataTransfer.files));
 });
 
 fileTableBody.addEventListener('input', (e) => {
