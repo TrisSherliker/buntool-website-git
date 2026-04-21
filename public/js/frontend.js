@@ -908,6 +908,11 @@ form.addEventListener('submit', async (e) => {
     }
   });
 
+  if (indexData.length === 0) {
+    showErrorModal({ title: 'No documents added', message: 'Please add at least one document before creating a bundle.' });
+    return;
+  }
+
   logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
 
   const BUNDLE_TIMEOUT_MS = 120_000;
@@ -1024,6 +1029,11 @@ async function runPreviewIndex() {
       }
     }
   });
+
+  if (indexData.length === 0) {
+    showErrorModal({ title: 'No documents added', message: 'Please add at least one document before generating an index preview.' });
+    return;
+  }
 
   const BUNDLE_TIMEOUT_MS = 120_000;
   showProcessingOverlay('Building index preview…');
