@@ -34,6 +34,16 @@ const indexData = [];
 const filesMap = new Map(); // filename -> File
 const frontendInputData = {}; // filename -> { title, date, pages }
 const config = new Config();
+
+function uniqueFilename(name) {
+  if (!filesMap.has(name)) return name;
+  const dot = name.lastIndexOf('.');
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext  = dot > 0 ? name.slice(dot) : '';
+  let n = 2;
+  while (filesMap.has(`${base} (${n})${ext}`)) n++;
+  return `${base} (${n})${ext}`;
+}
 window.config = config; // Expose config as global
 
 
@@ -185,12 +195,6 @@ fileInput.addEventListener('change', async (e) => {
 
   // Process each new file
   for (const file of files){
-    // Skip if file already exists
-    if (filesMap.has(file.name)) {
-      console.log(`File ${file.name} already in bundle, skipping`);
-      continue;
-    }
-
     // Validate PDF magic bytes (%PDF-)
     const headerBytes = new Uint8Array(await file.slice(0, 5).arrayBuffer());
     const isPdf = headerBytes[0] === 0x25 && headerBytes[1] === 0x50 &&
@@ -203,7 +207,8 @@ fileInput.addEventListener('change', async (e) => {
       continue;
     }
 
-    filesMap.set(file.name, file);
+    const key = uniqueFilename(file.name);
+    filesMap.set(key, file);
     const prettyTitle = prettifyTitle(file.name);
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
     const displayTitle = stripDoubleChars(dateParseObj.name);
@@ -211,11 +216,11 @@ fileInput.addEventListener('change', async (e) => {
       ({countPdfPages} = await import('./buntoolFunctions.js'));
     }
     let pageCount = await countPdfPages(file);
-    frontendInputData[file.name] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
+    frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
 
     const row = document.createElement('tr');
     row.draggable = reorderMode === 'drag';
-    row.dataset.filename = file.name;
+    row.dataset.filename = key;
     row.classList.add('hover:bg-gray-50', 'transition');
     row.innerHTML = `
       <td class="drag-handle px-2 py-3 cursor-move">
@@ -242,11 +247,11 @@ fileInput.addEventListener('change', async (e) => {
         </button>
       </td>
     `;
-    row.querySelector('.filename-cell').textContent = file.name;
+    row.querySelector('.filename-cell').textContent = key;
     row.querySelector('.title-input').value = displayTitle;
     row.querySelector('.date-input').value = dateParseObj.date || '';
     row.querySelector('.pages-cell').textContent = pageCount ?? '';
-    row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = file.name);
+    row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = key);
 
     // Add drag event listeners
     row.addEventListener('dragstart', handleDragStart);
@@ -673,8 +678,10 @@ bundleInput?.addEventListener('change', async (e) => {
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const extractedFile = new File([blob], filename, { type: 'application/pdf' });
 
+        const key = uniqueFilename(filename);
+
         // Add to filesMap
-        filesMap.set(filename, extractedFile);
+        filesMap.set(key, extractedFile);
 
         // Count pages
         if (!countPdfPages) {
@@ -683,7 +690,7 @@ bundleInput?.addEventListener('change', async (e) => {
         const pageCount = await countPdfPages(extractedFile);
 
         // Store in frontendInputData
-        frontendInputData[filename] = {
+        frontendInputData[key] = {
           title: entry.title,
           date: entry.date || '',
           pageCount: pageCount
@@ -692,7 +699,7 @@ bundleInput?.addEventListener('change', async (e) => {
         // Create table row
         const row = document.createElement('tr');
         row.draggable = reorderMode === 'drag';
-        row.dataset.filename = filename;
+        row.dataset.filename = key;
         row.classList.add('hover:bg-gray-50', 'transition');
         row.innerHTML = `
           <td class="drag-handle px-2 py-3 cursor-move">
@@ -719,11 +726,11 @@ bundleInput?.addEventListener('change', async (e) => {
             </button>
           </td>
         `;
-        row.querySelector('.filename-cell').textContent = filename;
+        row.querySelector('.filename-cell').textContent = key;
         row.querySelector('.title-input').value = entry.title || '';
         row.querySelector('.date-input').value = entry.date || '';
         row.querySelector('.pages-cell').textContent = pageCount ?? '';
-        row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = filename);
+        row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = key);
 
         // Add drag event listeners
         row.addEventListener('dragstart', handleDragStart);
