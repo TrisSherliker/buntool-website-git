@@ -54,7 +54,7 @@ window.config = config; // Expose config as global
 window.addEventListener('DOMContentLoaded', () => {
   import('./buntoolFunctions.js').then(m => countPdfPages = m.countPdfPages);
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
-  import('https://esm.sh/chrono-node').then(m => chrono = m);
+  import('https://esm.sh/chrono-node@2.9.0').then(m => chrono = m);
 
   // Column header sort
   let sortCol = null;

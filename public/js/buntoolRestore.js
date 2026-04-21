@@ -5,7 +5,7 @@
  * Extracts embedded metadata, splits bundle into individual documents, and restores configuration.
  */
 
-import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.3.6/dist/mupdf.js';
+import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js';
 import { PDFDocument } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 /**

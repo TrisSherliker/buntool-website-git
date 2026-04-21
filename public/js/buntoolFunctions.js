@@ -1,9 +1,8 @@
-import * as cantoopdfLib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.3.2/+esm'
-import fontkit from 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.0/+esm'
-import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.3.6/dist/mupdf.js'
-import jsPDF from 'https://cdn.jsdelivr.net/npm/jspdf@3.0.1/+esm'
-import jspdfAutotable from 'https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.2/+esm'
-import * as docx from "https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"
+import * as cantoopdfLib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
+import fontkit from 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/+esm'
+import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
+import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm'
+import jspdfAutotable from 'https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.7/+esm'
 import Config from './buntoolConfig.js';
 import { validFonts } from './buntoolConfig.js';
 
