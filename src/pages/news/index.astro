@@ -24,7 +24,7 @@ const currentPath = '/news';
 					<ul class="space-y-8">
 						{posts.map(post => (
 							<li>
-								<a href={`/news/${post.slug}`} class="group block">
+								<a href={`/news/${post.id}`} class="group block">
 									<p class="text-sm text-gray-400 mb-1">{post.data.date}</p>
 									<h2 class="text-xl font-semibold text-gray-900 group-hover:text-pink-600 transition">{post.data.title}</h2>
 									{post.data.description && (
