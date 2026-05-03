@@ -263,26 +263,30 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
     //alignment calcs
     const marginSidePadding = 30;
     const { width, height } = thisPage.getSize();
+    const rotation = thisPage.getRotation().angle; // 0, 90, 180, 270
+    const footerAxisSize = (rotation === 90 || rotation === 270) ? height : width; // footer runs along width normally, height when rotated 90/270
     let leftEdgeOfLabel;
     if (footerAlignment === "left") {
       leftEdgeOfLabel = marginSidePadding;
     } else if (footerAlignment === "right") {
-      leftEdgeOfLabel = width - maxLabelWidth - marginSidePadding;
+      leftEdgeOfLabel = footerAxisSize - maxLabelWidth - marginSidePadding;
     } else if (footerAlignment === "center" || footerAlignment === "centre") {
       const actualLabelWidth = textLabelFont.widthOfTextAtSize(footerText, textLabelSize)
-      leftEdgeOfLabel = ((width - actualLabelWidth) / 2);
+      leftEdgeOfLabel = ((footerAxisSize - actualLabelWidth) / 2);
     } else {
-      leftEdgeOfLabel = width - maxLabelWidth - 5;
+      leftEdgeOfLabel = footerAxisSize - maxLabelWidth - 5;
     }
 
-    //apply text
-    thisPage.drawText(footerText, {
-      x: leftEdgeOfLabel,
-      y: maxLabelHeight,
-      size: textLabelSize,
-      font: textLabelFont,
-      color: pdflib.rgb(0.072, 0.021, 0.073), //unique black
-    });
+    //apply text - position and rotation depend on page /Rotate flag
+    if (rotation === 90) {
+      thisPage.drawText(footerText, { x: width - maxLabelHeight, y: leftEdgeOfLabel,                  size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(90) });
+    } else if (rotation === 270) {
+      thisPage.drawText(footerText, { x: maxLabelHeight,         y: footerAxisSize - leftEdgeOfLabel, size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(-90) });
+    } else if (rotation === 180) {
+      thisPage.drawText(footerText, { x: footerAxisSize - leftEdgeOfLabel, y: height - maxLabelHeight, size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(180) });
+    } else {
+      thisPage.drawText(footerText, { x: leftEdgeOfLabel,        y: maxLabelHeight,                   size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073) }); //unique black
+    }
   }
   const pdfOutputBytes = new Uint8Array(await pdfDoc.save());
   
