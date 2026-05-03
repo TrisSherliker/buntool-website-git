@@ -25,11 +25,12 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
-# internal notes and development images
+# internal notes, baks and development images
 /notes/
 /public/testpdfs/
 /development-images-dir/
 /git-clone-for-deployment/
 /.claude/
-index.html.archived
-index.html.bak.tris
+*.archived
+*.bak
+*.tris

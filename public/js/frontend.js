@@ -566,6 +566,7 @@ function showBundleReadyState(pdfBytes, filename) {
           Close and edit
         </button>`;
       track.after(btns);
+      let _lastEl = btns;
 
       // Offer to save defaults if none saved yet
       if (typeof window.hasDefaultConfig === 'function' && !window.hasDefaultConfig()) {
@@ -578,6 +579,7 @@ function showBundleReadyState(pdfBytes, filename) {
             <button id="save-defaults-no" class="text-blue-400 hover:underline">No thanks</button>
           </div>`;
         btns.after(defaultsPrompt);
+        _lastEl = defaultsPrompt;
 
         document.getElementById('save-defaults-yes')?.addEventListener('click', () => {
           window.saveDefaultConfig?.();
@@ -586,6 +588,11 @@ function showBundleReadyState(pdfBytes, filename) {
         });
         document.getElementById('save-defaults-no')?.addEventListener('click', () => defaultsPrompt.remove());
       }
+
+      const kofi = document.createElement('div');
+      kofi.className = 'mt-3 pt-2 border-t border-gray-700   text-center';
+      kofi.innerHTML = `<a href="https://ko-fi.com/buntool" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-600 hover:text-gray-600 transition">☕ Helpful? Support running and development costs on Ko-fi</a>`;
+      _lastEl.after(kofi);
     }
 
     document.getElementById('overlay-save-btn')?.addEventListener('click', () => {
@@ -648,11 +655,6 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
     document.getElementById('config-printableBundle').value =
       (extractedConfig.pageOptions?.printableBundle === true) ? 'true' : 'false';
-
-    // Expand advanced settings so the user can review/edit them
-    document.getElementById('advanced-settings')?.classList.remove('hidden');
-    document.getElementById('advanced-submit')?.classList.remove('hidden');
-    document.getElementById('step-4-choice')?.classList.add('hidden');
 
     // Split bundle into individual PDFs
     console.log('Splitting bundle into individual documents...');
