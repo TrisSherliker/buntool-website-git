@@ -223,7 +223,7 @@
 
     <!-- Advanced Settings (initially hidden) -->
     <div id="advanced-settings" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
-      <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl flex items-center">
+      <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl flex flex-wrap items-center gap-2">
         <h3 class="text-base font-bold text-white flex items-center">
           <svg class="w-5 h-5 mr-2 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -231,13 +231,17 @@
           </svg>
           Advanced Settings
         </h3>
-        <button id="save-defaults-btn" type="button" class="ml-auto text-xs text-slate-300 hover:text-white underline transition">
-          Save as default
-        </button>
-        <span class="mx-2 text-slate-500 text-xs">·</span>
-        <button id="reset-advanced-btn" type="button" class="text-xs text-slate-300 hover:text-white underline transition">
-          Reset to defaults
-        </button>
+        <div class="ml-auto flex gap-1 flex-wrap justify-end">
+          <button id="save-defaults-btn" type="button" class="px-2 py-1 text-xs rounded border border-blue-400 text-blue-300 hover:bg-blue-700 hover:text-white transition">
+            Save settings as defaults for future
+          </button>
+          <button id="erase-defaults-btn" type="button" class="px-2 py-1 text-xs rounded border border-red-500 text-red-300 hover:bg-red-700 hover:text-white transition">
+            Erase saved defaults
+          </button>
+          <button id="reset-advanced-btn" type="button" class="px-2 py-1 text-xs rounded border border-slate-400 text-slate-300 hover:bg-slate-600 hover:text-white transition">
+            Reset settings
+          </button>
+        </div>
       </div>
 
       <div class="p-3 space-y-3">
@@ -999,7 +1003,19 @@
     saveDefaultConfig();
     const btn = document.getElementById('save-defaults-btn');
     btn.textContent = 'Saved!';
-    setTimeout(() => { btn.textContent = 'Save as default'; }, 1500);
+    setTimeout(() => { btn.textContent = 'Save settings as defaults for future'; }, 1500);
+  });
+
+  document.getElementById('erase-defaults-btn')?.addEventListener('click', () => {
+    const btn = document.getElementById('erase-defaults-btn');
+    if (localStorage.getItem(DEFAULTS_KEY)) {
+      localStorage.removeItem(DEFAULTS_KEY);
+      btn.textContent = 'Erased';
+      setTimeout(() => { btn.textContent = 'Erase saved defaults'; }, 1500);
+    } else {
+      btn.textContent = 'Nothing saved';
+      setTimeout(() => { btn.textContent = 'Erase saved defaults'; }, 1500);
+    }
   });
 
   window.saveDefaultConfig = saveDefaultConfig;

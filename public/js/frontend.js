@@ -572,7 +572,7 @@ function showBundleReadyState(pdfBytes, filename) {
         const defaultsPrompt = document.createElement('div');
         defaultsPrompt.className = 'mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700 flex items-center justify-between gap-2';
         defaultsPrompt.innerHTML = `
-          <span>Save these settings as your default?</span>
+          <span>Save these settings as your default for future bundles?</span>
           <div class="flex gap-2 flex-shrink-0">
             <button id="save-defaults-yes" class="font-semibold hover:underline">Save</button>
             <button id="save-defaults-no" class="text-blue-400 hover:underline">No thanks</button>
