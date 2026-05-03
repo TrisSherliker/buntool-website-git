@@ -22,8 +22,15 @@ let reorderMode = 'drag'; // 'drag' | 'arrows'
 import Config from './buntoolConfig.js';
 
 const fileInput = document.getElementById('file-input');
-const fileTable = document.getElementById('file-table');
 const fileTableBody = document.getElementById('file-table-body');
+
+function pulseStep2() {
+  const step2 = document.getElementById('file-drop-zone');
+  if (!step2) return;
+  step2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  step2.classList.add('pulse-ring');
+  setTimeout(() => step2.classList.remove('pulse-ring'), 1500);
+}
 const form = document.getElementById('upload-form');
 const csvOutput = document.getElementById('csv-output');
 const addSectionBreakBtn = document.getElementById('add-section-break-btn');
@@ -182,9 +189,8 @@ async function processFiles(files) {
     }
   }
 
-  // Show table if we have files (existing or new)
+  // Hide the step 2 hint once files have been added
   if (files.length > 0) {
-    fileTable.style.display = 'block';
     const hint = document.getElementById('file-input-hint');
     if (hint) hint.style.display = 'none';
   }
@@ -355,21 +361,12 @@ fileTableBody.addEventListener('click', (e) => {
     const row = e.target.closest('tr');
     row.remove();
 
-    // Hide table if no rows remain
-    if (fileTableBody.querySelectorAll('tr').length === 0) {
-      fileTable.style.display = 'none';
-    }
   }
 
   // Handle section break deletion
   if (e.target.classList.contains('delete-section-break-btn')) {
     const row = e.target.closest('tr');
     row.remove();
-
-    // Hide table if no rows remain
-    if (fileTableBody.querySelectorAll('tr').length === 0) {
-      fileTable.style.display = 'none';
-    }
   }
 });
 
@@ -379,7 +376,6 @@ clearAllRowsBtn?.addEventListener('click', () => {
     filesMap.clear();
     Object.keys(frontendInputData).forEach(key => delete frontendInputData[key]);
     fileTableBody.innerHTML = '';
-    fileTable.style.display = 'none';
   }
 });
 
@@ -415,9 +411,6 @@ addSectionBreakBtn?.addEventListener('click', () => {
 
   // Add to end of table
   fileTableBody.appendChild(sectionBreakRow);
-
-  // Show table if hidden
-  fileTable.style.display = 'block';
 });
 
 // Handle "Upload Bundle" input
@@ -573,6 +566,26 @@ function showBundleReadyState(pdfBytes, filename) {
           Close and edit
         </button>`;
       track.after(btns);
+
+      // Offer to save defaults if none saved yet
+      if (typeof window.hasDefaultConfig === 'function' && !window.hasDefaultConfig()) {
+        const defaultsPrompt = document.createElement('div');
+        defaultsPrompt.className = 'mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700 flex items-center justify-between gap-2';
+        defaultsPrompt.innerHTML = `
+          <span>Save these settings as your default?</span>
+          <div class="flex gap-2 flex-shrink-0">
+            <button id="save-defaults-yes" class="font-semibold hover:underline">Save</button>
+            <button id="save-defaults-no" class="text-blue-400 hover:underline">No thanks</button>
+          </div>`;
+        btns.after(defaultsPrompt);
+
+        document.getElementById('save-defaults-yes')?.addEventListener('click', () => {
+          window.saveDefaultConfig?.();
+          defaultsPrompt.innerHTML = '<span class="text-green-700 font-medium">✓ Settings saved as default.</span>';
+          setTimeout(() => defaultsPrompt.remove(), 2000);
+        });
+        document.getElementById('save-defaults-no')?.addEventListener('click', () => defaultsPrompt.remove());
+      }
     }
 
     document.getElementById('overlay-save-btn')?.addEventListener('click', () => {
@@ -763,9 +776,6 @@ bundleInput?.addEventListener('change', async (e) => {
       }
     }
 
-    // Show table
-    fileTable.style.display = 'block';
-
     const sectionCount = metadata.filter(e => e.section).length;
     console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted, ${sectionCount} section breaks restored`);
     hideProcessingOverlay();
@@ -864,6 +874,11 @@ document.getElementById('bundle-confirm-addinfo')?.addEventListener('click', () 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   console.log('Form submit triggered!');
+
+  if (fileTableBody.querySelectorAll('tr').length === 0) {
+    pulseStep2();
+    return;
+  }
 
   if (!bundleConfirmed) {
     if (showMissingInfoModal('bundle')) return;
@@ -1002,6 +1017,11 @@ form.addEventListener('submit', async (e) => {
 });
 
 async function runPreviewIndex() {
+  if (fileTableBody.querySelectorAll('tr').length === 0) {
+    pulseStep2();
+    return;
+  }
+
   if (!processTheBundle) {
     ({ processTheBundle } = await import('./buntoolMain.js'));
   }
@@ -1106,6 +1126,7 @@ async function runPreviewIndex() {
 
 for (const id of ['preview-index-btn', 'preview-index-btn-advanced']) {
   document.getElementById(id)?.addEventListener('click', () => {
+    if (fileTableBody.querySelectorAll('tr').length === 0) { pulseStep2(); return; }
     if (showMissingInfoModal('preview')) return;
     runPreviewIndex();
   });

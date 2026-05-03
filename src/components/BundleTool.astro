@@ -103,8 +103,8 @@
       </div>
     </div>
 
-    <!-- Step 3: Review Table (initially hidden) -->
-    <div id="file-table" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+    <!-- Step 3: Review Table -->
+    <div id="file-table" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
       <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 class="text-base font-bold text-white flex items-center">
@@ -123,7 +123,14 @@
         </div>
       </div>
 
-      <div class="overflow-x-auto">
+      <div id="file-table-empty" class="px-6 py-10 text-center text-gray-400">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        </svg>
+        <p class="text-sm">Add documents above to get started</p>
+      </div>
+
+      <div class="overflow-x-auto hidden" id="file-table-content">
         <table class="min-w-full divide-y divide-gray-200">
           <colgroup>
             <col style="width: 40px;">
@@ -169,7 +176,7 @@
     </div>
 
     <!-- Step 4: Generate or Configure -->
-    <div id="step-4-choice" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 hidden">
+    <div id="step-4-choice" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 no-docs">
       <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
         <h3 class="text-base font-bold text-white flex items-center">
           <span class="inline-flex items-center justify-center w-7 h-7 bg-pink-500 text-white rounded-full mr-2 text-sm font-bold shadow-lg">4</span>
@@ -180,7 +187,8 @@
       <div class="p-3 flex flex-col sm:flex-row gap-2 justify-center">
         <button
           type="submit"
-          class="inline-flex items-center justify-center px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-base font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
+          id="create-bundle-btn"
+          class="btn-needs-docs docs-inactive inline-flex items-center justify-center px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-base font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
         >
           <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -191,7 +199,7 @@
         <button
           id="preview-index-btn"
           type="button"
-          class="inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          class="btn-needs-docs docs-inactive inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
         >
           <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -223,7 +231,11 @@
           </svg>
           Advanced Settings
         </h3>
-        <button id="reset-advanced-btn" type="button" class="ml-auto text-xs text-slate-300 hover:text-white underline transition">
+        <button id="save-defaults-btn" type="button" class="ml-auto text-xs text-slate-300 hover:text-white underline transition">
+          Save as default
+        </button>
+        <span class="mx-2 text-slate-500 text-xs">·</span>
+        <button id="reset-advanced-btn" type="button" class="text-xs text-slate-300 hover:text-white underline transition">
           Reset to defaults
         </button>
       </div>
@@ -449,7 +461,8 @@
       <div class="p-3 flex justify-center gap-3">
         <button
           type="submit"
-          class="inline-flex items-center px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-base font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
+          id="create-bundle-btn-advanced"
+          class="btn-needs-docs inline-flex items-center px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-base font-bold rounded-lg shadow-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transform hover:scale-105"
         >
           <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -459,7 +472,7 @@
         <button
           id="preview-index-btn-advanced"
           type="button"
-          class="inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          class="btn-needs-docs inline-flex items-center justify-center px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
         >
           <svg class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -827,24 +840,40 @@
       color: #64748b;
     }
   }
+
+  .btn-needs-docs.docs-inactive {
+    opacity: 0.4;
+    filter: grayscale(0.7);
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  #file-drop-zone.pulse-ring {
+    outline: 2px solid #ec4899;
+    outline-offset: 3px;
+    transition: outline 0.15s;
+  }
 </style>
 
 <link href="https://unpkg.com/tabulator-tables@6.4.0/dist/css/tabulator.min.css" rel="stylesheet">
 
 <script>
-  // Progressive disclosure: Show Step 4 when table has files
   const fileTableBody = document.getElementById('file-table-body');
   const step4Choice = document.getElementById('step-4-choice');
 
-  // Observer to watch for changes in the table
-  const observer = new MutationObserver(() => {
+  function updateDocState() {
     const hasFiles = fileTableBody.querySelectorAll('tr').length > 0;
-    if (hasFiles) {
-      step4Choice?.classList.remove('hidden');
-    } else {
-      step4Choice?.classList.add('hidden');
-    }
-  });
+    // Toggle empty state and table content visibility
+    document.getElementById('file-table-empty')?.classList.toggle('hidden', hasFiles);
+    document.getElementById('file-table-content')?.classList.toggle('hidden', !hasFiles);
+    // Toggle inactive state on action buttons
+    document.querySelectorAll('.btn-needs-docs').forEach(btn => {
+      btn.classList.toggle('docs-inactive', !hasFiles);
+    });
+  }
+
+  const observer = new MutationObserver(updateDocState);
 
   if (fileTableBody) {
     observer.observe(fileTableBody, { childList: true });
@@ -925,6 +954,59 @@
     document.getElementById('config-showTableBorders').checked = true;
     document.getElementById('config-printableBundle').checked = true;
   });
+
+  const DEFAULTS_KEY = 'buntool-default-config';
+
+  function saveDefaultConfig() {
+    const d = {
+      fontFace: document.getElementById('config-fontFace').value,
+      dateStyle: document.getElementById('config-dateStyle').value,
+      outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
+      footerFont: document.getElementById('config-footerFont').value,
+      numberingStyle: document.getElementById('config-numberingStyle').value,
+      footerPrefix: document.getElementById('config-footerPrefix').value,
+      alignment: document.getElementById('config-alignment').value,
+      headingFontSize: document.getElementById('config-headingFontSize').value,
+      indexFontSize: document.getElementById('config-indexFontSize').value,
+      showTableBorders: document.getElementById('config-showTableBorders').checked,
+      printableBundle: document.getElementById('config-printableBundle').checked,
+    };
+    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d));
+  }
+
+  function loadDefaultConfig() {
+    try {
+      const stored = localStorage.getItem(DEFAULTS_KEY);
+      if (!stored) return;
+      const d = JSON.parse(stored);
+      if (d.fontFace) document.getElementById('config-fontFace').value = d.fontFace;
+      if (d.dateStyle) document.getElementById('config-dateStyle').value = d.dateStyle;
+      if (d.outlineItemStyle) document.getElementById('config-outlineItemStyle').value = d.outlineItemStyle;
+      if (d.footerFont) document.getElementById('config-footerFont').value = d.footerFont;
+      if (d.numberingStyle) document.getElementById('config-numberingStyle').value = d.numberingStyle;
+      if (d.footerPrefix !== undefined) document.getElementById('config-footerPrefix').value = d.footerPrefix;
+      if (d.alignment) resetGroup('alignment', d.alignment);
+      if (d.headingFontSize) resetGroup('headingFontSize', d.headingFontSize);
+      if (d.indexFontSize) resetGroup('indexFontSize', d.indexFontSize);
+      if (d.showTableBorders !== undefined) document.getElementById('config-showTableBorders').checked = d.showTableBorders;
+      if (d.printableBundle !== undefined) document.getElementById('config-printableBundle').checked = d.printableBundle;
+    } catch (_) {
+      // Ignore corrupt/missing storage
+    }
+  }
+
+  document.getElementById('save-defaults-btn')?.addEventListener('click', () => {
+    saveDefaultConfig();
+    const btn = document.getElementById('save-defaults-btn');
+    btn.textContent = 'Saved!';
+    setTimeout(() => { btn.textContent = 'Save as default'; }, 1500);
+  });
+
+  window.saveDefaultConfig = saveDefaultConfig;
+  window.hasDefaultConfig = () => !!localStorage.getItem(DEFAULTS_KEY);
+
+  loadDefaultConfig();
+  updateDocState();
 </script>
 
 <script type="module" src="/js/frontend.js"></script>
