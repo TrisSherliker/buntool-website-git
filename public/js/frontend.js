@@ -203,15 +203,20 @@ async function processFiles(files) {
       continue;
     }
 
+    // Materialise bytes into memory immediately so filesMap holds an in-memory copy,
+    // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
+
     const key = uniqueFilename(file.name);
-    filesMap.set(key, file);
+    filesMap.set(key, materializedFile);
     const prettyTitle = prettifyTitle(file.name);
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
     const displayTitle = stripDoubleChars(dateParseObj.name);
     if (!countPdfPages){
       ({countPdfPages} = await import('./buntoolFunctions.js'));
     }
-    let pageCount = await countPdfPages(file);
+    let pageCount = await countPdfPages(materializedFile);
     frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
 
     const row = document.createElement('tr');
