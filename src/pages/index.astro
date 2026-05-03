@@ -5,14 +5,14 @@ import Footer from '../components/Footer.astro';
 ---
 
 <Layout title="BunTool - Free Court Bundle Creator" description="Create professional court bundles - Free, privacy-first, fast, and easy to use.">
-	<Header currentPath="/" /> -	<!-- Temporary banner - remove after June 30, 2026 -->
+	<Header currentPath="/" /> -	<!-- Temporary banner - remove after April 30, 2026 -->
 	<div id="version-banner" class="bg-green-600 text-white text-center py-2 px-4 text-sm hidden">
 		<span>Welcome to the new BunTool! It  has recently been upgraded to improve privacy. If you have any comments or  thoughts about the new app, please  <a href="mailto:tris@sherliker.net" class="underline font-semibold hover:text-blue-200">share them by email</a></span>.
 		<button onclick="this.parentElement.classList.add('hidden')" class="ml-4 text-blue-200 hover:text-white font-bold">&times;</button>
 	</div>
 	<script>
-		// Show banner only until end may 2026
-		if (new Date() < new Date('2026-06-01')) {
+		// Show banner only until end mapray 2026
+		if (new Date() < new Date('2026-05-01')) {
 			document.getElementById('version-banner')?.classList.remove('hidden');
 		}
 	</script>
