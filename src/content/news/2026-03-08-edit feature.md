@@ -1,5 +1,5 @@
 ---
-title: "BunTool launches"
+title: "Editing a bundle - useful new feature"
 date: "2026-03-08"
 description: "New feature: Edit existing bundles"
 ---
