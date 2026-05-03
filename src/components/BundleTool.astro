@@ -5,7 +5,7 @@
 <div id="bundle-tool-container" class="space-y-2">
   <form id="upload-form" class="space-y-2">
     <!-- Edit existing bundle -->
-    <div class="bg-white rounded-xl shadow-sm border border-blue-200 p-3 flex items-center gap-3">
+    <div id="edit-bundle-panel" class="bg-white rounded-xl shadow-sm border border-blue-200 p-3 flex items-center gap-3">
       <p class="text-xs text-gray-400 flex-1">If you want to edit an existing bundle, upload here. Otherwise, just follow the steps below.</p>
       <label for="bundle-input" class="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -17,7 +17,7 @@
     </div>
 
     <!-- Step 1: Basic Information -->
-    <div class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
+    <div id="step-1-info" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
       <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
         <h3 class="text-base font-bold text-white flex items-center">
           <span class="inline-flex items-center justify-center w-7 h-7 bg-pink-500 text-white rounded-full mr-2 text-sm font-bold shadow-lg">1</span>
@@ -507,7 +507,10 @@
   </div>
 </div>
 
-<!-- New feature announcement modal (shown until end of June 2026) -->
+<!--
+  NEW FEATURE MODAL — template for future announcements. To reuse:
+  1. Uncomment this block
+  2. Update the content and the newFeatureKey/featureExpiry values in the inline <script> below
 <div id="new-feature-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
   <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
     <div class="flex items-start gap-3 mb-4">
@@ -530,6 +533,7 @@
     </div>
   </div>
 </div>
+-->
 
 <!-- Processing spinner -->
 <div id="processing-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -883,16 +887,18 @@
     observer.observe(fileTableBody, { childList: true });
   }
 
-  // New feature announcement modal
-  const newFeatureKey = 'buntool_edit_feature_seen';
-  const featureExpiry = new Date('2026-07-01').getTime();
-  if (Date.now() < featureExpiry && !localStorage.getItem(newFeatureKey)) {
-    document.getElementById('new-feature-modal')?.classList.remove('hidden');
-  }
-  document.getElementById('new-feature-modal-close')?.addEventListener('click', () => {
-    document.getElementById('new-feature-modal')?.classList.add('hidden');
-    localStorage.setItem(newFeatureKey, '1');
-  });
+  /*
+    NEW FEATURE MODAL LOGIC — uncomment together with the HTML block above
+    const newFeatureKey = 'buntool_edit_feature_seen';
+    const featureExpiry = new Date('2026-07-01').getTime();
+    if (Date.now() < featureExpiry && !localStorage.getItem(newFeatureKey)) {
+      document.getElementById('new-feature-modal')?.classList.remove('hidden');
+    }
+    document.getElementById('new-feature-modal-close')?.addEventListener('click', () => {
+      document.getElementById('new-feature-modal')?.classList.add('hidden');
+      localStorage.setItem(newFeatureKey, '1');
+    });
+  */
 
   // Error modal
   document.getElementById('error-modal-close')?.addEventListener('click', () => {
@@ -1026,3 +1032,4 @@
 </script>
 
 <script type="module" src="/js/frontend.js"></script>
+<script type="module" src="/js/buntoolTutorial.js"></script>

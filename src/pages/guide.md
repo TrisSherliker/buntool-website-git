@@ -7,6 +7,13 @@ title: "How-to Guide - BunTool"
 
 Creating a legal bundle with BunTool is simple and takes just a few minutes. Follow this step-by-step guide to create professional, court-ready bundles.
 
+<div style="margin:1.5rem 0 0.5rem;">
+  <a href="/app" onclick="localStorage.removeItem('buntool_tutorial_seen');" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#ec4899;color:#fff;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(236,72,153,0.35);transition:background 0.15s;">
+    <svg style="width:16px;height:16px;flex-shrink:0;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    See the interactive tutorial
+  </a>
+</div>
+
 <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;margin:1.5rem 0;">
   <video autoplay loop muted playsinline style="height:280px;width:auto;border-radius:0.5rem;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
     <source src="/images/buntool-animation-web.webm" type="video/webm" />
