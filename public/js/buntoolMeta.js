@@ -124,8 +124,10 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
         doc.formatLinkURI(
           {
             type: "XYZ",
-            zoom: 100,
-            page: destinationPageNumber
+            page: destinationPageNumber,
+            x: 0,
+            y: 0, // clamped to page top by all viewers; avoids Firefox landing at y=0 (bottom of page)
+            zoom: 100
           }
         )
       );
@@ -183,6 +185,8 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
         uri: doc.formatLinkURI({
           page: outlinePage,
           type: "XYZ",
+          x: 0,
+          y: 0,
           zoom: 100
         })
       });
@@ -193,6 +197,8 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
         uri: doc.formatLinkURI({
           page: outlinePage,
           type: "XYZ",
+          x: 0,
+          y: 0,
           zoom: 100
         })
       });
