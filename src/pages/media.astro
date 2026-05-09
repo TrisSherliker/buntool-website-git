@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Media - BunTool" description="Press coverage, media mentions, and resources for journalists writing about BunTool.">
+	<Header currentPath="/media" />
+	<main class="min-h-screen bg-gray-50">
+
+		<!-- Page Header -->
+		<div class="bg-white border-b border-gray-200">
+			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+				<h1 class="text-4xl font-bold text-gray-900 mb-4">Media</h1>
+				<p class="text-xl text-gray-600">Press coverage and media resources for BunTool.</p>
+			</div>
+		</div>
+
+		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+
+			<!-- Press Coverage -->
+			<section>
+				<h2 class="text-2xl font-bold text-gray-900 mb-6">Press Coverage</h2>
+				<div class="space-y-4">
+					<!-- Links will be added here -->
+					<p class="text-gray-500 italic">Coverage links coming soon.</p>
+				</div>
+			</section>
+
+			<!-- Videos & Interviews -->
+			<section>
+				<h2 class="text-2xl font-bold text-gray-900 mb-6">Videos &amp; Interviews</h2>
+				<div class="space-y-4">
+					<!-- Links will be added here -->
+					<p class="text-gray-500 italic">Video links coming soon.</p>
+				</div>
+			</section>
+
+			<!-- Press Contact -->
+			<section class="bg-pink-50 border border-pink-100 rounded-xl p-8">
+				<h2 class="text-2xl font-bold text-gray-900 mb-3">Press Enquiries</h2>
+				<p class="text-gray-700">For press enquiries, please get in touch via the <a href="/contact" class="text-pink-600 hover:text-pink-700 font-medium underline">contact page</a>.</p>
+			</section>
+
+		</div>
+	</main>
+	<Footer />
+</Layout>

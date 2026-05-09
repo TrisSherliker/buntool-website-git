@@ -32,6 +32,7 @@ let draggedRow = null;
 let reorderMode = 'drag'; // 'drag' | 'arrows'
 
 import Config from './buntoolConfig.js';
+import { init as initAutosave, markDirty, saveNow, listSnapshots, loadSnapshot } from './buntoolAutosave.js';
 
 const fileInput = document.getElementById('file-input');
 const fileTableBody = document.getElementById('file-table-body');
@@ -67,6 +68,168 @@ window.config = config; // Expose config as global
 
 
 /***********************************
+ *         Autosave helpers        *
+ ***********************************/
+
+async function getAutosaveState() {
+  if (filesMap.size === 0) return null;
+
+  const files = [];
+  for (const [filename, file] of filesMap) {
+    files.push({ filename, bytes: await file.arrayBuffer() });
+  }
+
+  const tableOrder = [];
+  fileTableBody.querySelectorAll('tr').forEach(row => {
+    if (row.dataset.sectionBreak === 'true') {
+      tableOrder.push({ type: 'section', title: row.querySelector('.section-break-title')?.value || '' });
+    } else if (row.dataset.filename) {
+      tableOrder.push({ type: 'file', filename: row.dataset.filename });
+    }
+  });
+
+  const config = {
+    claimNumber:      document.getElementById('config-claimNumber')?.value      || '',
+    bundleTitle:      document.getElementById('config-bundleTitle')?.value       || '',
+    projectName:      document.getElementById('config-projectName')?.value       || '',
+    confidential:     document.getElementById('config-confidential')?.checked    ?? false,
+    footerFont:       document.getElementById('config-footerFont')?.value        || '',
+    alignment:        document.getElementById('config-alignment')?.value         || '',
+    numberingStyle:   document.getElementById('config-numberingStyle')?.value    || '',
+    footerPrefix:     document.getElementById('config-footerPrefix')?.value      || '',
+    fontFace:         document.getElementById('config-fontFace')?.value          || '',
+    dateStyle:        document.getElementById('config-dateStyle')?.value         || '',
+    outlineItemStyle: document.getElementById('config-outlineItemStyle')?.value  || '',
+    printableBundle:  document.getElementById('config-printableBundle')?.checked ?? false,
+    headingFontSize:  document.getElementById('config-headingFontSize')?.value   || '',
+    indexFontSize:    document.getElementById('config-indexFontSize')?.value     || '',
+    showTableBorders: document.getElementById('config-showTableBorders')?.checked ?? false,
+  };
+
+  let coversheet = null;
+  if (coversheetFile) {
+    coversheet = { filename: coversheetFile.name, bytes: await coversheetFile.arrayBuffer() };
+  }
+
+  return { files, inputData: { ...frontendInputData }, tableOrder, config, coversheet };
+}
+
+async function applySnapshot(snapshot) {
+  // Clear current state
+  filesMap.clear();
+  Object.keys(frontendInputData).forEach(k => delete frontendInputData[k]);
+  fileTableBody.innerHTML = '';
+  coversheetFile = null;
+  setCoversheetSelected(null);
+
+  // Restore files into filesMap
+  for (const { filename, bytes } of snapshot.files) {
+    filesMap.set(filename, new File([bytes], filename, { type: 'application/pdf' }));
+  }
+
+  // Restore inputData
+  Object.assign(frontendInputData, snapshot.inputData);
+
+  // Rebuild table rows in saved order
+  for (const item of snapshot.tableOrder) {
+    if (item.type === 'section') {
+      const row = document.createElement('tr');
+      row.draggable = reorderMode === 'drag';
+      row.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
+      row.dataset.sectionBreak = 'true';
+      row.innerHTML = `
+        <td class="drag-handle px-2 py-3 cursor-move">
+          <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
+          </svg>
+        </td>
+        <td colspan="4" class="px-6 py-3">
+          <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-align-left focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Type section name e.g. 'Part 1: Evidence'"/>
+        </td>
+        <td class="px-6 py-3 flex gap-2">
+          <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+          <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+          <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">❌</button>
+        </td>`;
+      row.querySelector('.section-break-title').value = item.title;
+      row.addEventListener('dragstart', handleDragStart);
+      row.addEventListener('dragover', handleDragOver);
+      row.addEventListener('drop', handleDrop);
+      row.addEventListener('dragend', handleDragEnd);
+      fileTableBody.appendChild(row);
+    } else {
+      const data = frontendInputData[item.filename];
+      if (!data) continue;
+      const row = document.createElement('tr');
+      row.draggable = reorderMode === 'drag';
+      row.dataset.filename = item.filename;
+      row.classList.add('hover:bg-gray-50', 'transition');
+      row.innerHTML = `
+        <td class="drag-handle px-2 py-3 cursor-move">
+          <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
+          </svg>
+        </td>
+        <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
+        <td class="px-4 py-3 title-cell">
+          <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
+        </td>
+        <td class="px-4 py-3 date-cell">
+          <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
+        </td>
+        <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
+        <td class="px-4 py-3 flex gap-2 actions-cell">
+          <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+          <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+          <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">💾</button>
+          <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">❌</button>
+        </td>`;
+      row.querySelector('.filename-cell').textContent = item.filename;
+      row.querySelector('.title-input').value = data.title || '';
+      row.querySelector('.date-input').value  = data.date  || '';
+      row.querySelector('.pages-cell').textContent = data.pageCount ?? '';
+      row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = item.filename);
+      row.addEventListener('dragstart', handleDragStart);
+      row.addEventListener('dragover', handleDragOver);
+      row.addEventListener('drop', handleDrop);
+      row.addEventListener('dragend', handleDragEnd);
+      fileTableBody.appendChild(row);
+    }
+  }
+
+  // Restore config fields
+  const c = snapshot.config;
+  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  const _chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+  _set('config-claimNumber',      c.claimNumber);
+  _set('config-bundleTitle',      c.bundleTitle);
+  _set('config-projectName',      c.projectName);
+  _chk('config-confidential',     c.confidential);
+  _set('config-footerFont',       c.footerFont);
+  _set('config-alignment',        c.alignment);
+  _set('config-numberingStyle',   c.numberingStyle);
+  _set('config-footerPrefix',     c.footerPrefix);
+  _set('config-fontFace',         c.fontFace);
+  _set('config-dateStyle',        c.dateStyle);
+  _set('config-outlineItemStyle', c.outlineItemStyle);
+  _chk('config-printableBundle',  c.printableBundle);
+  _set('config-headingFontSize',  c.headingFontSize);
+  _set('config-indexFontSize',    c.indexFontSize);
+  _chk('config-showTableBorders', c.showTableBorders);
+
+  // Restore coversheet
+  if (snapshot.coversheet) {
+    coversheetFile = new File([snapshot.coversheet.bytes], snapshot.coversheet.filename, { type: 'application/pdf' });
+    setCoversheetSelected(snapshot.coversheet.filename);
+  }
+
+  // Hide the step-2 hint since files are now loaded
+  const hint = document.getElementById('file-input-hint');
+  if (hint) hint.style.display = 'none';
+}
+
+
+/***********************************
  *  Event Listeners and Handlers   *
  ***********************************/
 
@@ -74,6 +237,82 @@ window.addEventListener('DOMContentLoaded', () => {
   import('./buntoolPages.js').then(m => countPdfPages = m.countPdfPages);
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
   import('https://esm.sh/chrono-node@2.9.0').then(m => chrono = m);
+
+  // Autosave init
+  initAutosave(getAutosaveState);
+
+  // Config field changes dirty the autosave (file inputs excluded)
+  form.addEventListener('change', (e) => {
+    if (e.target.type === 'file') return;
+    markDirty();
+  });
+
+  // Restore-from-autosave button
+  document.getElementById('autosave-restore-btn')?.addEventListener('click', async () => {
+    const snapshots = await listSnapshots();
+    const modal     = document.getElementById('autosave-modal');
+    const list      = document.getElementById('autosave-snapshot-list');
+    if (!list || !modal) return;
+
+    if (!snapshots.length) {
+      list.innerHTML = '<p class="text-xs text-gray-500 text-center py-2">No autosaves found.</p>';
+    } else {
+      list.innerHTML = snapshots.map(s => {
+        const when  = new Date(s.timestamp);
+        const label = when.toLocaleDateString([], { day: 'numeric', month: 'short' })
+                    + ' at ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const size  = s.sizeBytes < 1024 ** 2
+          ? `${(s.sizeBytes / 1024).toFixed(0)} KB`
+          : `${(s.sizeBytes / 1024 ** 2).toFixed(1)} MB`;
+        const trunc = (str, n) => str && str.length > n ? str.slice(0, n) + '…' : str;
+        const title = trunc(s.bundleTitle, 20);
+        const proj  = trunc(s.projectName, 20);
+        const nameStr = [title, proj].filter(Boolean).join(' / ');
+        return `<button type="button"
+          class="autosave-restore-item w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-xs"
+          data-ts="${s.timestamp}">
+          <span class="font-medium text-gray-800">${label}</span>${nameStr ? `<span class="text-gray-600 ml-2">${nameStr}</span>` : ''}
+          <span class="text-gray-500 ml-2">${s.fileCount} doc${s.fileCount !== 1 ? 's' : ''} · ${size}</span>
+        </button>`;
+      }).join('');
+
+      list.querySelectorAll('.autosave-restore-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          modal.classList.add('hidden');
+          const snapshot = await loadSnapshot(Number(btn.dataset.ts));
+          if (snapshot) await applySnapshot(snapshot);
+        });
+      });
+    }
+    modal.classList.remove('hidden');
+  });
+
+  document.getElementById('autosave-modal-close')?.addEventListener('click', () => {
+    document.getElementById('autosave-modal')?.classList.add('hidden');
+  });
+
+  document.getElementById('autosave-save-now-btn')?.addEventListener('click', async () => {
+    if (!localStorage.getItem('buntool_autosave_welcomed')) {
+      // Show welcome modal; actual save happens when the user dismisses it
+      document.getElementById('autosave-welcome-modal')?.classList.remove('hidden');
+      return;
+    }
+    const btn = document.getElementById('autosave-save-now-btn');
+    const _setSaveLabel = (b, text) => { if (b) { const svg = b.querySelector('svg'); b.textContent = text; if (svg) b.prepend(svg); } };
+    _setSaveLabel(btn, 'Saving…'); if (btn) btn.disabled = true;
+    await saveNow();
+    if (btn) btn.disabled = false; _setSaveLabel(btn, 'Save progress');
+  });
+
+  document.getElementById('autosave-welcome-ok')?.addEventListener('click', async () => {
+    localStorage.setItem('buntool_autosave_welcomed', '1');
+    document.getElementById('autosave-welcome-modal')?.classList.add('hidden');
+    const btn = document.getElementById('autosave-save-now-btn');
+    const _setSaveLabel = (b, text) => { if (b) { const svg = b.querySelector('svg'); b.textContent = text; if (svg) b.prepend(svg); } };
+    _setSaveLabel(btn, 'Saving…'); if (btn) btn.disabled = true;
+    await saveNow();
+    if (btn) btn.disabled = false; _setSaveLabel(btn, 'Save progress');
+  });
 
   // Column header sort
   let sortCol = null;
@@ -285,6 +524,7 @@ async function processFiles(files) {
     row.addEventListener('dragend', handleDragEnd);
 
     fileTableBody.appendChild(row);
+    markDirty({ immediate: true });
   };
 }
 
@@ -318,6 +558,7 @@ coversheetInput?.addEventListener('change', async (e) => {
     await validateCoverPage(file);
     coversheetFile = file;
     setCoversheetSelected(file.name);
+    markDirty({ immediate: true });
   } catch (error) {
     showErrorModal({
       title: 'Invalid coversheet',
@@ -330,6 +571,7 @@ coversheetInput?.addEventListener('change', async (e) => {
 coversheetClearBtn?.addEventListener('click', () => {
   coversheetFile = null;
   setCoversheetSelected(null);
+  markDirty();
 });
 
 // Drop zone for dragging files from the OS onto the add-documents panel
@@ -355,10 +597,12 @@ fileTableBody.addEventListener('input', (e) => {
   if (target.classList.contains('title-input')) {
     const filename = target.getAttribute('data-filename');
     frontendInputData[filename].title = target.value;
+    markDirty();
   }
   if (target.classList.contains('date-input')) {
     const filename = target.getAttribute('data-filename');
     frontendInputData[filename].date = target.value;
+    markDirty();
   }
 });
 
@@ -406,23 +650,16 @@ fileTableBody.addEventListener('click', (e) => {
 
   if (e.target.classList.contains('delete-row-btn')) {
     const filename = e.target.getAttribute('data-filename');
-
-    // Remove from filesMap
     filesMap.delete(filename);
-
-    // Remove from frontendInputData
     delete frontendInputData[filename];
-
-    // Remove row from DOM
-    const row = e.target.closest('tr');
-    row.remove();
-
+    e.target.closest('tr').remove();
+    markDirty();
   }
 
   // Handle section break deletion
   if (e.target.classList.contains('delete-section-break-btn')) {
-    const row = e.target.closest('tr');
-    row.remove();
+    e.target.closest('tr').remove();
+    markDirty();
   }
 });
 
@@ -467,6 +704,7 @@ addSectionBreakBtn?.addEventListener('click', () => {
 
   // Add to end of table
   fileTableBody.appendChild(sectionBreakRow);
+  markDirty();
 });
 
 // Handle "Upload Bundle" input

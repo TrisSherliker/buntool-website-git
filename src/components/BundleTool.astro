@@ -5,15 +5,31 @@
 <div id="bundle-tool-container" class="space-y-2">
   <form id="upload-form" class="space-y-2">
     <!-- Edit existing bundle -->
-    <div id="edit-bundle-panel" class="bg-white rounded-xl shadow-sm border border-blue-200 p-3 flex items-center gap-3">
-      <p class="text-xs text-gray-400 flex-1">If you want to edit an existing bundle, upload here. Otherwise, just follow the steps below.</p>
-      <label for="bundle-input" class="inline-flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
-        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-        Edit an existing bundle
-      </label>
-      <input type="file" id="bundle-input" accept="application/pdf" class="sr-only" />
+    <div id="edit-bundle-panel" class="bg-white rounded-xl shadow-sm border border-blue-200 p-3 flex items-center justify-center gap-3">
+      <div class="flex flex-col items-stretch gap-1.5">
+        <span class="text-xs font-medium text-gray-500 text-center">Save and load controls</span>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="autosave-save-now-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            Save progress
+          </button>
+          <button id="autosave-restore-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Load saved progress
+          </button>
+          <label for="bundle-input" class="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg cursor-pointer transition whitespace-nowrap">
+            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Load from previous bundle
+          </label>
+          <input type="file" id="bundle-input" accept="application/pdf" class="sr-only" />
+        </div>
+      </div>
     </div>
 
     <!-- Step 1: Basic Information -->
@@ -92,7 +108,7 @@
       </div>
 
       <div class="p-3 flex items-center gap-3">
-        <p id="file-input-hint" class="text-xs text-gray-400 flex-1">Add files by clicking the button, or dragging and dropping. <b>Files stay on your device — nothing is uploaded</b>.</p>
+        <p id="file-input-hint" class="text-xs text-gray-500 flex-1">Add files by clicking the button, or dragging and dropping. <b>Files stay on your device — nothing is uploaded</b>.</p>
         <label for="file-input" class="inline-flex items-center px-5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -102,8 +118,8 @@
         <input type="file" id="file-input" multiple accept="application/pdf" class="sr-only" />
       </div>
       <div class="px-3 pb-3 flex items-center gap-3 border-t border-slate-100 pt-2">
-        <p class="text-xs text-gray-400 flex-1">Optional: add a pre-made coversheet as a first page before the index. If you select a PDF with more than one page, BunTool will use the first page only.</p>
-        <span id="coversheet-filename" class="text-xs text-gray-400 italic whitespace-nowrap hidden"></span>
+        <p class="text-xs text-gray-500 flex-1">Optional: add a pre-made coversheet as a first page before the index. If you select a PDF with more than one page, BunTool will use the first page only.</p>
+        <span id="coversheet-filename" class="text-xs text-gray-500 italic whitespace-nowrap hidden"></span>
         <button id="coversheet-clear-btn" type="button" class="hidden text-xs text-red-400 hover:text-red-600 transition font-medium whitespace-nowrap">Remove</button>
         <label for="coversheet-input" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,8 +151,8 @@
         </div>
       </div>
 
-      <div id="file-table-empty" class="px-6 py-10 text-center text-gray-400">
-        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div id="file-table-empty" class="px-6 py-10 text-center text-gray-500">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
         </svg>
         <p class="text-sm">Add documents above to get started</p>
@@ -268,7 +284,7 @@
             <!-- Index Font -->
             <div>
               <label for="config-fontFace" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h7m0 0V5m0 2v10m0 0h2m-2 0V5m4 14h4M17 5h-4m4 0v4m0-4v-.5" />
                 </svg>
                 Index Font
@@ -279,13 +295,13 @@
                 <option value="monospaced">Monospaced</option>
                 <option value="traditional">Traditional Serif</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">Typeface used for the table of contents.</p>
+              <p class="text-xs text-gray-500 mt-1">Typeface used for the table of contents.</p>
             </div>
 
             <!-- Date Format -->
             <div>
               <label for="config-dateStyle" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 Date Format
@@ -300,13 +316,13 @@
                 <option value="Month DD, YYYY">Month DD, YYYY</option>
                 <option value="None">None</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">How document dates appear in the index. 'None' hides the date column.</p>
+              <p class="text-xs text-gray-500 mt-1">How document dates appear in the index. 'None' hides the date column.</p>
             </div>
 
             <!-- Outline Style -->
             <div>
               <label for="config-outlineItemStyle" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
                 Outline Style
@@ -317,7 +333,7 @@
                 <option value="withDate">With Date</option>
                 <option value="withDateandPage">With Date and Page</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">How entries appear in the PDF bookmarks panel.</p>
+              <p class="text-xs text-gray-500 mt-1">How entries appear in the PDF bookmarks panel.</p>
             </div>
           </div>
 
@@ -327,7 +343,7 @@
             <!-- Heading Font Size -->
             <div>
               <label class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
                 </svg>
                 Heading Font Size
@@ -338,13 +354,13 @@
                 <button type="button" data-group="headingFontSize" data-value="large" class="btn-group flex-1 px-3 py-1 text-xs bg-white text-gray-700 hover:bg-blue-50 transition">Large</button>
               </div>
               <input type="hidden" id="config-headingFontSize" value="medium">
-              <p class="text-xs text-gray-400 mt-1">Size of the bundle title and project name.</p>
+              <p class="text-xs text-gray-500 mt-1">Size of the bundle title and project name.</p>
             </div>
 
             <!-- Index Font Size -->
             <div>
               <label class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
                 Index Font Size
@@ -355,13 +371,13 @@
                 <button type="button" data-group="indexFontSize" data-value="large" class="btn-group flex-1 px-3 py-1 text-xs bg-white text-gray-700 hover:bg-blue-50 transition">Large</button>
               </div>
               <input type="hidden" id="config-indexFontSize" value="medium">
-              <p class="text-xs text-gray-400 mt-1">Size of text in the index table.</p>
+              <p class="text-xs text-gray-500 mt-1">Size of text in the index table.</p>
             </div>
 
             <!-- Table Borders toggle -->
             <div>
               <p class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
                 </svg>
                 Table Borders
@@ -371,7 +387,7 @@
                 <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
                 <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
               </label>
-              <p class="text-xs text-gray-400 mt-1">Show or hide grid lines in the index table.</p>
+              <p class="text-xs text-gray-500 mt-1">Show or hide grid lines in the index table.</p>
             </div>
           </div>
         </div>
@@ -386,7 +402,7 @@
             <!-- Footer Font -->
             <div>
               <label for="config-footerFont" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Footer Font
@@ -397,13 +413,13 @@
                 <option value="monospaced">Monospaced</option>
                 <option value="traditional">Traditional Serif</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">Typeface used for page number footers.</p>
+              <p class="text-xs text-gray-500 mt-1">Typeface used for page number footers.</p>
             </div>
 
             <!-- Alignment button group -->
             <div>
               <label class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
                 </svg>
                 Page Number Position
@@ -414,13 +430,13 @@
                 <button type="button" data-group="alignment" data-value="right" class="btn-group flex-1 px-3 py-1 text-xs bg-blue-500 text-white transition">Right</button>
               </div>
               <input type="hidden" id="config-alignment" value="right">
-              <p class="text-xs text-gray-400 mt-1">Position of page numbers in the footer.</p>
+              <p class="text-xs text-gray-500 mt-1">Position of page numbers in the footer.</p>
             </div>
 
             <!-- Numbering Style -->
             <div>
               <label for="config-numberingStyle" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
                 </svg>
                 Numbering Style
@@ -433,7 +449,7 @@
                 <option value="XofY">X of Y</option>
                 <option value="None">None</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">Format of page numbers throughout the bundle.</p>
+              <p class="text-xs text-gray-500 mt-1">Format of page numbers throughout the bundle.</p>
             </div>
           </div>
 
@@ -443,19 +459,19 @@
             <!-- Footer Prefix -->
             <div>
               <label for="config-footerPrefix" class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
                 Footer Prefix
               </label>
               <input type="text" id="config-footerPrefix" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="Optional prefix text" />
-              <p class="text-xs text-gray-400 mt-1">Optional text before each page number, e.g. 'Exhibit A-'.</p>
+              <p class="text-xs text-gray-500 mt-1">Optional text before each page number, e.g. 'Exhibit A-'.</p>
             </div>
 
             <!-- Printable Mode toggle -->
             <div>
               <p class="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <svg class="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 Printable Mode
@@ -465,7 +481,7 @@
                 <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
                 <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
               </label>
-              <p class="text-xs text-gray-400 mt-1">Adds a blank page after odd-page documents for double-sided printing.</p>
+              <p class="text-xs text-gray-500 mt-1">Adds a blank page after odd-page documents for double-sided printing.</p>
             </div>
           </div>
         </div>
@@ -503,6 +519,31 @@
   <pre id="csv-output" class="hidden mt-8 bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-xs"></pre>
 </div>
 
+<!-- Autosave welcome modal (shown once on first save) -->
+<div id="autosave-welcome-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-5 max-w-sm w-full mx-4">
+    <h3 class="text-sm font-semibold text-gray-800 mb-3">Welcome to BunTool's save feature</h3>
+    <p class="text-sm text-gray-600 mb-5">This saves the state of your bundle locally on your machine, which can help to recover from errors. The saves are temporary though! If you want a long-term save, just press <strong>Create Bundle</strong> and save a full copy. Remember, you can always pick up from where you left off by clicking <strong>Edit an existing bundle</strong>.</p>
+    <button id="autosave-welcome-ok" type="button" class="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition">Got it</button>
+  </div>
+</div>
+
+<!-- Autosave restore modal -->
+<div id="autosave-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-4 max-w-xs w-full mx-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-gray-800">Restore from autosave</h3>
+      <button id="autosave-modal-close" type="button" class="text-gray-500 hover:text-gray-600 transition" aria-label="Close">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <p class="text-xs text-gray-500 mb-3">Restoring will replace your current documents and settings.</p>
+    <div id="autosave-snapshot-list" class="space-y-2"></div>
+  </div>
+</div>
+
 <!-- Bundle info confirmation modal -->
 <div id="bundle-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
   <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">
@@ -533,7 +574,7 @@
           You can now use BunTool to make edits to PDF bundles it created, without needing to start again!
           Just click <strong>"Choose existing bundle to edit"</strong> and go from there.
         </p>
-        <p class="text-xs text-gray-400">
+        <p class="text-xs text-gray-500">
           This will only work with bundles created with the latest version of BunTool.
         </p>
       </div>
@@ -559,10 +600,10 @@
     </div>
     <div id="processing-track" class="hidden"></div>
     <div class="flex items-center gap-1.5 mt-4 pt-3 border-t border-gray-100">
-      <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-3 h-3 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs text-gray-400">Processing locally. No information is shared.</p>
+      <p class="text-xs text-gray-500">Processing locally. No information is shared.</p>
     </div>
   </div>
 </div>
