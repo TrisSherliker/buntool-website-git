@@ -1,4 +1,9 @@
 /**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
+ * buntoolConfig.js
  * Configuration class for BunTool generator. Takes options from frontend
  * for parsing during bundle processing. 
  */
@@ -92,6 +97,11 @@ export const justTheIndex = [
     false,
   ];
 
+export const validCoversheet = [
+    true,
+    false,
+  ];
+
 class Config {
   /* 
   * Initialise with default configuration
@@ -121,6 +131,7 @@ class Config {
       },
       pageOptions: {
         printableBundle: false, // Default: false
+        coversheet: false, // Default: false
       }
     };
   }
@@ -171,6 +182,9 @@ class Config {
     if (!validPrintableBundle.includes(this.options.pageOptions.printableBundle)) {
       throw new Error(`Invalid printable bundle option: ${this.options.pageOptions.printableBundle}`);
     }
+    if (!validCoversheet.includes(this.options.pageOptions.coversheet)) {
+      throw new Error(`Invalid coversheet option: ${this.options.pageOptions.coversheet}`);
+    }
     if (!validTableBorders.includes(this.options.index.showTableBorders)) {
       throw new Error(`Invalid show table borders option: ${this.options.index.showTableBorders}`);
     }
@@ -189,7 +203,7 @@ class Config {
       heading: ["claimNumber", "bundleTitle", "projectName", "confidential", "fontSize"],
       pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix"],
       index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex"],
-      pageOptions: ["printableBundle"],
+      pageOptions: ["printableBundle", "coversheet"],
     };
     
     for (const [section, fields] of Object.entries(requiredPaths)) {

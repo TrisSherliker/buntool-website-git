@@ -1,3 +1,11 @@
+/**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
+ * buntoolMain.js
+ * Main logic pipeline module
+ */
 import Config from './buntoolConfig.js';
 import {
   createTocEntries,

@@ -1,3 +1,12 @@
+/**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
+ * buntoolMeta.js
+ * This module handles metadata functions like tag setting, hyperlinking and annotation. Uses mupdf-wasm's useful features.
+ */
+
 import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
 import Config from './buntoolConfig.js';
 

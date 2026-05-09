@@ -1,3 +1,12 @@
+/**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
+ * frontend.js
+ * frontend logic module
+ */
+
 let processTheBundle;
 let countPdfPages;
 let bundleConfirmed = false;

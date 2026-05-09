@@ -1,7 +1,10 @@
 /**
  * BunTool
  * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
- * A tool for the creation  of 
+ * A tool for the creation  of legal bundles.
+ * 
+ * buntoolToc.js
+ * This module handles the creation of Table of Contents pages using jsPDF to generate new pdf documents.
  */
 
 import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm'

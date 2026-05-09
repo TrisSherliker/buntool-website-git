@@ -1,3 +1,12 @@
+/**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
+ * buntoolPages.js
+ * This module handles manipulation of existing pages using pdf-lib to merge, edit etc.
+ */
+
 import * as cantoopdfLib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
 import fontkit from 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/+esm'
 import Config from './buntoolConfig.js';
@@ -66,6 +75,25 @@ export async function countPdfPages(file) {
   const pdfBytes = await file.arrayBuffer();
   const pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
   return pdfDoc.getPageCount();
+}
+
+/**
+ * Validates a coversheet PDF and returns its first page as a Uint8Array.
+ * If the file has more than one page, only the first page is extracted.
+ * @param {File} file - The PDF file to use as a coversheet
+ * @returns {Promise<Uint8Array>} The first page of the PDF as a Uint8Array
+ * @throws {Error} If the file cannot be loaded as a valid PDF
+ */
+export async function validateCoverPage(file) {
+  const pdfBytes = new Uint8Array(await file.arrayBuffer());
+  const inputPdf = await pdflib.PDFDocument.load(pdfBytes);
+  if (inputPdf.getPageCount() === 1) {
+    return pdfBytes;
+  }
+  const singlePagePdf = await pdflib.PDFDocument.create();
+  const [firstPage] = await singlePagePdf.copyPages(inputPdf, [0]);
+  singlePagePdf.addPage(firstPage);
+  return new Uint8Array(await singlePagePdf.save());
 }
 
 /**

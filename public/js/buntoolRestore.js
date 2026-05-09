@@ -1,6 +1,9 @@
 /**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of legal bundles.
+ * 
  * buntoolRestore.js
- *
  * Functions for unpacking and restoring previously-created BunTool bundle PDFs.
  * Extracts embedded metadata, splits bundle into individual documents, and restores configuration.
  */
