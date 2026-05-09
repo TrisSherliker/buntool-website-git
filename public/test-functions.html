@@ -43,6 +43,8 @@
     from './js/buntoolMeta.js'
   import { createTocEntries, makeTocPages, makeDummyTocPages }
     from './js/buntoolToc.js'
+  import { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata, removePageNumbering }
+    from './js/buntoolRestore.js'
 
   // ── WASM init ────────────────────────────────────────────────────────────────
   const wasmEl = document.getElementById('wasmStatus');
@@ -436,6 +438,113 @@
   }
 
 
+  // buntoolRestore ------------------------------------------------------------
+
+  async function test_removePageNumbering_removesFooter() {
+    const config  = makeConfig({ 'pageNumbering.numberingStyle': 'PageX' });
+    const labeled = await makePdf(2, 'keyword');
+    const numbered = await addPageNumberingToPdf(labeled, config);
+
+    const beforeText = getPageText(numbered, 0);
+    if (!beforeText.includes('Page 1')) {
+      return truthy('removePageNumbering: precondition — footer present', false, `page text: ${beforeText.slice(0, 120)}`);
+    }
+
+    const cleaned   = await removePageNumbering(numbered);
+    const afterText = getPageText(cleaned, 0);
+    return [
+      truthy('removePageNumbering: "Page 1" footer removed',      !afterText.includes('Page 1'),  `"Page 1" in before: ${beforeText.includes('Page 1')} → in after: ${afterText.includes('Page 1')}`),
+      truthy('removePageNumbering: original "keyword" preserved',  afterText.includes('keyword'), `"keyword" in after: ${afterText.includes('keyword')}`),
+      ok('removePageNumbering: page count unchanged',              getPageCount(cleaned), 2),
+    ];
+  }
+
+  async function test_extractBundleMetadata() {
+    const config     = makeConfig();
+    const pdf        = await makePdf(5, 'meta');
+    const tocEntries = [
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+    ];
+    const withMeta  = setMetadata(pdf, tocEntries, config);
+    const extracted = extractBundleMetadata(withMeta);
+    return [
+      truthy('extractBundleMetadata: returns array',           Array.isArray(extracted), `type: ${typeof extracted}`),
+      ok('extractBundleMetadata: correct entry count',         extracted?.length, 2),
+      ok('extractBundleMetadata: first entry tab number',      extracted?.[0]?.tab, 1),
+      ok('extractBundleMetadata: first entry title',           extracted?.[0]?.title, 'Alpha'),
+      ok('extractBundleMetadata: second entry page',           extracted?.[1]?.page, 5),
+    ];
+  }
+
+  async function test_parseConfigFromMetadata_v2() {
+    const config     = makeConfig();
+    const pdf        = await makePdf(3, 'cfg');
+    const tocEntries = [
+      { tabNumber: 1, title: 'Doc', date: '2024-01-01', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+    ];
+    const withMeta = setMetadata(pdf, tocEntries, config);
+    const restored = parseConfigFromMetadata(withMeta);
+    return [
+      ok('parseConfigFromMetadata v2: bundleTitle',  restored?.heading?.bundleTitle,        'Test Bundle'),
+      ok('parseConfigFromMetadata v2: projectName',  restored?.heading?.projectName,        'Test Project'),
+      ok('parseConfigFromMetadata v2: claimNumber',  restored?.heading?.claimNumber,        'CL-2024-001'),
+      ok('parseConfigFromMetadata v2: footerFont',   restored?.pageNumbering?.footerFont,   'sansSerif'),
+      ok('parseConfigFromMetadata v2: coversheet',   restored?.pageOptions?.coversheet,     false),
+    ];
+  }
+
+  async function test_splitBundlePdf() {
+    // Bundle layout: 2 TOC pages + 3 pages doc A + 2 pages doc B = 7 pages
+    const bundleBytes = await makePdf(7, 'bundle');
+    const metadata = [
+      { index: 0, tab: 1, title: 'Doc A', date: '2024-01-01', section: false, page: 3, filename: '1. Doc A (2024-01-01).pdf' },
+      { index: 1, tab: 2, title: 'Doc B', date: '2024-02-02', section: false, page: 6, filename: '2. Doc B (2024-02-02).pdf' },
+    ];
+    const result = await splitBundlePdf(bundleBytes, metadata);
+    return [
+      ok('splitBundlePdf: returns 2 files',        result.size, 2),
+      truthy('splitBundlePdf: doc A filename in map', result.has('1. Doc A (2024-01-01).pdf')),
+      truthy('splitBundlePdf: doc B filename in map', result.has('2. Doc B (2024-02-02).pdf')),
+      ok('splitBundlePdf: doc A has 3 pages',      getPageCount(result.get('1. Doc A (2024-01-01).pdf')), 3),
+      ok('splitBundlePdf: doc B has 2 pages',      getPageCount(result.get('2. Doc B (2024-02-02).pdf')), 2),
+    ];
+  }
+
+  async function test_splitBundlePdf_withSectionBreaks() {
+    // Bundle: 2 TOC + 2 doc A + 2 doc B = 6 pages; section break in metadata is skipped
+    const bundleBytes = await makePdf(6, 'bundle-sec');
+    const metadata = [
+      { index: 0, tab: null,  title: 'Section 1', date: null,          section: true,  page: null, filename: null },
+      { index: 1, tab: 1,     title: 'Doc A',     date: '2024-01-01',  section: false, page: 3,    filename: '1. Doc A (2024-01-01).pdf' },
+      { index: 2, tab: 2,     title: 'Doc B',     date: '2024-02-02',  section: false, page: 5,    filename: '2. Doc B (2024-02-02).pdf' },
+    ];
+    const result = await splitBundlePdf(bundleBytes, metadata);
+    return [
+      ok('splitBundlePdf sections: section breaks ignored, 2 docs', result.size, 2),
+      ok('splitBundlePdf sections: doc A has 2 pages', getPageCount(result.get('1. Doc A (2024-01-01).pdf')), 2),
+      ok('splitBundlePdf sections: doc B has 2 pages', getPageCount(result.get('2. Doc B (2024-02-02).pdf')), 2),
+    ];
+  }
+
+  async function test_splitBundlePdf_withCoversheet() {
+    // Bundle: 1 cover + 2 TOC + 3 doc A + 2 doc B = 8 pages; hasCoversheet=true
+    const bundleBytes = await makePdf(8, 'bundle-cs');
+    const metadata = [
+      { index: 0, tab: 1, title: 'Doc A', date: '2024-01-01', section: false, page: 4, filename: '1. Doc A (2024-01-01).pdf' },
+      { index: 1, tab: 2, title: 'Doc B', date: '2024-02-02', section: false, page: 7, filename: '2. Doc B (2024-02-02).pdf' },
+    ];
+    const result = await splitBundlePdf(bundleBytes, metadata, true);
+    return [
+      ok('splitBundlePdf hasCoversheet: 3 files (2 docs + coversheet)', result.size, 3),
+      truthy('splitBundlePdf hasCoversheet: coversheet.pdf in map',      result.has('coversheet.pdf')),
+      ok('splitBundlePdf hasCoversheet: coversheet has 1 page',          getPageCount(result.get('coversheet.pdf')), 1),
+      ok('splitBundlePdf hasCoversheet: doc A has 3 pages',              getPageCount(result.get('1. Doc A (2024-01-01).pdf')), 3),
+      ok('splitBundlePdf hasCoversheet: doc B has 2 pages',              getPageCount(result.get('2. Doc B (2024-02-02).pdf')), 2),
+    ];
+  }
+
+
   // ── Test registry ────────────────────────────────────────────────────────────
   const GROUPS = [
     {
@@ -469,6 +578,17 @@
         test_addOutlineItems,
         test_setMetadata,
         test_addHyperlinks,
+      ],
+    },
+    {
+      label: 'buntoolRestore',
+      tests: [
+        test_removePageNumbering_removesFooter,
+        test_extractBundleMetadata,
+        test_parseConfigFromMetadata_v2,
+        test_splitBundlePdf,
+        test_splitBundlePdf_withSectionBreaks,
+        test_splitBundlePdf_withCoversheet,
       ],
     },
   ];

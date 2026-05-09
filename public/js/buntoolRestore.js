@@ -203,7 +203,7 @@ const FOOTER_BLOCK_RE = /q\b[\s\S]*?0\.072\s+0\.021\s+0\.073\s+rg[\s\S]*?Q\b[ \t
  * @param {Uint8Array} pdfBytes - The PDF as a Uint8Array
  * @returns {Promise<Uint8Array>} The PDF with page number footers removed
  */
-async function removePageNumbering(pdfBytes) {
+export async function removePageNumbering(pdfBytes) {
   try {
     const pdfCopy = new Uint8Array(pdfBytes);
     const doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");

@@ -126,7 +126,7 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
             type: "XYZ",
             page: destinationPageNumber,
             x: 0,
-            y: 0, // clamped to page top by all viewers; avoids Firefox landing at y=0 (bottom of page)
+            y: 0, 
             zoom: 100
           }
         )
