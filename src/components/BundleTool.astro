@@ -101,6 +101,18 @@
         </label>
         <input type="file" id="file-input" multiple accept="application/pdf" class="sr-only" />
       </div>
+      <div class="px-3 pb-3 flex items-center gap-3 border-t border-slate-100 pt-2">
+        <p class="text-xs text-gray-400 flex-1">Optional: add a pre-made coversheet as a first page before the index. If you select a PDF with more than one page, BunTool will use the first page only.</p>
+        <span id="coversheet-filename" class="text-xs text-gray-400 italic whitespace-nowrap hidden"></span>
+        <button id="coversheet-clear-btn" type="button" class="hidden text-xs text-red-400 hover:text-red-600 transition font-medium whitespace-nowrap">Remove</button>
+        <label for="coversheet-input" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
+          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span id="coversheet-btn-text">Add coversheet</span>
+        </label>
+        <input type="file" id="coversheet-input" accept="application/pdf" class="sr-only" />
+      </div>
     </div>
 
     <!-- Step 3: Review Table -->

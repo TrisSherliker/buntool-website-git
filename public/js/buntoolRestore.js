@@ -95,7 +95,7 @@ export function extractBundleMetadata(pdfBytes) {
  * @param {Array} metadata - The bundle index metadata array
  * @returns {Promise<Map<string, Uint8Array>>} Map of filename → PDF bytes for each extracted document
  */
-export async function splitBundlePdf(bundleBytes, metadata) {
+export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = false) {
   try {
     // Validate metadata is an array
     if (!Array.isArray(metadata)) {
@@ -167,6 +167,15 @@ export async function splitBundlePdf(bundleBytes, metadata) {
       extractedFiles.set(entry.filename, pdfBytes);
 
       console.log(`  ✓ Extracted: ${entry.filename} (bundle pages ${bundleStartPage + 1}-${bundleEndPage}, ${bundleEndPage - bundleStartPage} pages)`);
+    }
+
+    if (hasCoversheet) {
+      const coversheetDoc = await PDFDocument.create();
+      const [coversheetPage] = await coversheetDoc.copyPages(bundlePdf, [0]);
+      coversheetDoc.addPage(coversheetPage);
+      const coversheetBytes = await coversheetDoc.save();
+      extractedFiles.set('coversheet.pdf', coversheetBytes);
+      console.log('  ✓ Extracted: coversheet.pdf (bundle page 1)');
     }
 
     console.log(`✓ Successfully split bundle into ${extractedFiles.size} documents`);
@@ -252,7 +261,7 @@ const DEFAULT_CONFIG = {
   heading: { claimNumber: "", bundleTitle: "", projectName: "", confidential: false },
   pageNumbering: { footerFont: "sansSerif", alignment: "centre", numberingStyle: "PageX", footerPrefix: "" },
   index: { fontFace: "sansSerif", dateStyle: "DD Mon. YYYY", outlineItemStyle: "plain" },
-  pageOptions: { printableBundle: false },
+  pageOptions: { printableBundle: false, coversheet: false },
 };
 
 export function parseConfigFromMetadata(pdfBytes) {

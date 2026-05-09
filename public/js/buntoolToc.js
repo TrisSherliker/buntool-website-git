@@ -107,14 +107,15 @@ export async function createTocEntries(indexData, config) {
   let tabNumberTracker = 0;
   let sectionNumberTracker = 0;
   let sectionBeginPage= 0;
+  const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
 
   for (const [index, entry] of indexData.entries()) {
     if (entry.sectionMarker === 1) { // section marker test
       sectionNumberTracker++;
-      
+
       // Check if there are any file entries (sectionMarker === 0) after this point
       const hasFilesAfter = indexData.slice(index + 1).some(e => e.sectionMarker === 0  || !e.sectionMarker);
-      sectionBeginPage = hasFilesAfter ? pdfPageCountTracker + 1 : pdfPageCountTracker;
+      sectionBeginPage = hasFilesAfter ? pdfPageCountTracker + 1 + coversheetOffset : pdfPageCountTracker + coversheetOffset;
       tocEntries.push({
         tabNumber: ``,
         sectionBreak:`Section ${sectionNumberTracker}`,
@@ -126,13 +127,13 @@ export async function createTocEntries(indexData, config) {
     } else { // for files
       tabNumberTracker++;
       const willAddBlankPage = config.getOption('pageOptions.printableBundle') && (entry.pageCount % 2 === 1);
-      
+
       tocEntries.push({
         tabNumber: tabNumberTracker,
         sectionBreak: null,
         title: entry.title,
         date: entry.date,
-        thisPage: pdfPageCountTracker + 1,
+        thisPage: pdfPageCountTracker + 1 + coversheetOffset,
         filename: entry.filename,
         blankPageAfter: willAddBlankPage
       });

@@ -102,17 +102,16 @@ export function copyAllPages(dstDoc, srcDoc) {
  * @param {Array<Object>} tocEntries - Array of TOC entry objects containing page references
  * @returns {Uint8Array} The PDF with hyperlinks added as a Uint8Array
  */
-export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries) {
+export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, config = null) {
   const pts = (72 / 25.4); //jspdf outputs mm on creation, but mupdf uses pts
   const rowsByPage = groupRowsByPage(tocTableRowCoordinates);
+  const coversheetOffset = config?.getOption('pageOptions.coversheet') ? 1 : 0;
 
-  // Assume inputPdf is a Uint8Array containing PDF data
-  // const buffer = Buffer.from(pdfBytes); // Convert Uint8Array to Buffer
   const pdfCopy = new Uint8Array(pdfBytes);
   let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
   for (const [pageNumber, rows] of Object.entries(rowsByPage)) {
-    const page = doc.loadPage(pageNumber - 1);
+    const page = doc.loadPage(pageNumber - 1 + coversheetOffset);
     for (const row of rows) {
       const { x, y, width, height, tabNumber} = row;
       const tocEntry = tabNumber 
@@ -155,6 +154,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
   let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
   const outlineIterator = doc.outlineIterator();
+  const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
   // find how many digits in the largest tab number for padding
   const maxTabNumber = Math.max(...tocEntries.map(entry => entry.tabNumber));
   const maxTabNumberLength = maxTabNumber.toString().length;
@@ -164,7 +164,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
     title: `[${"0".toString().padStart(maxTabNumberLength, '0')}] Index`,
     open: true,
     uri: doc.formatLinkURI({
-      page: 0,
+      page: coversheetOffset,
       type: "XYZ",
       zoom: 100
     })
@@ -275,6 +275,7 @@ export function setMetadata(pdfBytes, tocEntries, config) {
       },
       pageOptions: {
         printableBundle: config.getOption('pageOptions.printableBundle') ?? false,
+        coversheet: config.getOption('pageOptions.coversheet') ?? false,
       },
     },
   }));

@@ -37,7 +37,7 @@
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
   import * as pdflib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
 
-  import { countPdfPages, mergeTwoPdfs, mergePdfsByTOC, addPageNumberingToPdf }
+  import { countPdfPages, mergeTwoPdfs, mergePdfsByTOC, addPageNumberingToPdf, validateCoverPage }
     from './js/buntoolPages.js'
   import { addHyperlinks, addOutlineItems, setMetadata }
     from './js/buntoolMeta.js'
@@ -55,6 +55,7 @@
   function makeConfig(overrides = {}) {
     const defaults = {
       'pageOptions.printableBundle':    false,
+      'pageOptions.coversheet':         false,
       'pageNumbering.footerPrefix':     '',
       'pageNumbering.alignment':        'centre',
       'pageNumbering.numberingStyle':   'PageX',
@@ -263,6 +264,27 @@
     return truthy('addPageNumberingToPdf XofY: page 2 has "2 of 4"', t2.includes('2 of 4'), t2.slice(0,120));
   }
 
+  async function test_validateCoverPage_singlePage() {
+    const bytes  = await makePdf(1, 'cover');
+    const result = await validateCoverPage(fileOf(bytes));
+    return [
+      truthy('validateCoverPage single-page: returns Uint8Array', result instanceof Uint8Array),
+      ok('validateCoverPage single-page: page count is 1',        getPageCount(result), 1),
+    ];
+  }
+
+  async function test_validateCoverPage_multiPage() {
+    const bytes  = await makePdf(4, 'cover');
+    const result = await validateCoverPage(fileOf(bytes));
+    return ok('validateCoverPage multi-page: extracts first page only (4→1)', getPageCount(result), 1);
+  }
+
+  async function test_validateCoverPage_invalid() {
+    let threw = false;
+    try { await validateCoverPage(fileOf(new Uint8Array([1, 2, 3, 4]))); } catch { threw = true; }
+    return truthy('validateCoverPage invalid: throws on non-PDF bytes', threw);
+  }
+
   // buntoolToc ----------------------------------------------------------------
 
   async function test_createTocEntries_structure() {
@@ -295,6 +317,22 @@
       ok('createTocEntries printable: blankPageAfter for odd-page doc',    e[0].blankPageAfter, true),
       ok('createTocEntries printable: no blankPageAfter for even-page doc',e[1].blankPageAfter, false),
       ok('createTocEntries printable: second doc page offset (3+1blank+1)',e[1].thisPage,       5),
+    ];
+  }
+
+  async function test_createTocEntries_coversheet() {
+    const config    = makeConfig({ 'pageOptions.coversheet': true });
+    const indexData = [
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5, sectionMarker: 0 },
+      { title: 'Section A', sectionMarker: 1 },
+      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2, sectionMarker: 0 },
+    ];
+    const e = await createTocEntries(indexData, config);
+    return [
+      ok('createTocEntries coversheet: first doc offset to page 2',        e[0].thisPage, 2),
+      ok('createTocEntries coversheet: second doc offset to page 5',       e[1].thisPage, 5),
+      ok('createTocEntries coversheet: third doc offset to page 10',       e[3].thisPage, 10),
     ];
   }
 
@@ -410,6 +448,9 @@
         test_addPageNumbering_count,
         test_addPageNumbering_footer,
         test_addPageNumbering_XofY,
+        test_validateCoverPage_singlePage,
+        test_validateCoverPage_multiPage,
+        test_validateCoverPage_invalid,
       ],
     },
     {
@@ -417,6 +458,7 @@
       tests: [
         test_createTocEntries_structure,
         test_createTocEntries_printable,
+        test_createTocEntries_coversheet,
         test_makeTocPages,
         test_makeDummyTocPages,
       ],

@@ -13,10 +13,11 @@ import {
   makeTocPages,
   makeDummyTocPages,
   } from './buntoolToc.js';
-import { 
+import {
   addPageNumberingToPdf,
   mergeTwoPdfs,
   mergePdfsByTOC,
+  validateCoverPage,
   } from './buntoolPages.js';
 import {
   addHyperlinks,
@@ -26,12 +27,14 @@ import {
 
 /**
  * Function to process the bundle of PDFs according to the provided configuration.
- * @param {*} filesMap 
- * @param {*} indexData 
- * @param {*} config
- * @returns {Uint8Array} The processed payload PDF as a Uint8Array.
+ * @param {Map<string, File>} filesMap
+ * @param {Array<Object>} indexData
+ * @param {Config} config
+ * @param {Function} [onProgress]
+ * @param {Uint8Array|null} [coversheetPdf] - Pre-validated single-page coversheet PDF, required when config.pageOptions.coversheet is true
+ * @returns {Promise<Uint8Array>} The processed payload PDF as a Uint8Array.
  */
-export async function processTheBundle(filesMap, indexData, config, onProgress){
+export async function processTheBundle(filesMap, indexData, config, onProgress, coversheetFile = null){
 
   if (!filesMap || filesMap.size === 0) {
     throw new Error('Error: No files provided');
@@ -43,6 +46,10 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
 
   if (!config) {
     throw new Error('Error: No configuration provided');
+  }
+
+  if (config.getOption('pageOptions.coversheet') && !coversheetFile) {
+    throw new Error('Error: Coversheet is enabled but no coversheet file was provided');
   }
 
   let payloadPdf = new Uint8Array();
@@ -77,7 +84,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
   };
 
 
-  console.log('[1/11] Validating configuration structure...');
+  console.log('[1/13] Validating configuration structure...');
   try //validate structure with method from buntoolConfig
   {
     config.validateStructure();
@@ -85,45 +92,58 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
       console.error(`[ERROR] Config structure validation error: `, error.message);
       throw error;
   }
-  console.log('[1/11]...done')
+  console.log('[1/13]...done')
   onProgress?.('Validating configuration…');
 
-  console.log('[2/11] Validating configuration options...');
+  console.log('[2/13] Validating configuration options...');
   try { //validate options with method from buntoolConfig
     config.validateOptions();
   } catch (error) {
       console.error(`[ERROR] Config validation error: `, error.message);
       throw error;
   }
-  console.log('[2/11]...done')
+  console.log('[2/13]...done')
+
+  let validatedCoversheet = null;
+  if (coversheetFile) {
+    console.log('[3/13] Validating coversheet...');
+    try {
+      validatedCoversheet = await validateCoverPage(coversheetFile);
+      console.log('[3/13]...done');
+    } catch (error) {
+      console.error('[ERROR] Failed to validate coversheet: ', error.message);
+      throw error;
+    }
+  }
+
   onProgress?.('Creating table of contents…');
 
-  console.log('[3/11] Creating TOC entries...');
+  console.log('[4/13] Creating TOC entries...');
   let tocEntries;
   try {
     tocEntries = await createTocEntries(indexData, config);
-    console.log('[3/11]...done')
+    console.log('[4/13]...done')
   } catch (error) {
     console.error(`[ERROR] Failed to create TOC entries: `, error.message);
     throw error;
   }
   onProgress?.('Generating index pages…');
 
-  console.log('[4/11] Generating dummy TOC pages...');
+  console.log('[5/13] Generating dummy TOC pages...');
   let expectedLengthOfToc = 0;
   try {
     expectedLengthOfToc = await makeDummyTocPages(tocEntries, tocOptions, config);
-    console.log(`[4/11]...done - dummy TOC PDF length: ${expectedLengthOfToc} pages`)
+    console.log(`[5/13]...done - dummy TOC PDF length: ${expectedLengthOfToc} pages`)
   } catch (error) {
     console.error(`[ERROR] Failed to generate dummy TOC pages: `, error.message);
     throw error;
   }
 
-  console.log('[5/11] Generating TOC pages...');
+  console.log('[6/13] Generating TOC pages...');
   let tocPdf, tocTableRowCoordinates;
   try {
     [tocPdf, tocTableRowCoordinates] = await makeTocPages(tocEntries, tocOptions, config, expectedLengthOfToc);
-    console.log(`[5/11]...done - TOC PDF size: ${tocPdf?.length || 0} bytes`)
+    console.log(`[6/13]...done - TOC PDF size: ${tocPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to generate TOC pages: `, error.message);
     throw error;
@@ -131,19 +151,24 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
 
   if (config.getOption('index.justTheIndex')) {
     console.log('Config option justTheIndex is true - returning TOC PDF without merging content PDFs');
+    let justIndexPdf = tocPdf;
+    if (validatedCoversheet) {
+      justIndexPdf = await mergeTwoPdfs(validatedCoversheet, justIndexPdf);
+      console.log(`...prepended coversheet - PDF size: ${justIndexPdf?.length || 0} bytes`);
+    }
     onProgress?.('Adding page numbering…');
-    const paginatedTocPdf = await addPageNumberingToPdf(tocPdf, config);
-    console.log(`...added page numbering - TOC PDF size: ${paginatedTocPdf?.length || 0} bytes`)
-    return paginatedTocPdf;
+    justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config);
+    console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
+    return justIndexPdf;
   }
 
   onProgress?.('Merging documents…');
 
 // PDF HANDLING:
-  console.log('[6/11] Merging input PDFs...');
+  console.log('[7/13] Merging input PDFs...');
   try {
     payloadPdf = await mergePdfsByTOC(tocEntries, filesMap, config);
-    console.log(`[6/11]...done - Merged PDF size: ${payloadPdf?.length || 0} bytes`)
+    console.log(`[7/13]...done - Merged PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to merge input PDFs: `, error.message);
     throw error;
@@ -152,50 +177,62 @@ export async function processTheBundle(filesMap, indexData, config, onProgress){
   // Note: filesMap is owned by the frontend — do not clear it here
   onProgress?.('Merging index with documents…');
 
-  console.log('[7/11] Merging TOC with content PDF...');
+  console.log('[8/13] Merging TOC with content PDF...');
   try {
     payloadPdf = await mergeTwoPdfs(tocPdf, payloadPdf);
-    console.log(`[7/11]...done - Combined PDF size: ${payloadPdf?.length || 0} bytes`)
+    console.log(`[8/13]...done - Combined PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to merge TOC with content: `, error.message);
     throw error;
   }
+
+  if (validatedCoversheet) {
+    console.log('[9/13] Prepending coversheet...');
+    try {
+      payloadPdf = await mergeTwoPdfs(validatedCoversheet, payloadPdf);
+      console.log(`[9/13]...done - PDF size with coversheet: ${payloadPdf?.length || 0} bytes`);
+    } catch (error) {
+      console.error('[ERROR] Failed to prepend coversheet: ', error.message);
+      throw error;
+    }
+  }
+
   onProgress?.('Adding page numbering…');
 
-  console.log('[8/11] Adding page numbering...');
+  console.log('[10/13] Adding page numbering...');
   try {
     payloadPdf = await addPageNumberingToPdf(payloadPdf, config);
-    console.log(`[8/11]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
+    console.log(`[10/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add page numbering: `, error.message);
     throw error;
   }
   onProgress?.('Adding hyperlinks…');
 
-  console.log('[9/11] Adding hyperlinks to TOC entries...');
+  console.log('[11/13] Adding hyperlinks to TOC entries...');
   try {
-    payloadPdf = await addHyperlinks(payloadPdf, tocTableRowCoordinates, tocEntries);
-    console.log(`[9/11]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
+    payloadPdf = addHyperlinks(payloadPdf, tocTableRowCoordinates, tocEntries, config);
+    console.log(`[11/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add hyperlinks: `, error.message);
     throw error;
   }
   onProgress?.('Adding bookmarks…');
 
-  console.log('[10/11] Adding outline items and metadata...');
+  console.log('[12/13] Adding outline items and metadata...');
   try {
-    payloadPdf = await addOutlineItems(payloadPdf, tocEntries, config);
-    console.log(`[10/11]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
+    payloadPdf = addOutlineItems(payloadPdf, tocEntries, config);
+    console.log(`[12/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add outline items: `, error.message);
     throw error;
   }
   onProgress?.('Preparing file for save…');
 
-  console.log('[11/11] Setting PDF metadata...');
+  console.log('[13/13] Setting PDF metadata...');
   try {
-    payloadPdf = await setMetadata(payloadPdf, tocEntries, config);
-    console.log(`[11/11]...done - Final PDF size: ${payloadPdf?.length || 0} bytes`)
+    payloadPdf = setMetadata(payloadPdf, tocEntries, config);
+    console.log(`[13/13]...done - Final PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to set metadata: `, error.message);
     throw error;

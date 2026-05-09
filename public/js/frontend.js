@@ -10,6 +10,8 @@
 
 let processTheBundle;
 let countPdfPages;
+let validateCoverPage;
+let coversheetFile = null;
 let bundleConfirmed = false;
 let pendingConfirmAction = null;
 
@@ -284,6 +286,44 @@ fileInput.addEventListener('change', async (e) => {
   await processFiles(Array.from(e.target.files));
   // Reset file input so same file can be selected again if needed
   fileInput.value = '';
+});
+
+const coversheetInput    = document.getElementById('coversheet-input');
+const coversheetFilename = document.getElementById('coversheet-filename');
+const coversheetClearBtn = document.getElementById('coversheet-clear-btn');
+const coversheetBtnText  = document.getElementById('coversheet-btn-text');
+
+function setCoversheetSelected(name) {
+  coversheetFile = name ? coversheetFile : null;
+  if (coversheetFilename) { coversheetFilename.textContent = name || ''; coversheetFilename.classList.toggle('hidden', !name); }
+  coversheetClearBtn?.classList.toggle('hidden', !name);
+  if (coversheetBtnText) coversheetBtnText.textContent = name ? 'Change coversheet…' : 'Add coversheet';
+}
+
+coversheetInput?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  coversheetInput.value = '';
+  if (!file) return;
+
+  if (!validateCoverPage) {
+    ({ validateCoverPage } = await import('./buntoolPages.js'));
+  }
+  try {
+    await validateCoverPage(file);
+    coversheetFile = file;
+    setCoversheetSelected(file.name);
+  } catch (error) {
+    showErrorModal({
+      title: 'Invalid coversheet',
+      message: 'The selected file could not be read as a PDF. Please choose a valid PDF file.',
+      error,
+    });
+  }
+});
+
+coversheetClearBtn?.addEventListener('click', () => {
+  coversheetFile = null;
+  setCoversheetSelected(null);
 });
 
 // Drop zone for dragging files from the OS onto the add-documents panel
@@ -669,7 +709,8 @@ bundleInput?.addEventListener('change', async (e) => {
     // Split bundle into individual PDFs
     console.log('Splitting bundle into individual documents...');
     showProcessingOverlay('Extracting documents…');
-    const extractedFiles = await splitBundlePdf(bundleBytes, metadata);
+    const hasCoversheet = extractedConfig.pageOptions?.coversheet === true;
+    const extractedFiles = await splitBundlePdf(bundleBytes, metadata, hasCoversheet);
 
     // Clear existing table
     fileTableBody.innerHTML = '';
@@ -786,6 +827,13 @@ bundleInput?.addEventListener('change', async (e) => {
 
         fileTableBody.appendChild(row);
       }
+    }
+
+    const coversheetBytes = extractedFiles.get('coversheet.pdf');
+    if (coversheetBytes) {
+      const blob = new Blob([coversheetBytes], { type: 'application/pdf' });
+      coversheetFile = new File([blob], 'coversheet.pdf', { type: 'application/pdf' });
+      setCoversheetSelected('coversheet.pdf');
     }
 
     const sectionCount = metadata.filter(e => e.section).length;
@@ -944,6 +992,7 @@ form.addEventListener('submit', async (e) => {
     },
     pageOptions: {
       printableBundle: document.getElementById('config-printableBundle').checked,
+      coversheet: coversheetFile !== null,
     }
   };
 
@@ -991,7 +1040,7 @@ form.addEventListener('submit', async (e) => {
   showProcessingOverlay('Building bundle…');
   try {
     const pdfBytes = await Promise.race([
-      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label)),
+      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label), coversheetFile),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
       ),
@@ -1079,6 +1128,7 @@ async function runPreviewIndex() {
     },
     pageOptions: {
       printableBundle: document.getElementById('config-printableBundle').checked,
+      coversheet: coversheetFile !== null,
     }
   };
 
@@ -1116,7 +1166,7 @@ async function runPreviewIndex() {
   showProcessingOverlay('Building index preview…');
   try {
     const pdfBytes = await Promise.race([
-      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label)),
+      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label), coversheetFile),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
       ),
