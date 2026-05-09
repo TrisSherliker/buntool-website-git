@@ -59,7 +59,7 @@ window.config = config; // Expose config as global
  ***********************************/
 
 window.addEventListener('DOMContentLoaded', () => {
-  import('./buntoolFunctions.js').then(m => countPdfPages = m.countPdfPages);
+  import('./buntoolPages.js').then(m => countPdfPages = m.countPdfPages);
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
   import('https://esm.sh/chrono-node@2.9.0').then(m => chrono = m);
 
@@ -220,7 +220,7 @@ async function processFiles(files) {
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
     const displayTitle = stripDoubleChars(dateParseObj.name);
     if (!countPdfPages){
-      ({countPdfPages} = await import('./buntoolFunctions.js'));
+      ({countPdfPages} = await import('./buntoolPages.js'));
     }
     let pageCount = await countPdfPages(materializedFile);
     frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
@@ -590,8 +590,8 @@ function showBundleReadyState(pdfBytes, filename) {
       }
 
       const kofi = document.createElement('div');
-      kofi.className = 'mt-3 pt-2 border-t border-gray-700   text-center';
-      kofi.innerHTML = `<a href="https://ko-fi.com/buntool" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-600 hover:text-gray-600 transition">☕ Helpful? Support running and development costs on Ko-fi</a>`;
+      kofi.className = 'mt-3 pt-2 border-t border-gray-700 text-center';
+      kofi.innerHTML = `<a href="https://ko-fi.com/buntool" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded px-3 py-1.5 transition-colors">☕ Helpful? Support on Ko-fi</a>`;
       _lastEl.after(kofi);
     }
 
@@ -721,7 +721,7 @@ bundleInput?.addEventListener('change', async (e) => {
 
         // Count pages
         if (!countPdfPages) {
-          ({ countPdfPages } = await import('./buntoolFunctions.js'));
+          ({ countPdfPages } = await import('./buntoolPages.js'));
         }
         const pageCount = await countPdfPages(extractedFile);
 

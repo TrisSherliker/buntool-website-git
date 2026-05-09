@@ -1,15 +1,19 @@
 import Config from './buntoolConfig.js';
 import {
   createTocEntries,
-  addPageNumberingToPdf,
-  makeDummyTocPages,
   makeTocPages,
+  makeDummyTocPages,
+  } from './buntoolToc.js';
+import { 
+  addPageNumberingToPdf,
   mergeTwoPdfs,
   mergePdfsByTOC,
+  } from './buntoolPages.js';
+import {
   addHyperlinks,
   addOutlineItems,
   setMetadata,
-} from './buntoolFunctions.js';
+} from './buntoolMeta.js';
 
 /**
  * Function to process the bundle of PDFs according to the provided configuration.
