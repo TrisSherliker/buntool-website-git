@@ -1,3 +1,9 @@
+/**
+ * BunTool
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * A tool for the creation  of 
+ */
+
 import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm'
 import jspdfAutotable from 'https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.7/+esm'
 import Config from './buntoolConfig.js';

@@ -810,16 +810,33 @@ const bundleInfoFields = [
   { id: 'config-projectName', label: 'case name' },
 ];
 
+function isFileMissingError(error) {
+  if (!error) return false;
+  if (error.name === 'NotFoundError') return true;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('file or directory could not be found')
+    || msg.includes('file not found')
+    || msg.includes('cannot find the file')
+    || msg.includes('no such file');
+}
+
 function showErrorModal({ title, message, error } = {}) {
   const modal = document.getElementById('error-modal');
   const titleEl = document.getElementById('error-modal-title');
   const msgEl = document.getElementById('error-modal-msg');
+  const hintEl = document.getElementById('error-modal-hint');
   const detailsWrapper = document.getElementById('error-modal-details-wrapper');
   const detailsEl = document.getElementById('error-modal-details');
   const copyBtn = document.getElementById('error-modal-copy-btn');
 
   if (titleEl) titleEl.textContent = title || 'Something went wrong';
   if (msgEl) msgEl.textContent = message || '';
+
+  if (isFileMissingError(error)) {
+    hintEl?.classList.remove('hidden');
+  } else {
+    hintEl?.classList.add('hidden');
+  }
 
   if (error) {
     const details = [
