@@ -6,13 +6,13 @@ Features with an obvious cost-benefit updside
 
 - [x] Handle scanned files with rotation tags
 - [x] Tutorial function
-- [ ] Coversheet option
+- [x] Coversheet option
 - [ ] Page numbering styles
   - [ ] margin size
   - [ ] font colour (red)
   - [ ] page numbering size
   - [ ] consider: auto-detect content overlap?
-- [ ] Log error messages
+- [w] Log error messages
 - [ ] User help for common error messages
 - [x] Split logic into modules by dependency 
 

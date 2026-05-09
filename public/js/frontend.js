@@ -123,6 +123,12 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+window.addEventListener('beforeunload', (e) => {
+  if (filesMap.size > 0) {
+    e.preventDefault();
+  }
+});
+
 // Drag and Drop Handlers
 function handleDragStart(e) {
   draggedRow = this;
