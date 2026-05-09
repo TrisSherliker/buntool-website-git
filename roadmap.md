@@ -12,6 +12,9 @@ Features with an obvious cost-benefit updside
   - [ ] font colour (red)
   - [ ] page numbering size
   - [ ] consider: auto-detect content overlap?
+- [ ] Log error messages
+- [ ] User help for common error messages
+- [x] Split logic into modules by dependency 
 
 ## Requested features requiring more thought
 
