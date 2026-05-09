@@ -45,6 +45,8 @@
     from './js/buntoolToc.js'
   import { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata, removePageNumbering }
     from './js/buntoolRestore.js'
+  import { processTheBundle }
+    from './js/buntoolMain.js'
 
   // ── WASM init ────────────────────────────────────────────────────────────────
   const wasmEl = document.getElementById('wasmStatus');
@@ -354,6 +356,26 @@
     ];
   }
 
+  async function test_actualStartPage_setByMakeTocPages() {
+    // actualStartPage is only set once makeTocPages is called with the real tocLength.
+    // It is NOT set by createTocEntries alone.
+    const config    = makeConfig();
+    const indexData = [
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5, sectionMarker: 0 },
+    ];
+    const entries   = await createTocEntries(indexData, config);
+    const tocLength = await makeDummyTocPages(entries, {}, config);
+    await makeTocPages(entries, {}, config, tocLength);
+
+    return [
+      truthy('actualStartPage: set after makeTocPages',                  entries[0].actualStartPage !== undefined, `${entries[0].actualStartPage}`),
+      ok('actualStartPage: first doc = thisPage + tocLength',            entries[0].actualStartPage, entries[0].thisPage + tocLength),
+      ok('actualStartPage: second doc = thisPage + tocLength',           entries[1].actualStartPage, entries[1].thisPage + tocLength),
+      truthy('actualStartPage: tocLength ≥ 1',                          tocLength >= 1, `tocLength: ${tocLength}`),
+    ];
+  }
+
   async function test_makeDummyTocPages() {
     const config     = makeConfig();
     const tocEntries = [
@@ -437,6 +459,55 @@
     ];
   }
 
+
+  async function test_addHyperlinks_destinationsDiffer() {
+    const tocPdf  = await makePdf(1, 'toc');
+    const content = await makePdf(5, 'body');
+    const merged  = await mergeTwoPdfs(tocPdf, content);
+
+    const rowCoords = [
+      { rowNumber: 1, tabNumber: 1, x: 25, y: 50, width: 160, height: 10, pageNumber: 1 },
+      { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
+    ];
+    const tocEntries = [
+      { tabNumber: 1, title: 'Alpha', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualStartPage: 5, sectionBreak: null },
+    ];
+
+    const result = addHyperlinks(merged, rowCoords, tocEntries);
+    const links  = getLinks(result, 0);
+    const uri0   = links[0]?.uri ?? '';
+    const uri1   = links[1]?.uri ?? '';
+    return [
+      ok('addHyperlinks destinations: two links present',                   links.length, 2),
+      truthy('addHyperlinks destinations: each link has a URI',             uri0.length > 0 && uri1.length > 0, `uri0: "${uri0}" | uri1: "${uri1}"`),
+      truthy('addHyperlinks destinations: links point to different pages',  uri0 !== uri1,                      `uri0: "${uri0}" | uri1: "${uri1}"`),
+    ];
+  }
+
+  async function test_addHyperlinks_coversheetOffset() {
+    // Bundle: cover(p0) + toc(p1) + content(p2-4).
+    // With coversheetOffset=1 the function should load the TOC at physical page 1, not 0.
+    const cover   = await makePdf(1, 'cover');
+    const toc     = await makePdf(1, 'toc');
+    const content = await makePdf(3, 'body');
+    const merged  = await mergeTwoPdfs(cover, await mergeTwoPdfs(toc, content));
+
+    const rowCoords = [
+      { rowNumber: 1, tabNumber: 1, x: 25, y: 50, width: 160, height: 10, pageNumber: 1 },
+    ];
+    const tocEntries = [
+      { tabNumber: 1, title: 'Doc', thisPage: 3, actualStartPage: 3, sectionBreak: null },
+    ];
+
+    const withCover    = addHyperlinks(merged, rowCoords, tocEntries, makeConfig({ 'pageOptions.coversheet': true }));
+    const withoutCover = addHyperlinks(merged, rowCoords, tocEntries, null);
+    return [
+      ok('addHyperlinks coversheetOffset: with cover — link on TOC page (p1)',      getLinks(withCover, 1).length, 1),
+      ok('addHyperlinks coversheetOffset: with cover — no link on cover page (p0)', getLinks(withCover, 0).length, 0),
+      ok('addHyperlinks coversheetOffset: without cover — link on first page (p0)', getLinks(withoutCover, 0).length, 1),
+    ];
+  }
 
   // buntoolRestore ------------------------------------------------------------
 
@@ -527,6 +598,37 @@
     ];
   }
 
+  async function test_parseConfigFromMetadata_fallback() {
+    // Simulate an old bundle: only Title/Subject/Keywords set, no info:BundleIndex
+    const pdfBytes = await makePdf(2, 'old');
+    const doc      = mupdf.Document.openDocument(new Uint8Array(pdfBytes), 'application/pdf');
+    doc.setMetaData('Title',    'Old Bundle Title');
+    doc.setMetaData('Subject',  'Old Project Name');
+    doc.setMetaData('Keywords', 'CLAIM-999');
+    const saved    = doc.saveToBuffer('incremental').asUint8Array();
+
+    const restored = parseConfigFromMetadata(saved);
+    return [
+      ok('parseConfigFromMetadata fallback: bundleTitle',  restored?.heading?.bundleTitle,  'Old Bundle Title'),
+      ok('parseConfigFromMetadata fallback: projectName',  restored?.heading?.projectName,  'Old Project Name'),
+      ok('parseConfigFromMetadata fallback: claimNumber',  restored?.heading?.claimNumber,  'CLAIM-999'),
+      ok('parseConfigFromMetadata fallback: confidential', restored?.heading?.confidential, false),
+    ];
+  }
+
+  async function test_parseConfigFromMetadata_fallback_confidential() {
+    const pdfBytes = await makePdf(1, 'conf');
+    const doc      = mupdf.Document.openDocument(new Uint8Array(pdfBytes), 'application/pdf');
+    doc.setMetaData('Title', 'CONFIDENTIAL My Secret Bundle');
+    const saved    = doc.saveToBuffer('incremental').asUint8Array();
+
+    const restored = parseConfigFromMetadata(saved);
+    return [
+      ok('parseConfigFromMetadata fallback confidential: flag set',        restored?.heading?.confidential,  true),
+      ok('parseConfigFromMetadata fallback confidential: prefix stripped', restored?.heading?.bundleTitle,   'My Secret Bundle'),
+    ];
+  }
+
   async function test_splitBundlePdf_withCoversheet() {
     // Bundle: 1 cover + 2 TOC + 3 doc A + 2 doc B = 8 pages; hasCoversheet=true
     const bundleBytes = await makePdf(8, 'bundle-cs');
@@ -541,6 +643,71 @@
       ok('splitBundlePdf hasCoversheet: coversheet has 1 page',          getPageCount(result.get('coversheet.pdf')), 1),
       ok('splitBundlePdf hasCoversheet: doc A has 3 pages',              getPageCount(result.get('1. Doc A (2024-01-01).pdf')), 3),
       ok('splitBundlePdf hasCoversheet: doc B has 2 pages',              getPageCount(result.get('2. Doc B (2024-02-02).pdf')), 2),
+    ];
+  }
+
+
+  // buntoolMain ---------------------------------------------------------------
+
+  async function test_processTheBundle_basic() {
+    const config    = makeConfig();
+    const [p3, p2]  = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
+    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = [
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
+    ];
+
+    const result  = await processTheBundle(filesMap, indexData, config, null);
+    const meta    = getMeta(result);
+    const entries = extractBundleMetadata(result);
+    const pages   = getPageCount(result);
+    return [
+      truthy('processTheBundle basic: returns Uint8Array',              result instanceof Uint8Array),
+      truthy('processTheBundle basic: page count ≥ 6 (≥1 toc + 3 + 2)', pages >= 6,                                      `pages: ${pages}`),
+      truthy('processTheBundle basic: producer contains BunTool',       meta.producer?.includes('BunTool'),               `producer: ${meta.producer}`),
+      ok('processTheBundle basic: title in metadata',                   meta.title, 'Test Bundle'),
+      truthy('processTheBundle basic: bundle entries extractable',      Array.isArray(entries) && entries.length === 2,   `entries: ${entries?.length}`),
+      truthy('processTheBundle basic: TOC page (p0) has hyperlinks',    getLinks(result, 0).length > 0,                   `links: ${getLinks(result, 0).length}`),
+    ];
+  }
+
+  async function test_processTheBundle_justTheIndex() {
+    const config    = makeConfig({ 'index.justTheIndex': true });
+    const [p3, p2]  = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
+    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = [
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
+    ];
+
+    const result = await processTheBundle(filesMap, indexData, config, null);
+    const pages  = getPageCount(result);
+    return [
+      truthy('processTheBundle justTheIndex: returns Uint8Array',          result instanceof Uint8Array),
+      truthy('processTheBundle justTheIndex: page count < 5 (no content)', pages < 5,                                   `pages: ${pages}`),
+      truthy('processTheBundle justTheIndex: TOC page has footer',         getPageText(result, 0).includes('Page 1'),   getPageText(result, 0).slice(0, 120)),
+    ];
+  }
+
+  async function test_processTheBundle_withCoversheet() {
+    const config    = makeConfig({ 'pageOptions.coversheet': true });
+    const [p3, p2, cover] = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB'), makePdf(1, 'COVER')]);
+    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = [
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
+    ];
+
+    const result = await processTheBundle(filesMap, indexData, config, null, fileOf(cover));
+    const meta   = getMeta(result);
+    const pages  = getPageCount(result);
+    return [
+      truthy('processTheBundle coversheet: returns Uint8Array',                    result instanceof Uint8Array),
+      truthy('processTheBundle coversheet: page count ≥ 7 (1 cover + ≥1 toc + 5)', pages >= 7,                                   `pages: ${pages}`),
+      ok('processTheBundle coversheet: cover page (p0) has no links',             getLinks(result, 0).length, 0),
+      truthy('processTheBundle coversheet: TOC page (p1) has links',              getLinks(result, 1).length > 0,                 `links: ${getLinks(result, 1).length}`),
+      ok('processTheBundle coversheet: metadata coversheet flag',                 meta.bundleIndex?.config?.pageOptions?.coversheet, true),
     ];
   }
 
@@ -568,6 +735,7 @@
         test_createTocEntries_structure,
         test_createTocEntries_printable,
         test_createTocEntries_coversheet,
+        test_actualStartPage_setByMakeTocPages,
         test_makeTocPages,
         test_makeDummyTocPages,
       ],
@@ -578,6 +746,8 @@
         test_addOutlineItems,
         test_setMetadata,
         test_addHyperlinks,
+        test_addHyperlinks_destinationsDiffer,
+        test_addHyperlinks_coversheetOffset,
       ],
     },
     {
@@ -586,9 +756,19 @@
         test_removePageNumbering_removesFooter,
         test_extractBundleMetadata,
         test_parseConfigFromMetadata_v2,
+        test_parseConfigFromMetadata_fallback,
+        test_parseConfigFromMetadata_fallback_confidential,
         test_splitBundlePdf,
         test_splitBundlePdf_withSectionBreaks,
         test_splitBundlePdf_withCoversheet,
+      ],
+    },
+    {
+      label: 'buntoolMain',
+      tests: [
+        test_processTheBundle_basic,
+        test_processTheBundle_justTheIndex,
+        test_processTheBundle_withCoversheet,
       ],
     },
   ];

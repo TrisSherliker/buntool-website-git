@@ -284,9 +284,9 @@ export function parseConfigFromMetadata(pdfBytes) {
     }
 
     // Fallback: reconstruct from individual metadata fields (older bundles)
-    const title = doc.getMetaData("Title") || "";
-    const subject = doc.getMetaData("Subject") || "";
-    const keywords = doc.getMetaData("Keywords") || "";
+    const title = doc.getMetaData("info:Title") || "";
+    const subject = doc.getMetaData("info:Subject") || "";
+    const keywords = doc.getMetaData("info:Keywords") || "";
     const isConfidential = title.startsWith("CONFIDENTIAL ");
     const bundleTitle = isConfidential ? title.substring("CONFIDENTIAL ".length) : title;
 
