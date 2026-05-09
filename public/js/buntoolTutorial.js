@@ -22,6 +22,11 @@ const STEPS = [
     body: 'Add PDF documents by clicking the button, or dragging and dropping them here. They stay on your device — nothing is uploaded.',
   },
   {
+    element: 'coversheet-section',
+    title: 'Optional coversheet',
+    body: 'If you have a pre-made cover page — a firm letterhead or a court-specific template — you can add it here. BunTool will place it before the index as the first page of the bundle.',
+  },
+  {
     element: 'file-table',
     title: 'Step 3: Review & Reorder',
     body: [
@@ -47,8 +52,16 @@ const STEPS = [
   },
   {
     element: 'edit-bundle-panel',
-    title: 'Editing an existing bundle',
-    body: "Documents aren't saved within BunTool, but if you want to edit a previous BunTool bundle you can upload it from your computer and it will populate right back into the table.",
+    title: 'Save & load controls',
+    body: [
+      '"Save progress" saves your current documents and settings to your browser\'s local storage — handy if you need to take a break mid-way.',
+      '"Load saved progress" brings up a list of previous saves so you can pick up exactly where you left off. Saves are stored only on your device.',
+    ],
+  },
+  {
+    element: 'edit-bundle-panel',
+    title: 'Load from a previous bundle',
+    body: "If you have a finished BunTool bundle PDF, you can load it back in with \"Load from previous bundle\". BunTool will unpack the documents and restore your settings so you can continue editing.",
   },
 ];
 
