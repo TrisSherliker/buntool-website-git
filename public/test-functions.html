@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>BunTool Function Tests</title>
   <style>
-    body  { font-family: monospace; padding: 24px; max-width: 1100px; margin: 0 auto; }
+    body  { font-family: monospace; font-size: 15px; padding: 24px; max-width: 1100px; margin: 0 auto; }
     h1    { font-size: 1.4em; }
     h2    { font-size: 1em; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin: 1.8em 0 0.4em; color: #333; }
     code  { background: #f4f4f4; padding: 1px 4px; border-radius: 2px; }
@@ -15,12 +15,13 @@
     .summary-pass { color: #2a7a2a; font-weight: bold; }
     .summary-fail { color: #cc2222; font-weight: bold; }
 
-    table { border-collapse: collapse; width: 100%; margin: 0.6em 0 1.6em; font-size: 0.83em; }
+    table { border-collapse: collapse; width: 100%; margin: 0.6em 0 1.6em; font-size: 0.9em; }
     th { background: #f0f0f0; text-align: left; padding: 6px 10px; border: 1px solid #ccc; }
     td { padding: 5px 10px; border: 1px solid #e0e0e0; vertical-align: top; }
-    .pass   { color: #2a7a2a; font-weight: bold; }
-    .fail   { color: #cc2222; font-weight: bold; }
-    .detail { color: #666; font-size: 0.82em; white-space: pre-wrap; max-width: 320px; overflow-wrap: break-word; }
+    .pass     { color: #2a7a2a; font-weight: bold; }
+    .fail     { color: #cc2222; font-weight: bold; }
+    .fail-row { background: #fff0f0; }
+    .detail   { color: #666; font-size: 0.85em; white-space: pre-wrap; max-width: 320px; overflow-wrap: break-word; }
     .group-header td { background: #f7f7f7; font-weight: bold; color: #444; border-top: 2px solid #ccc; }
   </style>
 </head>
@@ -29,6 +30,8 @@
 <h1>BunTool Function Tests</h1>
 <div id="wasmStatus">Loading mupdf WASM…</div>
 <button id="runAll" disabled>Run All Tests</button>
+<button id="copyAll" disabled>Copy All</button>
+<button id="copyFailures" disabled>Copy Failures</button>
 <div id="status"></div>
 <div id="summary"></div>
 <div id="results"></div>
@@ -1094,11 +1097,22 @@
 
 
   // ── Runner ───────────────────────────────────────────────────────────────────
+  let lastResults = [];
+
+  function formatResultsAsText(results) {
+    return results.map(r =>
+      `${r.passed ? 'PASS' : 'FAIL'}  ${r.name}` +
+      (r.passed ? '' : `\n      expected: ${JSON.stringify(r.expected)}\n      actual:   ${JSON.stringify(r.actual)}${r.detail ? `\n      detail:   ${r.detail}` : ''}`)
+    ).join('\n');
+  }
+
   async function runAll() {
     const statusEl  = document.getElementById('status');
     const resultsEl = document.getElementById('results');
     const summaryEl = document.getElementById('summary');
     document.getElementById('runAll').disabled = true;
+    document.getElementById('copyAll').disabled = true;
+    document.getElementById('copyFailures').disabled = true;
     resultsEl.innerHTML = '';
     summaryEl.innerHTML = '';
 
@@ -1123,7 +1137,7 @@
         }
         for (const r of results) {
           allResults.push(r);
-          tableHtml += `<tr>
+          tableHtml += `<tr${r.passed ? '' : ' class="fail-row"'}>
             <td class="${r.passed ? 'pass' : 'fail'}">${r.passed ? '✓' : '✗'}</td>
             <td>${r.name}</td>
             <td>${JSON.stringify(r.expected)}</td>
@@ -1142,9 +1156,30 @@
     const total  = allResults.length;
     summaryEl.innerHTML = `<p class="${passed === total ? 'summary-pass' : 'summary-fail'}">${passed} / ${total} assertions passed.</p>`;
     resultsEl.innerHTML = tableHtml;
+
+    lastResults = allResults;
+    document.getElementById('copyAll').disabled = false;
+    document.getElementById('copyFailures').disabled = allResults.every(r => r.passed);
+  }
+
+  function makeCopyHandler(filterFn, btnId) {
+    document.getElementById(btnId).addEventListener('click', async () => {
+      const btn  = document.getElementById(btnId);
+      const text = formatResultsAsText(lastResults.filter(filterFn));
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      } catch {
+        prompt('Copy this:', text);
+      }
+    });
   }
 
   document.getElementById('runAll').addEventListener('click', runAll);
+  makeCopyHandler(() => true,       'copyAll');
+  makeCopyHandler(r => !r.passed,   'copyFailures');
 </script>
 </body>
 </html>
