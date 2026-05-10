@@ -270,22 +270,22 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
 
       case "helvetica": {
         //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/arialalt/texgyreheroscn-regular.otf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForIndexBytes = await fetch('/fonts/arialalt/liberation_sans/LiberationSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
-        doc.addFileToVFS('texgyreheros-regular.otf', base64SerifFont);
-        doc.addFont('texgyreheros-regular.otf', 'texgyreheros-regular', 'normal');
-        fontForIndex = 'texgyreheros-regular';
+        doc.addFileToVFS('LiberationSans-Regular.ttf', base64SerifFont);
+        doc.addFont('LiberationSans-Regular.ttf', 'LiberationSans-Regular', 'normal');
+        fontForIndex = 'LiberationSans-Regular';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/arialalt/texgyreheros-bold.otf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForTitleBytes = await fetch('/fonts/arialalt/liberation_sans/LiberationSans-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
-        doc.addFileToVFS('texgyreheros-bold.otf', base64SerifTitleFont);
-        doc.addFont('texgyreheros-bold.otf', 'texgyreheros-bold', 'bold');
-        fontForTitle = 'texgyreheros-bold';
+        doc.addFileToVFS('LiberationSans-Bold.ttf', base64SerifTitleFont);
+        doc.addFont('LiberationSans-Bold.ttf', 'LiberationSans-Bold', 'bold');
+        fontForTitle = 'LiberationSans-Bold';
 
           //set font sizes for sans-serif:
           tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
@@ -353,18 +353,18 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         const base64MonoFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
-        doc.addFileToVFS('UnbuntuMono.ttf', base64MonoFont);
-        doc.addFont('UnbuntuMono.ttf', 'UnbuntuMono', 'normal');
-        fontForIndex = 'UnbuntuMono';
+        doc.addFileToVFS('UbuntuMono.ttf', base64MonoFont);
+        doc.addFont('UbuntuMono.ttf', 'UbuntuMono', 'normal');
+        fontForIndex = 'UbuntuMono';
 
         //Get and set title font:
         fontForTitleBytes = await fetch('/fonts/mono/UbuntuMono-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64MonoTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
-        doc.addFileToVFS('UnbuntuMonoBold.ttf', base64MonoTitleFont);
-        doc.addFont('UnbuntuMonoBold.ttf', 'UnbuntuMonoBold', 'bold');
-        fontForTitle = 'UnbuntuMonoBold';
+        doc.addFileToVFS('UbuntuMonoBold.ttf', base64MonoTitleFont);
+        doc.addFont('UbuntuMonoBold.ttf', 'UbuntuMonoBold', 'bold');
+        fontForTitle = 'UbuntuMonoBold';
         //set font sizes for mono:
         tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
         tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;

@@ -207,10 +207,23 @@
   // Expected font name substrings per buntoolPages FONT_CONFIG key.
   // Embedded fonts get a random 6-char subset prefix (e.g. "ABCDEF+PlusJakartaSans-Regular"),
   // so we match by substring rather than exact string.
+  // helvetica → Liberation sans; times → Charis SIL (CharisSILR.ttf)
   const FONT_NAME_SUBSTRINGS = {
-    helvetica:   'Helvetica',
-    times:       'Times',
+    helvetica:   'Liberation',
+    times:       'Charis',
     courier:     'Courier',
+    serif:       'NotoSerif',
+    sansSerif:   'Jakarta',
+    monospaced:  'Ubuntu',
+    traditional: 'Garamond',
+  };
+
+  // buntoolToc uses jsPDF addFont registration names, which differ slightly.
+  // courier has no dedicated case in buntoolToc and falls to default (sansSerif/PlusJakartaSans).
+  const FONT_NAME_SUBSTRINGS_TOC = {
+    helvetica:   'Liberation',    // LiberationSans-Regular.ttf → LiberationSans
+    times:       'Charis',   // CharisSILR.ttf → CharisSIL
+    courier:     'Jakarta',  // no case → falls to default (sansSerif)
     serif:       'NotoSerif',
     sansSerif:   'Jakarta',
     monospaced:  'Ubuntu',
@@ -513,6 +526,59 @@
         return true; // full consistency tested in test_makeTocPages
       })(), '(see makeTocPages pageCount test)'),
     ];
+  }
+
+  async function test_makeTocPages_eachFont() {
+    const tocEntries = [
+      { tabNumber: 1, title: 'AlphaTocDoc', date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
+      { tabNumber: 2, title: 'BetaTocDoc',  date: '2024-02-20', thisPage: 5, filename: 'b.pdf', sectionBreak: null },
+    ];
+    const results = [];
+    for (const fontName of validFonts) {
+      const config = makeConfig({ 'index.fontFace': fontName });
+      try {
+        const [bytes, rowCoords, pageCount] = await makeTocPages(tocEntries, {}, config, 1);
+        results.push(
+          truthy(`makeTocPages [${fontName}]: returns Uint8Array`,          bytes instanceof Uint8Array),
+          ok(`makeTocPages [${fontName}]: pageCount matches PDF`,           pageCount, getPageCount(bytes)),
+          ok(`makeTocPages [${fontName}]: one rowCoord per tab entry`,      rowCoords.length, 2),
+        );
+      } catch (err) {
+        results.push({ name: `makeTocPages [${fontName}]`, passed: false, expected: 'no error', actual: String(err) });
+      }
+    }
+    return results;
+  }
+
+  async function test_makeTocPages_correctFont() {
+    // Verify the index table rows render with the configured font.
+    // Primary: mupdf text extraction reports the font name on the line containing the doc title.
+    // Fallback: raw PDF byte inspection — OTF fonts embedded via jsPDF lack ToUnicode maps so
+    // mupdf text extraction returns null, but the font name is still present in the PDF stream.
+    const results = [];
+    for (const fontName of validFonts) {
+      const uniqueTitle = `TocFontCheck${fontName}`;
+      const tocEntries = [
+        { tabNumber: 1, title: uniqueTitle, date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
+      ];
+      const config = makeConfig({ 'index.fontFace': fontName });
+      try {
+        const [bytes] = await makeTocPages(tocEntries, {}, config, 1);
+        const reported  = getFontForText(bytes, 0, uniqueTitle);
+        const expected  = FONT_NAME_SUBSTRINGS_TOC[fontName];
+        const byText    = reported?.includes(expected) ?? false;
+        const rawText   = new TextDecoder('latin1').decode(bytes);
+        const byRaw     = rawText.includes(expected);
+        results.push(truthy(
+          `makeTocPages [${fontName}]: index rows use correct font`,
+          byText || byRaw,
+          `text extraction: "${reported}", raw bytes match: ${byRaw}, expected: "${expected}"`,
+        ));
+      } catch (err) {
+        results.push({ name: `makeTocPages [${fontName}]: correct font`, passed: false, expected: 'no error', actual: String(err) });
+      }
+    }
+    return results;
   }
 
   // buntoolMeta ---------------------------------------------------------------
@@ -870,6 +936,8 @@
         test_actualStartPage_setByMakeTocPages,
         test_makeTocPages,
         test_makeDummyTocPages,
+        test_makeTocPages_eachFont,
+        test_makeTocPages_correctFont,
       ],
     },
     {

@@ -12,7 +12,8 @@ Features with an obvious cost-benefit updside
   - [ ] font colour (red)
   - [ ] page numbering size
   - [ ] consider: auto-detect content overlap?
-- [w] Log error messages
+- [ ] Log error messages
+- [x] Times and Arial free alternatives
 - [ ] User help for common error messages
 - [x] Split logic into modules by dependency 
 
@@ -31,7 +32,7 @@ Good ideas which are complicated to implement
 
 ## Long term at best
 
-Features that may be impossble or cumbersome to develop
+Features that may be impossble or cumbersome to develop without compromising on privacy or freedom
 
 - [ ] OCR Documents (tesseract.js if not getTextContent())
 - [ ] MS Word file handling
