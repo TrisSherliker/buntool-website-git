@@ -104,6 +104,7 @@ async function getAutosaveState() {
     printableBundle:  document.getElementById('config-printableBundle')?.checked ?? false,
     headingFontSize:  document.getElementById('config-headingFontSize')?.value   || '',
     indexFontSize:    document.getElementById('config-indexFontSize')?.value     || '',
+    footerFontSize:   document.getElementById('config-footerFontSize')?.value    || '',
     showTableBorders: document.getElementById('config-showTableBorders')?.checked ?? false,
   };
 
@@ -217,6 +218,7 @@ async function applySnapshot(snapshot) {
   _chk('config-printableBundle',  c.printableBundle);
   _set('config-headingFontSize',  c.headingFontSize);
   _set('config-indexFontSize',    c.indexFontSize);
+  _set('config-footerFontSize',   c.footerFontSize);
   _chk('config-showTableBorders', c.showTableBorders);
 
   // Restore coversheet
@@ -946,6 +948,7 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-dateStyle').value = extractedConfig.index?.dateStyle || 'DD Mon. YYYY';
     document.getElementById('config-outlineItemStyle').value = extractedConfig.index?.outlineItemStyle || 'plain';
     document.getElementById('config-footerFont').value = pn.footerFont || 'sansSerif';
+    document.getElementById('config-footerFontSize').value = pn.footerFontSize || 'medium';
     document.getElementById('config-alignment').value = pn.alignment || 'centre';
     document.getElementById('config-numberingStyle').value = pn.numberingStyle || 'PageX';
     document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
@@ -1226,6 +1229,7 @@ form.addEventListener('submit', async (e) => {
     },
     pageNumbering: {
       footerFont: document.getElementById('config-footerFont').value,
+      footerFontSize: document.getElementById('config-footerFontSize').value,
       alignment: document.getElementById('config-alignment').value,
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
@@ -1362,6 +1366,7 @@ async function runPreviewIndex() {
     },
     pageNumbering: {
       footerFont: document.getElementById('config-footerFont').value,
+      footerFontSize: document.getElementById('config-footerFontSize').value,
       alignment: document.getElementById('config-alignment').value,
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),

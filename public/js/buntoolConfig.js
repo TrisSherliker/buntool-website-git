@@ -124,6 +124,7 @@ class Config {
       },
       pageNumbering: {
         footerFont: "helvetica", // Default: helvetica
+        footerFontSize: "medium", // Default: medium
         alignment: "right", // Default: Right
         numberingStyle: "PageX", // Default: Page [X]
         footerPrefix: "", // Default: blank
@@ -169,6 +170,9 @@ class Config {
     if (!validFonts.includes(this.options.pageNumbering.footerFont)) {
         throw new Error(`Invalid footer font: ${this.options.pageNumbering.footerFont}`);
     }
+    if (!validFontSize.includes(this.options.pageNumbering.footerFontSize)) {
+      throw new Error(`Invalid footer font size: ${this.options.pageNumbering.footerFontSize}`);
+    }
     if (!validFontSize.includes(this.options.heading.fontSize)) {
       throw new Error(`Invalid heading font size: ${this.options.heading.fontSize}`);
     }
@@ -212,7 +216,7 @@ class Config {
  validateStructure() {
     const requiredPaths = {
       heading: ["claimNumber", "bundleTitle", "projectName", "confidential", "fontSize"],
-      pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix", "pageNumberColour"],
+      pageNumbering: ["footerFont", "footerFontSize", "alignment", "numberingStyle", "footerPrefix", "pageNumberColour"],
       index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex"],
       pageOptions: ["printableBundle", "coversheet"],
     };
