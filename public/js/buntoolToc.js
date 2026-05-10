@@ -243,7 +243,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       
       case "times": {
         //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/charis-sil/CharisSILR.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForIndexBytes = await fetch('/fonts/timesalt/CharisSILR.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -252,7 +252,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForIndex = 'CharisSILR';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/charis-sil/CharisSILB.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForTitleBytes = await fetch('/fonts/timesalt/CharisSILB.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -270,7 +270,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
 
       case "helvetica": {
         //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/liberation-sans/LiberationSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForIndexBytes = await fetch('/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
@@ -279,7 +279,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         fontForIndex = 'LiberationSans-Regular';
 
         //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/liberation-sans/LiberationSans-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        fontForTitleBytes = await fetch('/fonts/arialalt/liberation-sans/LiberationSans-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifTitleFont = btoa(
           new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
         );
