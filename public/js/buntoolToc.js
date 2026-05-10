@@ -241,7 +241,61 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
 
     switch (config.getOption('index.fontFace')) {
       
-      case "serif":
+      case "times": {
+        //Get and set main font:
+        fontForIndexBytes = await fetch('/fonts/timesalt/CharisSILR.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        const base64SerifFont = btoa(
+          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
+        );
+        doc.addFileToVFS('CharisSILR.ttf', base64SerifFont);
+        doc.addFont('CharisSILR.ttf', 'CharisSILR', 'normal');
+        fontForIndex = 'CharisSILR';
+
+        //Get and set title font:
+        fontForTitleBytes = await fetch('/fonts/timesalt/CharisSILB.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        const base64SerifTitleFont = btoa(
+          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
+        );
+        doc.addFileToVFS('CharisSILB.ttf', base64SerifTitleFont);
+        doc.addFont('CharisSILB.ttf', 'CharisSILB', 'bold');
+        fontForTitle = 'CharisSILB';
+
+        //set font sizes for serif:
+        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
+        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
+        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
+        //set table font size:
+        tocInternalConfig.font.sizeTable = { large: 13, medium: 12, small: 10 } [indexFontSize] || 12;
+      break; }
+
+      case "helvetica": {
+        //Get and set main font:
+        fontForIndexBytes = await fetch('/fonts/arialalt/texgyreheroscn-regular.otf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        const base64SerifFont = btoa(
+          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
+        );
+        doc.addFileToVFS('texgyreheros-regular.otf', base64SerifFont);
+        doc.addFont('texgyreheros-regular.otf', 'texgyreheros-regular', 'normal');
+        fontForIndex = 'texgyreheros-regular';
+
+        //Get and set title font:
+        fontForTitleBytes = await fetch('/fonts/arialalt/texgyreheros-bold.otf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+        const base64SerifTitleFont = btoa(
+          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
+        );
+        doc.addFileToVFS('texgyreheros-bold.otf', base64SerifTitleFont);
+        doc.addFont('texgyreheros-bold.otf', 'texgyreheros-bold', 'bold');
+        fontForTitle = 'texgyreheros-bold';
+
+          //set font sizes for sans-serif:
+          tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
+          tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
+          tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
+          //set table font size:
+          tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
+      break; }
+
+      case "serif": {
         //Get and set main font:
         fontForIndexBytes = await fetch('/fonts/serif/NotoSerif-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64SerifFont = btoa(
@@ -266,9 +320,9 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
         //set table font size:
         tocInternalConfig.font.sizeTable = { large: 13, medium: 12, small: 10 } [indexFontSize] || 12;
-      break;
+      break; }
 
-      case "sansSerif":
+      case "sansSerif": {
           fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
           const base64SansFont = btoa(
             new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
@@ -291,9 +345,9 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
           tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
           //set table font size:
           tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
-      break;
+      break; }
 
-      case "monospaced":
+      case "monospaced": {
         //Get and set main font:
         fontForIndexBytes = await fetch('/fonts/mono/UbuntuMono-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64MonoFont = btoa(
@@ -317,10 +371,10 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
         //set table font size:
         tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
-      break;
-      
-      
-      case "traditional":
+      break; }
+
+
+      case "traditional": {
         //Get and set main font:
         fontForIndexBytes = await fetch('/fonts/trad/static/EBGaramond-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64TradFont = btoa(
@@ -344,9 +398,9 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
         //set table font size:
         tocInternalConfig.font.sizeTable = { large: 14, medium: 13, small: 12 } [indexFontSize] || 13;
-      break;
+      break; }
 
-      default:
+      default: {
         fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
         const base64DefaultFont = btoa(
           new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
@@ -354,7 +408,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         doc.addFileToVFS('PlusJakartaSans.ttf', base64DefaultFont);
         doc.addFont('PlusJakartaSans.ttf', 'PlusJakartaSans', 'normal');
         fontForIndex = 'PlusJakartaSans';
-      break;
+      break; }
     }
 
     doc.setFont(fontForIndex);

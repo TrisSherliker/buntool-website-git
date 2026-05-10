@@ -4,24 +4,27 @@
 
 <div id="bundle-tool-container" class="space-y-2">
   <form id="upload-form" class="space-y-2">
-    <!-- Edit existing bundle -->
-    <div id="edit-bundle-panel" class="bg-white rounded-xl shadow-sm border border-blue-200 p-3 flex items-center justify-center gap-3">
-      <div class="flex flex-col items-stretch gap-1.5">
-        <span class="text-xs font-medium text-gray-500 text-center">Save and load controls</span>
-        <div class="grid grid-cols-3 gap-2">
-          <button id="autosave-save-now-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition whitespace-nowrap">
+    <!-- Save & load controls -->
+    <div id="edit-bundle-panel" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
+      <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl">
+        <h3 class="text-base font-bold text-white">Save &amp; Load</h3>
+        <p class="text-xs text-slate-300 mt-0.5">Save progress in your browser, or load from a save or previous bundle. The number of in-browser saves is limited.</p>
+      </div>
+      <div class="p-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button id="autosave-save-now-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition">
             <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
             Save progress
           </button>
-          <button id="autosave-restore-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition whitespace-nowrap">
+          <button id="autosave-restore-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition">
             <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Load saved progress
           </button>
-          <label for="bundle-input" class="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg cursor-pointer transition whitespace-nowrap">
+          <label for="bundle-input" class="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg cursor-pointer transition">
             <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -290,12 +293,18 @@
                 Index Font
               </label>
               <select id="config-fontFace" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-                <option value="sansSerif">Sans Serif</option>
-                <option value="serif">Modern Serif</option>
-                <option value="monospaced">Monospaced</option>
-                <option value="traditional">Traditional Serif</option>
+                <optgroup label="Standard fonts">
+                  <option value="times">Times style (Charis)</option>
+                  <option value="helvetica">Arial style (TeX Gyre)</option>
+                  <option value="traditional">Georgia style (Garamond)</option>
+                </optgroup>
+                <optgroup label="Other fonts">
+                  <option value="sansSerif">Sans Serif (Plus Jakarta)</option>
+                  <option value="serif">Serif (Noto Serif)</option>
+                  <option value="monospaced">Monospaced (Ubuntu Mono)</option>
+                </optgroup>
               </select>
-              <p class="text-xs text-gray-500 mt-1">Typeface used for the table of contents.</p>
+              <p class="text-xs text-gray-500 mt-1">Typeface used for the table of contents. All fonts in BunTool are free and open source variants.</p>
             </div>
 
             <!-- Date Format -->
@@ -408,12 +417,18 @@
                 Footer Font
               </label>
               <select id="config-footerFont" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-                <option value="sansSerif">Sans Serif</option>
-                <option value="serif">Modern Serif</option>
-                <option value="monospaced">Monospaced</option>
-                <option value="traditional">Traditional Serif</option>
+                <optgroup label="Standard fonts">
+                  <option value="times">Times style (Charis)</option>
+                  <option value="helvetica">Arial style (TeX Gyre)</option>
+                  <option value="traditional">Georgia style (Garamond)</option>
+                </optgroup>
+                <optgroup label="Other fonts">
+                  <option value="sansSerif">Sans Serif (Plus Jakarta)</option>
+                  <option value="serif">Serif (Noto Serif)</option>
+                  <option value="monospaced">Monospaced (Ubuntu Mono)</option>
+                </optgroup>
               </select>
-              <p class="text-xs text-gray-500 mt-1">Typeface used for page number footers.</p>
+              <p class="text-xs text-gray-500 mt-1">Typeface used for page number footers. All fonts in BunTool are free and open source variants.</p>
             </div>
 
             <!-- Alignment button group -->
@@ -1010,10 +1025,10 @@
   }
 
   document.getElementById('reset-advanced-btn')?.addEventListener('click', () => {
-    document.getElementById('config-fontFace').value = 'sansSerif';
+    document.getElementById('config-fontFace').value = 'times';
     document.getElementById('config-dateStyle').value = 'DD Mon. YYYY';
     document.getElementById('config-outlineItemStyle').value = 'plain';
-    document.getElementById('config-footerFont').value = 'sansSerif';
+    document.getElementById('config-footerFont').value = 'times';
     document.getElementById('config-numberingStyle').value = 'PageX';
     document.getElementById('config-footerPrefix').value = '';
     resetGroup('headingFontSize', 'medium');

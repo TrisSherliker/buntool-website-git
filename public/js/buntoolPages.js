@@ -19,8 +19,8 @@ const pdflib = cantoopdfLib;
  * Fonts are either 'standard' or loaded from a URL. 
  */
 const FONT_CONFIG = {
-    helvetica: { standard: pdflib.StandardFonts.Helvetica },
-    times: { standard: pdflib.StandardFonts.TimesRoman },
+    helvetica: { url: '/fonts/arialalt/texgyreheros/texgyreheros-regular.otf'},
+    times: { url: '/fonts/timesalt/CharisSILR.ttf' },
     courier: { standard: pdflib.StandardFonts.Courier },
     serif: { url: '/fonts/serif/NotoSerif-Regular.ttf' },
     sansSerif: { url: '/fonts/sans/static/PlusJakartaSans-Regular.ttf' },

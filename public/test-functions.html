@@ -47,6 +47,8 @@
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
+  import Config, { validFonts }
+    from './js/buntoolConfig.js'
 
   // ── WASM init ────────────────────────────────────────────────────────────────
   const wasmEl = document.getElementById('wasmStatus');
@@ -183,6 +185,39 @@
   }
 
 
+  // Returns the font name mupdf reports for the first line on a page whose text
+  // contains searchStr. Handles both line.text (string) and line.chars[] forms.
+  function getFontForText(bytes, pageIndex, searchStr) {
+    try {
+      const page = openDoc(bytes).loadPage(pageIndex);
+      const json = JSON.parse(page.toStructuredText('preserve-whitespace').asJSON());
+      for (const block of json.blocks ?? []) {
+        if (block.type !== 'text') continue;
+        for (const line of block.lines ?? []) {
+          const text = typeof line.text === 'string'
+            ? line.text
+            : (line.chars ?? []).map(c => typeof c.c === 'number' ? String.fromCharCode(c.c) : (c.c ?? '')).join('');
+          if (text.includes(searchStr)) return line.font?.name ?? null;
+        }
+      }
+    } catch {}
+    return null;
+  }
+
+  // Expected font name substrings per buntoolPages FONT_CONFIG key.
+  // Embedded fonts get a random 6-char subset prefix (e.g. "ABCDEF+PlusJakartaSans-Regular"),
+  // so we match by substring rather than exact string.
+  const FONT_NAME_SUBSTRINGS = {
+    helvetica:   'Helvetica',
+    times:       'Times',
+    courier:     'Courier',
+    serif:       'NotoSerif',
+    sansSerif:   'Jakarta',
+    monospaced:  'Ubuntu',
+    traditional: 'Garamond',
+  };
+
+
   // ── Assertion helpers ────────────────────────────────────────────────────────
   function ok(name, actual, expected, detail = '') {
     const passed = JSON.stringify(actual) === JSON.stringify(expected);
@@ -266,6 +301,94 @@
     const result = await addPageNumberingToPdf(pdf, config);
     const t2     = getPageText(result, 1); // page 2
     return truthy('addPageNumberingToPdf XofY: page 2 has "2 of 4"', t2.includes('2 of 4'), t2.slice(0,120));
+  }
+
+  async function test_addPageNumbering_eachFont() {
+    const results = [];
+    for (const fontName of validFonts) {
+      const config = makeConfig({
+        'pageNumbering.numberingStyle': 'PageX',
+        'pageNumbering.footerFont': fontName,
+      });
+      const pdf = await makePdf(2, fontName);
+      try {
+        const result = await addPageNumberingToPdf(pdf, config);
+        const t1 = getPageText(result, 0);
+        results.push(
+          ok    (`addPageNumberingToPdf [${fontName}]: page count unchanged`, getPageCount(result), 2),
+          truthy(`addPageNumberingToPdf [${fontName}]: footer "Page 1" present`, t1.includes('Page 1'), t1.slice(0, 100)),
+        );
+      } catch (err) {
+        results.push({ name: `addPageNumberingToPdf [${fontName}]`, passed: false, expected: 'no error', actual: String(err) });
+      }
+    }
+    return results;
+  }
+
+  async function test_addPageNumbering_correctFont() {
+    const results = [];
+    for (const fontName of validFonts) {
+      const config = makeConfig({
+        'pageNumbering.numberingStyle': 'PageX',
+        'pageNumbering.footerFont': fontName,
+      });
+      const pdf      = await makePdf(2, fontName);
+      const result   = await addPageNumberingToPdf(pdf, config);
+      const reported = getFontForText(result, 0, 'Page');
+      const expected = FONT_NAME_SUBSTRINGS[fontName];
+      results.push(truthy(
+        `addPageNumberingToPdf [${fontName}]: footer uses correct font`,
+        reported?.includes(expected),
+        `reported: "${reported}", expected to include: "${expected}"`,
+      ));
+    }
+    return results;
+  }
+
+  async function test_addPageNumbering_colourStrip_allFonts() {
+    // For every font: add page numbers, then removePageNumbering should strip them.
+    // This guards that the buntool signature colour is embedded regardless of font choice.
+    const results = [];
+    for (const fontName of validFonts) {
+      const config = makeConfig({
+        'pageNumbering.numberingStyle': 'PageX',
+        'pageNumbering.footerFont': fontName,
+      });
+      const pdf      = await makePdf(2, fontName);
+      const numbered = await addPageNumberingToPdf(pdf, config);
+      const stripped = await removePageNumbering(numbered);
+      const before   = getPageText(numbered, 0);
+      const after    = getPageText(stripped,  0);
+      results.push(
+        truthy(`colour-strip [${fontName}]: "Page 1" present before strip`, before.includes('Page 1'), before.slice(0, 80)),
+        truthy(`colour-strip [${fontName}]: "Page 1" absent after strip`,  !after.includes('Page 1'),  after.slice(0, 80)),
+      );
+    }
+    return results;
+  }
+
+  // buntoolConfig ---------------------------------------------------------------
+
+  function test_config_validFonts_accepted() {
+    return validFonts.map(fontName => {
+      let threw = false;
+      try {
+        const c = new Config();
+        c.updateOptions({ index: { fontFace: fontName }, pageNumbering: { footerFont: fontName } });
+        c.validateOptions();
+      } catch { threw = true; }
+      return truthy(`Config.validateOptions: ${fontName} accepted`, !threw);
+    });
+  }
+
+  function test_config_invalidFont_throws() {
+    let msg = '';
+    try {
+      const c = new Config();
+      c.updateOptions({ index: { fontFace: 'wingdings' } });
+      c.validateOptions();
+    } catch (e) { msg = e.message; }
+    return truthy('Config.validateOptions: unknown font throws', !!msg, msg);
   }
 
   async function test_validateCoverPage_singlePage() {
@@ -723,9 +846,19 @@
         test_addPageNumbering_count,
         test_addPageNumbering_footer,
         test_addPageNumbering_XofY,
+        test_addPageNumbering_eachFont,
+        test_addPageNumbering_correctFont,
+        test_addPageNumbering_colourStrip_allFonts,
         test_validateCoverPage_singlePage,
         test_validateCoverPage_multiPage,
         test_validateCoverPage_invalid,
+      ],
+    },
+    {
+      label: 'buntoolConfig',
+      tests: [
+        test_config_validFonts_accepted,
+        test_config_invalidFont_throws,
       ],
     },
     {
