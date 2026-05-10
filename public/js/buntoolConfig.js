@@ -14,8 +14,8 @@ export const validFonts = [
     "traditional",
     "sansSerif",
     "monospaced",
-    "times", 
-    "helvetica", 
+   "times",     // CharisSIL uses Graphite tables, incompatible with fontkit
+    "helvetica", // LiberationSans path issues under investigation
     "courier"
   ];
 
@@ -24,7 +24,7 @@ export const fontDisplayNames = {
   "traditional": "Traditional (EB Garamond)",
   "sansSerif": "Sans Serif (Plus Jakarta)",
   "monospaced": "Monospaced (Ubuntu Mono)",
-  "times": "Times New Roman",
+  "times":    "Times New Roman",
   "helvetica": "Helvetica",
   "courier": "Courier"
 };
