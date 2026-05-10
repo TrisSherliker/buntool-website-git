@@ -208,7 +208,7 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   textLabelFont = await loadFontBytes(pdfDoc, footerFont);
 
   //Measurements and sizes
-  let textLabelSize = { large: 22, medium: 18, small: 14 }[config.getOption('pageNumbering.footerFontSize')] || 18;
+  let textLabelSize = { large: 25, medium: 18, small: 14 }[config.getOption('pageNumbering.footerFontSize')] || 18;
   let totalPageCount = pages.length
   const widestDummyNumber = '8'.repeat(totalPageCount.toString().length); // how wide could the page numbers go? 8 is a big glyph
 
