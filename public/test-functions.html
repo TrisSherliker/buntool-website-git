@@ -734,12 +734,12 @@
   async function test_fontAssets_pages() {
     // Font URLs from buntoolPages FONT_CONFIG (one regular file per mapped font key).
     const assets = [
-      { font: 'helvetica',   url: '/public/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf' },
-      { font: 'times',       url: '/public/fonts/timesalt/CharisSILR.ttf' },
-      { font: 'serif',       url: '/public/fonts/serif/NotoSerif-Regular.ttf' },
-      { font: 'sansSerif',   url: '/public/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
-      { font: 'monospaced',  url: '/public/fonts/mono/UbuntuMono-Regular.ttf' },
-      { font: 'traditional', url: '/public/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
+      { font: 'helvetica',   url: '/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf' },
+      { font: 'times',       url: '/fonts/timesalt/CharisSILR.ttf' },
+      { font: 'serif',       url: '/fonts/serif/NotoSerif-Regular.ttf' },
+      { font: 'sansSerif',   url: '/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
+      { font: 'monospaced',  url: '/fonts/mono/UbuntuMono-Regular.ttf' },
+      { font: 'traditional', url: '/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
     ];
     const results = [];
     for (const { font, url } of assets) {
@@ -752,13 +752,13 @@
   async function test_fontAssets_toc() {
     // Font URLs from buntoolToc switch cases (bold variants + static Garamond pair).
     const assets = [
-      { font: 'times-bold',       url: '/public/fonts/timesalt/CharisSILB.ttf' },
-      { font: 'helvetica-bold',   url: '/public/fonts/arialalt/liberation-sans/LiberationSans-Bold.ttf' },
-      { font: 'serif-bold',       url: '/public/fonts/serif/NotoSerif-Bold.ttf' },
-      { font: 'sansSerif-bold',   url: '/public/fonts/sans/static/PlusJakartaSans-Bold.ttf' },
-      { font: 'monospaced-bold',  url: '/public/fonts/mono/UbuntuMono-Bold.ttf' },
-      { font: 'traditional-reg',  url: '/public/fonts/trad/static/EBGaramond-Regular.ttf' },
-      { font: 'traditional-bold', url: '/public/fonts/trad/static/EBGaramond-Bold.ttf' },
+      { font: 'times-bold',       url: '/fonts/timesalt/CharisSILB.ttf' },
+      { font: 'helvetica-bold',   url: '/fonts/arialalt/liberation-sans/LiberationSans-Bold.ttf' },
+      { font: 'serif-bold',       url: '/fonts/serif/NotoSerif-Bold.ttf' },
+      { font: 'sansSerif-bold',   url: '/fonts/sans/static/PlusJakartaSans-Bold.ttf' },
+      { font: 'monospaced-bold',  url: '/fonts/mono/UbuntuMono-Bold.ttf' },
+      { font: 'traditional-reg',  url: '/fonts/trad/static/EBGaramond-Regular.ttf' },
+      { font: 'traditional-bold', url: '/fonts/trad/static/EBGaramond-Bold.ttf' },
     ];
     const results = [];
     for (const { font, url } of assets) {
