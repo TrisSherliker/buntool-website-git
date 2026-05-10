@@ -265,14 +265,22 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
     }
 
     //apply text - position and rotation depend on page /Rotate flag
+    const pageNumberColourSetting = config.getOption('pageNumbering.pageNumberColour');
+    const colourMap = {
+      black: pdflib.rgb(0.072, 0.021, 0.073),
+      red:   pdflib.rgb(0.872, 0.032, 0.101),
+      blue:  pdflib.rgb(0.083, 0.221, 0.873),
+    };
+    const footerColour = colourMap[pageNumberColourSetting] ?? colourMap.black;
+
     if (rotation === 90) {
-      thisPage.drawText(footerText, { x: width - maxLabelHeight, y: leftEdgeOfLabel,                  size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(90) });
+      thisPage.drawText(footerText, { x: width - maxLabelHeight, y: leftEdgeOfLabel,                  size: textLabelSize, font: textLabelFont, color: footerColour, rotate: pdflib.degrees(90) });
     } else if (rotation === 270) {
-      thisPage.drawText(footerText, { x: maxLabelHeight,         y: footerAxisSize - leftEdgeOfLabel, size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(-90) });
+      thisPage.drawText(footerText, { x: maxLabelHeight,         y: footerAxisSize - leftEdgeOfLabel, size: textLabelSize, font: textLabelFont, color: footerColour, rotate: pdflib.degrees(-90) });
     } else if (rotation === 180) {
-      thisPage.drawText(footerText, { x: footerAxisSize - leftEdgeOfLabel, y: height - maxLabelHeight, size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073), rotate: pdflib.degrees(180) });
+      thisPage.drawText(footerText, { x: footerAxisSize - leftEdgeOfLabel, y: height - maxLabelHeight, size: textLabelSize, font: textLabelFont, color: footerColour, rotate: pdflib.degrees(180) });
     } else {
-      thisPage.drawText(footerText, { x: leftEdgeOfLabel,        y: maxLabelHeight,                   size: textLabelSize, font: textLabelFont, color: pdflib.rgb(0.072, 0.021, 0.073) }); //unique black
+      thisPage.drawText(footerText, { x: leftEdgeOfLabel,        y: maxLabelHeight,                   size: textLabelSize, font: textLabelFont, color: footerColour });
     }
   }
   const pdfOutputBytes = new Uint8Array(await pdfDoc.save());

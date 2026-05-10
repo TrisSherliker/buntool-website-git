@@ -187,13 +187,17 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
   }
 }
 
-// Unique RGB colour applied to buntool page number footers by pdf-lib.
-// In the content stream this appears as: 0.072 0.021 0.073 rg
-const BUNTOOL_COLOUR_RE = /0\.072\s+0\.021\s+0\.073\s+rg/;
-// Matches the enclosing q...Q graphics state block containing the unique colour.
+// Unique RGB colours applied to buntool page number footers by pdf-lib.
+// In the content stream these appear as one of:
+//   0.072 0.021 0.073 rg  (black)
+//   0.872 0.032 0.101 rg  (red)
+//   0.083 0.221 0.873 rg  (blue)
+const BUNTOOL_COLOUR_PAT = /(?:0\.072\s+0\.021\s+0\.073|0\.872\s+0\.032\s+0\.101|0\.083\s+0\.221\s+0\.873)\s+rg/;
+const BUNTOOL_COLOUR_RE = BUNTOOL_COLOUR_PAT;
+// Matches the enclosing q...Q graphics state block containing any buntool colour.
 // pdf-lib wraps each drawText call in its own self-contained q/Q block (no nesting),
 // so the non-greedy match is safe.
-const FOOTER_BLOCK_RE = /q\b[\s\S]*?0\.072\s+0\.021\s+0\.073\s+rg[\s\S]*?Q\b[ \t]*\n?/g;
+const FOOTER_BLOCK_RE = /q\b[\s\S]*?(?:0\.072\s+0\.021\s+0\.073|0\.872\s+0\.032\s+0\.101|0\.083\s+0\.221\s+0\.873)\s+rg[\s\S]*?Q\b[ \t]*\n?/g;
 
 /**
  * Removes buntool page number footers from a PDF by targeting the unique colour

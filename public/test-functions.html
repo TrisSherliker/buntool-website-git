@@ -47,7 +47,7 @@
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
-  import Config, { validFonts }
+  import Config, { validFonts, validPageNumberColours }
     from './js/buntoolConfig.js'
 
   // ── WASM init ────────────────────────────────────────────────────────────────
@@ -66,6 +66,7 @@
       'pageNumbering.alignment':        'centre',
       'pageNumbering.numberingStyle':   'PageX',
       'pageNumbering.footerFont':       'sansSerif',
+      'pageNumbering.pageNumberColour': 'black',
       'heading.bundleTitle':            'Test Bundle',
       'heading.projectName':            'Test Project',
       'heading.claimNumber':            'CL-2024-001',
@@ -168,6 +169,24 @@
       }
     } catch {}
     return items;
+  }
+
+  // Returns the concatenated decompressed content stream for a page.
+  // Mirrors the stream-access pattern used in buntoolRestore.removePageNumbering.
+  function getContentStream(bytes, pageIndex) {
+    try {
+      const doc        = mupdf.Document.openDocument(new Uint8Array(bytes), 'application/pdf');
+      const pageDict   = doc.findPage(pageIndex);
+      const contentsRef = pageDict.get('Contents');
+      if (!contentsRef || contentsRef.isNull()) return '';
+      const streamRefs = contentsRef.isArray()
+        ? Array.from({ length: contentsRef.length }, (_, j) => contentsRef.get(j))
+        : [contentsRef];
+      return streamRefs
+        .filter(ref => ref.isStream())
+        .map(ref => ref.readStream().asString())
+        .join('');
+    } catch { return ''; }
   }
 
   function getMeta(bytes) {
@@ -380,6 +399,79 @@
     return results;
   }
 
+  async function test_addPageNumbering_eachColour() {
+    const results = [];
+    for (const colour of validPageNumberColours) {
+      const config = makeConfig({
+        'pageNumbering.numberingStyle':   'PageX',
+        'pageNumbering.pageNumberColour': colour,
+      });
+      const pdf = await makePdf(2, colour);
+      try {
+        const result = await addPageNumberingToPdf(pdf, config);
+        const t1 = getPageText(result, 0);
+        results.push(
+          ok    (`addPageNumberingToPdf [${colour}]: page count unchanged`, getPageCount(result), 2),
+          truthy(`addPageNumberingToPdf [${colour}]: footer "Page 1" present`, t1.includes('Page 1'), t1.slice(0, 100)),
+        );
+      } catch (err) {
+        results.push({ name: `addPageNumberingToPdf [${colour}]`, passed: false, expected: 'no error', actual: String(err) });
+      }
+    }
+    return results;
+  }
+
+  // Expected colour strings as they appear in the PDF content stream
+  const COLOUR_STREAM_STRINGS = {
+    black: '0.072 0.021 0.073 rg',
+    red:   '0.872 0.032 0.101 rg',
+    blue:  '0.083 0.221 0.873 rg',
+  };
+
+  async function test_addPageNumbering_correctColourInStream() {
+    // Verifies the correct colour fingerprint appears in the decompressed content stream.
+    const results = [];
+    for (const colour of validPageNumberColours) {
+      const config = makeConfig({
+        'pageNumbering.numberingStyle':   'PageX',
+        'pageNumbering.pageNumberColour': colour,
+      });
+      const pdf      = await makePdf(2, colour);
+      const result   = await addPageNumberingToPdf(pdf, config);
+      const stream   = getContentStream(result, 0);
+      const expected = COLOUR_STREAM_STRINGS[colour];
+      results.push(truthy(
+        `addPageNumberingToPdf [${colour}]: correct colour in stream`,
+        stream.includes(expected),
+        `expected: "${expected}", stream excerpt: "${stream.slice(0, 120)}"`,
+      ));
+    }
+    return results;
+  }
+
+  async function test_removePageNumbering_eachColour() {
+    // Verifies that removePageNumbering strips footers regardless of colour choice.
+    const results = [];
+    for (const colour of validPageNumberColours) {
+      const config   = makeConfig({
+        'pageNumbering.numberingStyle':   'PageX',
+        'pageNumbering.pageNumberColour': colour,
+      });
+      const pdf        = await makePdf(2, colour);
+      const numbered   = await addPageNumberingToPdf(pdf, config);
+      const stripped   = await removePageNumbering(numbered);
+      const colourStr  = COLOUR_STREAM_STRINGS[colour];
+      const streamBefore = getContentStream(numbered, 0);
+      const streamAfter  = getContentStream(stripped,  0);
+      results.push(
+        truthy(`removePageNumbering [${colour}]: colour present before strip`,  streamBefore.includes(colourStr), `"${colourStr}"`),
+        truthy(`removePageNumbering [${colour}]: colour absent after strip`,   !streamAfter.includes(colourStr),  `"${colourStr}"`),
+        ok    (`removePageNumbering [${colour}]: page count unchanged`,          getPageCount(stripped), 2),
+      );
+    }
+    return results;
+  }
+
   // buntoolConfig ---------------------------------------------------------------
 
   function test_config_validFonts_accepted() {
@@ -392,6 +484,28 @@
       } catch { threw = true; }
       return truthy(`Config.validateOptions: ${fontName} accepted`, !threw);
     });
+  }
+
+  function test_config_validColours_accepted() {
+    return validPageNumberColours.map(colour => {
+      let threw = false;
+      try {
+        const c = new Config();
+        c.updateOptions({ pageNumbering: { pageNumberColour: colour } });
+        c.validateOptions();
+      } catch { threw = true; }
+      return truthy(`Config.validateOptions: colour "${colour}" accepted`, !threw);
+    });
+  }
+
+  function test_config_invalidColour_throws() {
+    let msg = '';
+    try {
+      const c = new Config();
+      c.updateOptions({ pageNumbering: { pageNumberColour: 'green' } });
+      c.validateOptions();
+    } catch (e) { msg = e.message; }
+    return truthy('Config.validateOptions: unknown colour throws', !!msg, msg);
   }
 
   function test_config_invalidFont_throws() {
@@ -915,6 +1029,9 @@
         test_addPageNumbering_eachFont,
         test_addPageNumbering_correctFont,
         test_addPageNumbering_colourStrip_allFonts,
+        test_addPageNumbering_eachColour,
+        test_addPageNumbering_correctColourInStream,
+        test_removePageNumbering_eachColour,
         test_validateCoverPage_singlePage,
         test_validateCoverPage_multiPage,
         test_validateCoverPage_invalid,
@@ -925,6 +1042,8 @@
       tests: [
         test_config_validFonts_accepted,
         test_config_invalidFont_throws,
+        test_config_validColours_accepted,
+        test_config_invalidColour_throws,
       ],
     },
     {

@@ -93,6 +93,12 @@ export const validPrintableBundle = [
     false,
   ];
 
+export const validPageNumberColours = [
+    "black",
+    "red",
+    "blue",
+  ];
+
 export const justTheIndex = [
     true,
     false,
@@ -121,6 +127,7 @@ class Config {
         alignment: "right", // Default: Right
         numberingStyle: "PageX", // Default: Page [X]
         footerPrefix: "", // Default: blank
+        pageNumberColour: "black", // Default: black
       },
       index: {
         fontFace: "helvetica", // Default: helvetica
@@ -186,6 +193,9 @@ class Config {
     if (!validCoversheet.includes(this.options.pageOptions.coversheet)) {
       throw new Error(`Invalid coversheet option: ${this.options.pageOptions.coversheet}`);
     }
+    if (!validPageNumberColours.includes(this.options.pageNumbering.pageNumberColour)) {
+      throw new Error(`Invalid page number colour: ${this.options.pageNumbering.pageNumberColour}`);
+    }
     if (!validTableBorders.includes(this.options.index.showTableBorders)) {
       throw new Error(`Invalid show table borders option: ${this.options.index.showTableBorders}`);
     }
@@ -202,7 +212,7 @@ class Config {
  validateStructure() {
     const requiredPaths = {
       heading: ["claimNumber", "bundleTitle", "projectName", "confidential", "fontSize"],
-      pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix"],
+      pageNumbering: ["footerFont", "alignment", "numberingStyle", "footerPrefix", "pageNumberColour"],
       index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex"],
       pageOptions: ["printableBundle", "coversheet"],
     };

@@ -93,10 +93,11 @@ async function getAutosaveState() {
     bundleTitle:      document.getElementById('config-bundleTitle')?.value       || '',
     projectName:      document.getElementById('config-projectName')?.value       || '',
     confidential:     document.getElementById('config-confidential')?.checked    ?? false,
-    footerFont:       document.getElementById('config-footerFont')?.value        || '',
-    alignment:        document.getElementById('config-alignment')?.value         || '',
-    numberingStyle:   document.getElementById('config-numberingStyle')?.value    || '',
-    footerPrefix:     document.getElementById('config-footerPrefix')?.value      || '',
+    footerFont:          document.getElementById('config-footerFont')?.value           || '',
+    alignment:           document.getElementById('config-alignment')?.value            || '',
+    numberingStyle:      document.getElementById('config-numberingStyle')?.value       || '',
+    footerPrefix:        document.getElementById('config-footerPrefix')?.value         || '',
+    pageNumberColour:    document.getElementById('config-pageNumberColour')?.value     || 'black',
     fontFace:         document.getElementById('config-fontFace')?.value          || '',
     dateStyle:        document.getElementById('config-dateStyle')?.value         || '',
     outlineItemStyle: document.getElementById('config-outlineItemStyle')?.value  || '',
@@ -205,10 +206,11 @@ async function applySnapshot(snapshot) {
   _set('config-bundleTitle',      c.bundleTitle);
   _set('config-projectName',      c.projectName);
   _chk('config-confidential',     c.confidential);
-  _set('config-footerFont',       c.footerFont);
-  _set('config-alignment',        c.alignment);
-  _set('config-numberingStyle',   c.numberingStyle);
-  _set('config-footerPrefix',     c.footerPrefix);
+  _set('config-footerFont',         c.footerFont);
+  _set('config-alignment',          c.alignment);
+  _set('config-numberingStyle',     c.numberingStyle);
+  _set('config-footerPrefix',       c.footerPrefix);
+  _set('config-pageNumberColour',   c.pageNumberColour);
   _set('config-fontFace',         c.fontFace);
   _set('config-dateStyle',        c.dateStyle);
   _set('config-outlineItemStyle', c.outlineItemStyle);
@@ -947,6 +949,7 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-alignment').value = pn.alignment || 'centre';
     document.getElementById('config-numberingStyle').value = pn.numberingStyle || 'PageX';
     document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
+    document.getElementById('config-pageNumberColour').value = pn.pageNumberColour || 'black';
     document.getElementById('config-printableBundle').value =
       (extractedConfig.pageOptions?.printableBundle === true) ? 'true' : 'false';
 
@@ -1226,6 +1229,7 @@ form.addEventListener('submit', async (e) => {
       alignment: document.getElementById('config-alignment').value,
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
+      pageNumberColour: document.getElementById('config-pageNumberColour').value,
     },
     index: {
       fontFace: document.getElementById('config-fontFace').value,
@@ -1361,6 +1365,7 @@ async function runPreviewIndex() {
       alignment: document.getElementById('config-alignment').value,
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
+      pageNumberColour: document.getElementById('config-pageNumberColour').value,
     },
     index: {
       fontFace: document.getElementById('config-fontFace').value,

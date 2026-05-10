@@ -448,6 +448,23 @@
               <p class="text-xs text-gray-500 mt-1">Position of page numbers in the footer.</p>
             </div>
 
+            <!-- Page Number Colour -->
+            <div>
+              <label class="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Page Number Colour
+              </label>
+              <div class="flex rounded border border-gray-300 overflow-hidden">
+                <button type="button" data-group="pageNumberColour" data-value="black" class="btn-group flex-1 px-3 py-1 text-xs border-r border-gray-300 bg-blue-500 text-white transition">Black</button>
+                <button type="button" data-group="pageNumberColour" data-value="red"   class="btn-group flex-1 px-3 py-1 text-xs border-r border-gray-300 bg-white text-gray-700 hover:bg-blue-50 transition">Red</button>
+                <button type="button" data-group="pageNumberColour" data-value="blue"  class="btn-group flex-1 px-3 py-1 text-xs bg-white text-gray-700 hover:bg-blue-50 transition">Blue</button>
+              </div>
+              <input type="hidden" id="config-pageNumberColour" value="black">
+              <p class="text-xs text-gray-500 mt-1">Colour of page number footers throughout the bundle.</p>
+            </div>
+
             <!-- Numbering Style -->
             <div>
               <label for="config-numberingStyle" class="flex items-center text-xs font-medium text-gray-600 mb-1">
@@ -1034,6 +1051,7 @@
     resetGroup('headingFontSize', 'medium');
     resetGroup('indexFontSize', 'medium');
     resetGroup('alignment', 'right');
+    resetGroup('pageNumberColour', 'black');
     document.getElementById('config-showTableBorders').checked = true;
     document.getElementById('config-printableBundle').checked = true;
   });
@@ -1049,6 +1067,7 @@
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: document.getElementById('config-footerPrefix').value,
       alignment: document.getElementById('config-alignment').value,
+      pageNumberColour: document.getElementById('config-pageNumberColour').value,
       headingFontSize: document.getElementById('config-headingFontSize').value,
       indexFontSize: document.getElementById('config-indexFontSize').value,
       showTableBorders: document.getElementById('config-showTableBorders').checked,
@@ -1069,6 +1088,7 @@
       if (d.numberingStyle) document.getElementById('config-numberingStyle').value = d.numberingStyle;
       if (d.footerPrefix !== undefined) document.getElementById('config-footerPrefix').value = d.footerPrefix;
       if (d.alignment) resetGroup('alignment', d.alignment);
+      if (d.pageNumberColour) resetGroup('pageNumberColour', d.pageNumberColour);
       if (d.headingFontSize) resetGroup('headingFontSize', d.headingFontSize);
       if (d.indexFontSize) resetGroup('indexFontSize', d.indexFontSize);
       if (d.showTableBorders !== undefined) document.getElementById('config-showTableBorders').checked = d.showTableBorders;

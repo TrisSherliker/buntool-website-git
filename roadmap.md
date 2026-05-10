@@ -9,7 +9,7 @@ Features with an obvious cost-benefit updside
 - [x] Coversheet option
 - [ ] Page numbering styles
   - [ ] margin size
-  - [ ] font colour (red)
+  - [x] font colour (red, blue)
   - [ ] page numbering size
   - [ ] consider: auto-detect content overlap?
 - [ ] Log error messages
