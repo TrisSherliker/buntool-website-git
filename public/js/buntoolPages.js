@@ -19,13 +19,13 @@ const pdflib = cantoopdfLib;
  * Fonts are either 'standard' or loaded from a URL. 
  */
 const FONT_CONFIG = {
-    helvetica: { url: '/public/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf'},
-    times: { url: '/public/fonts/timesalt/CharisSILR.ttf' },
+    helvetica: { url: '/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf'},
+    times: { url: '/fonts/timesalt/CharisSILR.ttf' },
     courier: { standard: pdflib.StandardFonts.Courier },
-    serif: { url: '/public/fonts/serif/NotoSerif-Regular.ttf' },
-    sansSerif: { url: '/public/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
-    monospaced: { url: '/public/fonts/mono/UbuntuMono-Regular.ttf' },
-    traditional: { url: '/public/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
+    serif: { url: '/fonts/serif/NotoSerif-Regular.ttf' },
+    sansSerif: { url: '/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
+    monospaced: { url: '/fonts/mono/UbuntuMono-Regular.ttf' },
+    traditional: { url: '/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
 };
 
 async function loadFontBytes(pdfDoc, fontName) {

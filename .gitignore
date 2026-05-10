@@ -30,6 +30,7 @@ pnpm-debug.log*
 /public/testpdfs/
 /development-images-dir/
 /git-clone-for-deployment/
+/fonts/
 /.claude/
 *.archived
 *.bak
