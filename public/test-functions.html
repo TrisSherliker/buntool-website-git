@@ -698,6 +698,77 @@
     return results;
   }
 
+  // font assets ---------------------------------------------------------------
+
+  // Valid sfnt container magic bytes (first 4 bytes of a font file).
+  // Covers TrueType (0x00010000), some Apple fonts ('true'), and OpenType CFF ('OTTO').
+  const FONT_MAGIC_SIGNATURES = [
+    [0x00, 0x01, 0x00, 0x00],
+    [0x74, 0x72, 0x75, 0x65], // 'true'
+    [0x4F, 0x54, 0x54, 0x4F], // 'OTTO'
+  ];
+
+  function isValidFontMagic(bytes) {
+    return FONT_MAGIC_SIGNATURES.some(sig => sig.every((b, i) => bytes[i] === b));
+  }
+
+  async function checkFontAsset(label, url) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        return [
+          { name: `${label}: HTTP 200`, passed: false, expected: 200, actual: res.status, detail: url },
+        ];
+      }
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const magic = [...bytes.slice(0, 4)].map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+      return [
+        truthy(`${label}: accessible (HTTP 200)`, true),
+        truthy(`${label}: valid font magic`, isValidFontMagic(bytes), `first 4 bytes: ${magic}`),
+      ];
+    } catch (err) {
+      return [{ name: `${label}: accessible`, passed: false, expected: 'no error', actual: String(err), detail: url }];
+    }
+  }
+
+  async function test_fontAssets_pages() {
+    // Font URLs from buntoolPages FONT_CONFIG (one regular file per mapped font key).
+    const assets = [
+      { font: 'helvetica',   url: '/public/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf' },
+      { font: 'times',       url: '/public/fonts/timesalt/CharisSILR.ttf' },
+      { font: 'serif',       url: '/public/fonts/serif/NotoSerif-Regular.ttf' },
+      { font: 'sansSerif',   url: '/public/fonts/sans/static/PlusJakartaSans-Regular.ttf' },
+      { font: 'monospaced',  url: '/public/fonts/mono/UbuntuMono-Regular.ttf' },
+      { font: 'traditional', url: '/public/fonts/trad/EBGaramond-VariableFont_wght.ttf' },
+    ];
+    const results = [];
+    for (const { font, url } of assets) {
+      const filename = url.split('/').pop();
+      results.push(...await checkFontAsset(`buntoolPages [${font}] ${filename}`, url));
+    }
+    return results;
+  }
+
+  async function test_fontAssets_toc() {
+    // Font URLs from buntoolToc switch cases (bold variants + static Garamond pair).
+    const assets = [
+      { font: 'times-bold',       url: '/public/fonts/timesalt/CharisSILB.ttf' },
+      { font: 'helvetica-bold',   url: '/public/fonts/arialalt/liberation-sans/LiberationSans-Bold.ttf' },
+      { font: 'serif-bold',       url: '/public/fonts/serif/NotoSerif-Bold.ttf' },
+      { font: 'sansSerif-bold',   url: '/public/fonts/sans/static/PlusJakartaSans-Bold.ttf' },
+      { font: 'monospaced-bold',  url: '/public/fonts/mono/UbuntuMono-Bold.ttf' },
+      { font: 'traditional-reg',  url: '/public/fonts/trad/static/EBGaramond-Regular.ttf' },
+      { font: 'traditional-bold', url: '/public/fonts/trad/static/EBGaramond-Bold.ttf' },
+    ];
+    const results = [];
+    for (const { font, url } of assets) {
+      const filename = url.split('/').pop();
+      results.push(...await checkFontAsset(`buntoolToc [${font}] ${filename}`, url));
+    }
+    return results;
+  }
+
+
   // buntoolMeta ---------------------------------------------------------------
 
   async function test_addOutlineItems() {
@@ -1060,6 +1131,13 @@
         test_makeDummyTocPages,
         test_makeTocPages_eachFont,
         test_makeTocPages_correctFont,
+      ],
+    },
+    {
+      label: 'font assets',
+      tests: [
+        test_fontAssets_pages,
+        test_fontAssets_toc,
       ],
     },
     {
