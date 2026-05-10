@@ -294,13 +294,13 @@
               </label>
               <select id="config-fontFace" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                 <optgroup label="Standard fonts">
-                  <option value="times">Times style (Charis)</option>
-                  <option value="helvetica">Arial style (Liberation Sans)</option>
+                  <!-- <option value="times">Times style (Charis)</option> -->
+                  <!-- <option value="helvetica">Arial style (Liberation Sans)</option> -->
                   <option value="traditional">Georgia style (Garamond)</option>
                 </optgroup>
                 <optgroup label="Other fonts">
                   <option value="sansSerif">Sans Serif (Plus Jakarta)</option>
-                  <option value="serif">Serif (Noto Serif)</option>
+                  <option value="serif" selected>Serif (Noto Serif)</option>
                   <option value="monospaced">Monospaced (Ubuntu Mono)</option>
                 </optgroup>
               </select>
@@ -418,13 +418,13 @@
               </label>
               <select id="config-footerFont" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                 <optgroup label="Standard fonts">
-                  <option value="times">Times style (Charis)</option>
-                  <option value="helvetica">Arial style (Liberation Sans)</option>
+                  <!-- <option value="times">Times style (Charis)</option> -->
+                  <!-- <option value="helvetica">Arial style (Liberation Sans)</option> -->
                   <option value="traditional">Georgia style (Garamond)</option>
                 </optgroup>
                 <optgroup label="Other fonts">
                   <option value="sansSerif">Sans Serif (Plus Jakarta)</option>
-                  <option value="serif">Serif (Noto Serif)</option>
+                  <option value="serif" selected>Serif (Noto Serif)</option>
                   <option value="monospaced">Monospaced (Ubuntu Mono)</option>
                 </optgroup>
               </select>
@@ -1059,10 +1059,10 @@
   }
 
   document.getElementById('reset-advanced-btn')?.addEventListener('click', () => {
-    document.getElementById('config-fontFace').value = 'helvetica';
+    document.getElementById('config-fontFace').value = 'serif';
     document.getElementById('config-dateStyle').value = 'DD Mon. YYYY';
     document.getElementById('config-outlineItemStyle').value = 'plain';
-    document.getElementById('config-footerFont').value = 'helvetica';
+    document.getElementById('config-footerFont').value = 'serif';
     document.getElementById('config-numberingStyle').value = 'PageX';
     document.getElementById('config-footerPrefix').value = '';
     resetGroup('headingFontSize', 'medium');

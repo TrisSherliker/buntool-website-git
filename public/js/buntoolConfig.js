@@ -123,7 +123,7 @@ class Config {
         fontSize: "medium", // Default: medium
       },
       pageNumbering: {
-        footerFont: "helvetica", // Default: helvetica
+        footerFont: "serif", // Default: serif (Noto Serif)
         footerFontSize: "medium", // Default: medium
         alignment: "right", // Default: Right
         numberingStyle: "PageX", // Default: Page [X]
@@ -131,7 +131,7 @@ class Config {
         pageNumberColour: "black", // Default: black
       },
       index: {
-        fontFace: "helvetica", // Default: helvetica
+        fontFace: "serif", // Default: serif (Noto Serif)
         fontSize: "medium", // Default: medium
         dateStyle: "YYYY-MM-DD", // Default: YYYY-MM-DD
         outlineItemStyle: "withPage", // Default: with page
