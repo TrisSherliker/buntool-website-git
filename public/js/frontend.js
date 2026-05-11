@@ -1329,6 +1329,13 @@ form.addEventListener('submit', async (e) => {
     return; // keep overlay open — hideProcessingOverlay handled by the modal buttons
   } catch (error) {
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
+    logBundleEvent({
+      event: 'error',
+      uuid: bundleUuid,
+      duration_ms: Date.now() - bundleTsStart,
+      error_type: error.message === '__timeout__' ? 'timeout' : 'other',
+      error_message: error.message === '__timeout__' ? undefined : error.message,
+    });
     if (error.message === '__timeout__') {
       showErrorModal({
         title: 'Bundle generation timed out',

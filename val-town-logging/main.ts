@@ -43,9 +43,20 @@ export default async function (req: Request): Promise<Response> {
       did_complete INTEGER DEFAULT 0,
       duration_ms  INTEGER,
       file_count   INTEGER,
-      page_count   INTEGER
+      page_count   INTEGER,
+      ts_errored   TEXT,
+      error_type   TEXT,
+      error_message TEXT
     )
   `);
+
+  for (const col of [
+    "ADD COLUMN ts_errored TEXT",
+    "ADD COLUMN error_type TEXT",
+    "ADD COLUMN error_message TEXT",
+  ]) {
+    try { await sqlite.execute(`ALTER TABLE bundle_log ${col}`); } catch {}
+  }
 
   const body = await req.json();
 
@@ -61,6 +72,13 @@ export default async function (req: Request): Promise<Response> {
             SET ts_completed = datetime('now'), did_complete = 1, duration_ms = ?, page_count = ?
             WHERE uuid = ?`,
       args: [body.duration_ms ?? null, body.page_count ?? null, body.uuid],
+    });
+  } else if (body.event === "error") {
+    await sqlite.execute({
+      sql: `UPDATE bundle_log
+            SET ts_errored = datetime('now'), duration_ms = ?, error_type = ?, error_message = ?
+            WHERE uuid = ?`,
+      args: [body.duration_ms ?? null, body.error_type ?? null, body.error_message ?? null, body.uuid],
     });
   } else {
     return new Response("Unknown event", { status: 400, headers: CORS });
