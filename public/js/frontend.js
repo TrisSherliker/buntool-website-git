@@ -15,6 +15,7 @@ let coversheetFile = null;
 let bundleConfirmed = false;
 let largeBundleConfirmed = false;
 let pendingConfirmAction = null;
+let _cancelReject = null;
 
 const BUNDLE_LOG_URL = 'https://trissherliker--cf20f90c1a4811f1b20642dde27851f2.web.val.run';
 
@@ -822,6 +823,8 @@ function _triggerDownload(pdfBytes, filename) {
 }
 
 function showBundleReadyState(pdfBytes, filename) {
+  _cancelReject = null;
+  document.getElementById('processing-cancel-btn')?.classList.add('hidden');
   // Tick all remaining stations before showing success
   _updateTrack(BUNDLE_STEPS.length);
 
@@ -1198,6 +1201,10 @@ document.getElementById('bundle-confirm-addinfo')?.addEventListener('click', () 
   }
 });
 
+document.getElementById('processing-cancel-btn')?.addEventListener('click', () => {
+  _cancelReject?.(new Error('__cancelled__'));
+});
+
 document.getElementById('large-bundle-proceed')?.addEventListener('click', () => {
   document.getElementById('large-bundle-modal')?.classList.add('hidden');
   largeBundleConfirmed = true;
@@ -1311,12 +1318,12 @@ form.addEventListener('submit', async (e) => {
 
   const BUNDLE_TIMEOUT_MS = 120_000;
   showProcessingOverlay('Building bundle…');
+  document.getElementById('processing-cancel-btn')?.classList.remove('hidden');
   try {
     const pdfBytes = await Promise.race([
       processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label), coversheetFile),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
-      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)),
+      new Promise((_, reject) => { _cancelReject = reject; }),
     ]);
 
     // Validate that we got valid PDF bytes
@@ -1349,6 +1356,19 @@ form.addEventListener('submit', async (e) => {
     showBundleReadyState(pdfBytes, bundleFilename);
     return; // keep overlay open — hideProcessingOverlay handled by the modal buttons
   } catch (error) {
+    _cancelReject = null;
+    document.getElementById('processing-cancel-btn')?.classList.add('hidden');
+    if (error.message === '__cancelled__') {
+      logBundleEvent({
+        event: 'error',
+        uuid: bundleUuid,
+        duration_ms: Date.now() - bundleTsStart,
+        error_type: 'cancelled',
+        error_message: 'Aborted by user action',
+      });
+      hideProcessingOverlay();
+      return;
+    }
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
     logBundleEvent({
       event: 'error',
