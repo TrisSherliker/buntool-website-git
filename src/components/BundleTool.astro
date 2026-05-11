@@ -593,6 +593,22 @@
   </div>
 </div>
 
+<!-- Large bundle warning modal -->
+<div id="large-bundle-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">
+    <h3 class="text-base font-bold text-gray-800 mb-2">⚠️ Very large bundle</h3>
+    <p class="text-sm text-gray-600 mb-5">It's very rare for single court bundles to be over 1000 pages or over 50MB in filesize. You may want to consider splitting the documents into two different files (e.g. "Bundle A" and "Bundle B"). If you proceed, BunTool may take longer than usual to process this file.</p>
+    <div class="flex gap-3 justify-end">
+      <button id="large-bundle-goback" type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+        Go back
+      </button>
+      <button id="large-bundle-proceed" type="button" class="px-4 py-2 text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 rounded-lg transition">
+        Proceed
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Bundle info confirmation modal -->
 <div id="bundle-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
   <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">

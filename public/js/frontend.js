@@ -13,6 +13,7 @@ let countPdfPages;
 let validateCoverPage;
 let coversheetFile = null;
 let bundleConfirmed = false;
+let largeBundleConfirmed = false;
 let pendingConfirmAction = null;
 
 const BUNDLE_LOG_URL = 'https://trissherliker--cf20f90c1a4811f1b20642dde27851f2.web.val.run';
@@ -1197,6 +1198,16 @@ document.getElementById('bundle-confirm-addinfo')?.addEventListener('click', () 
   }
 });
 
+document.getElementById('large-bundle-proceed')?.addEventListener('click', () => {
+  document.getElementById('large-bundle-modal')?.classList.add('hidden');
+  largeBundleConfirmed = true;
+  form.requestSubmit();
+});
+
+document.getElementById('large-bundle-goback')?.addEventListener('click', () => {
+  document.getElementById('large-bundle-modal')?.classList.add('hidden');
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   console.log('Form submit triggered!');
@@ -1210,6 +1221,17 @@ form.addEventListener('submit', async (e) => {
     if (showMissingInfoModal('bundle')) return;
   }
   bundleConfirmed = false;
+
+  if (!largeBundleConfirmed) {
+    const totalPages = Object.values(frontendInputData).reduce((sum, d) => sum + (d.pageCount || 0), 0);
+    const totalSizeMB = Array.from(filesMap.values()).reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+    if (totalPages > 1000 || totalSizeMB > 75) {
+      document.getElementById('large-bundle-modal')?.classList.remove('hidden');
+      return;
+    }
+  }
+  largeBundleConfirmed = false;
+
   const bundleUuid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
   const bundleTsStart = Date.now();
   //dynamic (lazy) load the main module
