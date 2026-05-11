@@ -559,8 +559,8 @@ coversheetInput?.addEventListener('change', async (e) => {
     ({ validateCoverPage } = await import('./buntoolPages.js'));
   }
   try {
-    await validateCoverPage(file);
-    coversheetFile = file;
+    const processedBytes = await validateCoverPage(file);
+    coversheetFile = new File([processedBytes], file.name, { type: 'application/pdf' });
     setCoversheetSelected(file.name);
     markDirty({ immediate: true });
   } catch (error) {
