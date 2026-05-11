@@ -1,6 +1,6 @@
 /**
  * BunTool
- * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
+ * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net) with significant frontend code additions by Claude Code
  * A tool for the creation  of legal bundles.
  * Licensed under the Mozilla Public License Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://mozilla.org/MPL/2.0/.
  * 
@@ -892,7 +892,7 @@ function showBundleReadyState(pdfBytes, filename) {
 
       const kofi = document.createElement('div');
       kofi.className = 'mt-3 pt-2 border-t border-gray-700 text-center';
-      kofi.innerHTML = `<a href="https://ko-fi.com/buntool" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded px-3 py-1.5 transition-colors">☕ Helpful? Support on Ko-fi</a>`;
+      kofi.innerHTML = `<a href="https://ko-fi.com/buntool" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs text-white bg-pink-500 hover:bg-pink-600 rounded px-3 py-1.5 transition-colors">☕ Helpful? Donate to support!</a>`;
       _lastEl.after(kofi);
     }
 
@@ -1201,8 +1201,10 @@ document.getElementById('bundle-confirm-addinfo')?.addEventListener('click', () 
   }
 });
 
-document.getElementById('processing-cancel-btn')?.addEventListener('click', () => {
-  _cancelReject?.(new Error('__cancelled__'));
+document.getElementById('processing-overlay')?.addEventListener('click', (e) => {
+  if (e.target.closest('#processing-cancel-btn')) {
+    _cancelReject?.(new Error('__cancelled__'));
+  }
 });
 
 document.getElementById('large-bundle-proceed')?.addEventListener('click', () => {
@@ -1317,11 +1319,12 @@ form.addEventListener('submit', async (e) => {
   logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
 
   const BUNDLE_TIMEOUT_MS = 120_000;
+  let cancelled = false;
   showProcessingOverlay('Building bundle…');
   document.getElementById('processing-cancel-btn')?.classList.remove('hidden');
   try {
     const pdfBytes = await Promise.race([
-      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label), coversheetFile),
+      processTheBundle(filesMap, indexData, config, (label) => { if (!cancelled) showProcessingOverlay(label); }, coversheetFile),
       new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)),
       new Promise((_, reject) => { _cancelReject = reject; }),
     ]);
@@ -1359,6 +1362,7 @@ form.addEventListener('submit', async (e) => {
     _cancelReject = null;
     document.getElementById('processing-cancel-btn')?.classList.add('hidden');
     if (error.message === '__cancelled__') {
+      cancelled = true;
       logBundleEvent({
         event: 'error',
         uuid: bundleUuid,
