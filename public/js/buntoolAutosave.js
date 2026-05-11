@@ -101,13 +101,12 @@ export function markDirty({ immediate = false } = {}) {
   if (_dirtyCount >= DIRTY_THRESHOLD) {
     // Threshold reached — save immediately (no further delay)
     clearTimeout(_timer);
-    _dirtyCount = 0;
     _performSave();
     return;
   }
   // Reset inactivity window; save after INACTIVITY_MS of quiet
   clearTimeout(_timer);
-  _timer = setTimeout(() => { _dirtyCount = 0; _performSave(); }, INACTIVITY_MS);
+  _timer = setTimeout(_performSave, INACTIVITY_MS);
 }
 
 /**
@@ -195,6 +194,7 @@ async function _performSave() {
     await _enforceCap();
 
     _dirty = false;
+    _dirtyCount = 0;
     console.log(`[autosave] Saved ${new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${fileCount} doc(s) · ${_fmtBytes(sizeBytes)}`);
   } catch (err) {
     console.warn('[autosave] Save failed:', err);

@@ -45,7 +45,6 @@ function pulseStep2() {
   setTimeout(() => step2.classList.remove('pulse-ring'), 1500);
 }
 const form = document.getElementById('upload-form');
-const csvOutput = document.getElementById('csv-output');
 const addSectionBreakBtn = document.getElementById('add-section-break-btn');
 const clearAllRowsBtn = document.getElementById('clear-all-rows-btn');
 const indexData = [];
@@ -406,7 +405,7 @@ function handleDrop(e) {
   return false;
 }
 
-function handleDragEnd(e) {
+function handleDragEnd() {
   this.style.opacity = '1';
 }
 
@@ -953,8 +952,8 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-numberingStyle').value = pn.numberingStyle || 'PageX';
     document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
     document.getElementById('config-pageNumberColour').value = pn.pageNumberColour || 'black';
-    document.getElementById('config-printableBundle').value =
-      (extractedConfig.pageOptions?.printableBundle === true) ? 'true' : 'false';
+    document.getElementById('config-printableBundle').checked =
+      extractedConfig.pageOptions?.printableBundle === true;
 
     // Split bundle into individual PDFs
     console.log('Splitting bundle into individual documents...');

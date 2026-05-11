@@ -141,7 +141,7 @@ export async function mergePdfsByTOC(tocEntries, filesMap, config) {
       }
 
     } catch (error) {
-      console.error(`[ERROR] Processing error for file:' ${entry.filename}: `, error);
+      console.error(`[ERROR] Processing error for file: '${entry.filename}': `, error);
       throw error;
       }
     }

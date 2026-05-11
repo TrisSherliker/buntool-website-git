@@ -158,7 +158,8 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
   const outlineIterator = doc.outlineIterator();
   const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
   // find how many digits in the largest tab number for padding
-  const maxTabNumber = Math.max(...tocEntries.map(entry => entry.tabNumber));
+  const validTabNumbers = tocEntries.map(e => e.tabNumber).filter(n => typeof n === 'number');
+  const maxTabNumber = validTabNumbers.length > 0 ? Math.max(...validTabNumbers) : 1;
   const maxTabNumberLength = maxTabNumber.toString().length;
 
   // outline item for index
@@ -269,13 +270,13 @@ export function setMetadata(pdfBytes, tocEntries, config) {
         confidential: config.getOption('heading.confidential') || false,
       },
       pageNumbering: {
-        footerFont: config.getOption('pageNumbering.footerFont') || 'sansSerif',
+        footerFont: config.getOption('pageNumbering.footerFont') || 'serif',
         alignment: config.getOption('pageNumbering.alignment') || 'centre',
         numberingStyle: config.getOption('pageNumbering.numberingStyle') || 'PageX',
         footerPrefix: config.getOption('pageNumbering.footerPrefix') || '',
       },
       index: {
-        fontFace: config.getOption('index.fontFace') || 'sansSerif',
+        fontFace: config.getOption('index.fontFace') || 'serif',
         dateStyle: config.getOption('index.dateStyle') || 'DD Mon. YYYY',
         outlineItemStyle: config.getOption('index.outlineItemStyle') || 'plain',
       },
