@@ -1329,6 +1329,16 @@ form.addEventListener('submit', async (e) => {
 
   logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
 
+  const _abandonHandler = (e) => {
+    navigator.sendBeacon(BUNDLE_LOG_URL, JSON.stringify({
+      event: 'abandoned',
+      uuid: bundleUuid,
+      duration_ms: Date.now() - bundleTsStart,
+      error_type: e.persisted ? 'navigated_away' : 'tab_closed',
+    }));
+  };
+  window.addEventListener('pagehide', _abandonHandler);
+
   const BUNDLE_TIMEOUT_MS = 120_000;
   let cancelled = false;
   showProcessingOverlay('Building bundle…');
@@ -1411,6 +1421,8 @@ form.addEventListener('submit', async (e) => {
       });
     }
     hideProcessingOverlay();
+  } finally {
+    window.removeEventListener('pagehide', _abandonHandler);
   }
 
 });

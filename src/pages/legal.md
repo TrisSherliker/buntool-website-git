@@ -30,12 +30,12 @@ All bundle processing happens entirely in your web browser on your own device. B
 When a bundle is requested, the app logs: 
 
 - the fact that a bundle was requested and when
-- whether or not the bundle successfully completed or not, and when
+- whether or not the bundle successfully completed, and when
 - how many pages and how many pdfs were included (but not their content)
-- if an error occurred, a brief note of the error message (e.g. "Out of memory error")
+- if a bundle is interrupted or an error occurred, a brief note of the reason (e.g. "Cancelled" or "Out of memory error")
 - nothing else.
 
-Also by default, the web hosting provider tracks a basic count of how many visits/requests were made to the website over time and the general location (eg 'United Kingdom'), but no other analytics are used.
+Also by default, the web hosting provider tracks a basic count of how many visits/requests were made to the website over time and the general location (eg 'United Kingdom'), but no other analytics are used. If you run BunTool from a different server, no logging is triggered at all.
 
 ### How do you save data without tracking?
 
@@ -66,7 +66,7 @@ Nothing on this website constitutes legal advice. BunTool is a personal project 
 
 BunTool is free open-source software. In summary this means you can use it and re-use it freely, but importantly it comes with no warranties and a limitation of liability, but see the full terms of the license are set out below under the heading 'Mozilla Public License Version 2.0'. 
 
-BunTool is a trade mark of Tristan Sherliker and the software is copyright Tristan Sherliker 2026.
+BunTool (and the BunTool logo) is a trade mark of Tristan Sherliker and the software is copyright Tristan Sherliker 2025-2026.
 
 ## Mozilla Public License Version 2.0
 

@@ -80,6 +80,13 @@ export default async function (req: Request): Promise<Response> {
             WHERE uuid = ?`,
       args: [body.duration_ms ?? null, body.error_type ?? null, body.error_message ?? null, body.uuid],
     });
+  } else if (body.event === "abandoned") {
+    await sqlite.execute({
+      sql: `UPDATE bundle_log
+            SET ts_errored = datetime('now'), duration_ms = ?, error_type = ?
+            WHERE uuid = ?`,
+      args: [body.duration_ms ?? null, body.error_type ?? null, body.uuid],
+    });
   } else {
     return new Response("Unknown event", { status: 400, headers: CORS });
   }
