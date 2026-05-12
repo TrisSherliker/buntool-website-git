@@ -1327,7 +1327,7 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
+  await logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
 
   const _abandonHandler = (e) => {
     navigator.sendBeacon(BUNDLE_LOG_URL, JSON.stringify({
