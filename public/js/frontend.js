@@ -1131,6 +1131,16 @@ function isFileMissingError(error) {
     || msg.includes('no such file');
 }
 
+function isMemoryError(error) {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('realloc')
+    || msg.includes('malloc')
+    || msg.includes('out of memory')
+    || msg.includes('allocation failed')
+    || msg.includes('memory exhausted');
+}
+
 function showErrorModal({ title, message, error } = {}) {
   const modal = document.getElementById('error-modal');
   const titleEl = document.getElementById('error-modal-title');
@@ -1374,17 +1384,23 @@ form.addEventListener('submit', async (e) => {
       return;
     }
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
+    const errorType = error.message === '__timeout__' ? 'timeout' : isMemoryError(error) ? 'oom' : 'other';
     logBundleEvent({
       event: 'error',
       uuid: bundleUuid,
       duration_ms: Date.now() - bundleTsStart,
-      error_type: error.message === '__timeout__' ? 'timeout' : 'other',
+      error_type: errorType,
       error_message: error.message === '__timeout__' ? undefined : error.message,
     });
     if (error.message === '__timeout__') {
       showErrorModal({
         title: 'Bundle generation timed out',
-        message: 'Your bundle took too long to generate. The browser may be running low on memory. Try closing other tabs, or split your documents into smaller batches.',
+        message: 'Your bundle took too long to generate (more than 120 seconds). The browser may be running low on memory, or you may have a very large bundle. Try closing other tabs, or split your documents into smaller batches.',
+      });
+    } else if (errorType === 'oom') {
+      showErrorModal({
+        title: 'Not enough memory',
+        message: 'Your browser ran out of memory processing this bundle. This isn\'t an error in BunTool, but to do with the memory avaiable in your computer. It usually happens when a bundle is very large, or you have many tabs or apps open. Try splitting your documents into smaller batches, or close other tabs / apps to free up memory.',
       });
     } else {
       showErrorModal({
