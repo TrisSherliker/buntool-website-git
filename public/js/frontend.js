@@ -202,8 +202,9 @@ async function applySnapshot(snapshot) {
 
   // Restore config fields
   const c = snapshot.config;
-  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
-  const _chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+  // _set: if val is undefined (field didn't exist at save time), leave the element at its HTML default
+  const _set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val ?? ''; };
+  const _chk = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
   _set('config-claimNumber',      c.claimNumber);
   _set('config-bundleTitle',      c.bundleTitle);
   _set('config-projectName',      c.projectName);
@@ -947,14 +948,14 @@ bundleInput?.addEventListener('change', async (e) => {
 
     // Populate advanced config fields
     const pn = extractedConfig.pageNumbering || extractedConfig.page || {};
-    document.getElementById('config-fontFace').value = extractedConfig.index?.fontFace || 'sansSerif';
+    document.getElementById('config-fontFace').value = extractedConfig.index?.fontFace || 'serif';
     document.getElementById('config-dateStyle').value = extractedConfig.index?.dateStyle || 'DD Mon. YYYY';
     document.getElementById('config-outlineItemStyle').value = extractedConfig.index?.outlineItemStyle || 'plain';
-    document.getElementById('config-footerFont').value = pn.footerFont || 'sansSerif';
+    document.getElementById('config-footerFont').value = pn.footerFont || 'serif';
     document.getElementById('config-footerFontSize').value = pn.footerFontSize || 'medium';
-    document.getElementById('config-alignment').value = pn.alignment || 'centre';
+    document.getElementById('config-alignment').value = pn.alignment || 'right';
     document.getElementById('config-numberingStyle').value = pn.numberingStyle || 'PageX';
-    document.getElementById('config-footerPrefix').value = pn.footerPrefix || '';
+    document.getElementById('config-footerPrefix').value = pn.footerPrefix ?? '';
     document.getElementById('config-pageNumberColour').value = pn.pageNumberColour || 'black';
     document.getElementById('config-printableBundle').checked =
       extractedConfig.pageOptions?.printableBundle === true;
