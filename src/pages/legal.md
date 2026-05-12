@@ -3,7 +3,9 @@ layout: ../layouts/MarkdownLayout.astro
 title: "Legal - BunTool"
 ---
 
-# Privacy
+# Privacy, Legal Notices, and Terms and conditions
+
+## Privacy
 
 BunTool collects no data about any users. There are no cookies or analytics about your data. Files and information never leave your device - BunTool doesn't want your data and doesn't want your private documents. This means BunTool uses:
 
@@ -18,22 +20,26 @@ BunTool collects no data about any users. There are no cookies or analytics abou
 We can see *that* links on this website have been used and pages visited, but have no idea *who* did it or what was processed. Some servers also report aggregated information about the country or rough geographical regions that users originated from, but nothing further. 
 
 All bundle processing happens entirely in your web browser on your own device. BunTool is designed so that your files:
-- Never leave your computer
+- Do not leave your computer
 - Are not uploaded to any server
 - Are not stored anywhere except your device
 - Are processed only in your browser's memory
 
 ### What is tracked?
 
-
 When a bundle is requested, the app logs: 
 
 - the fact that a bundle was requested and when
-- whether or not the bundle successfully completed and when
-- how many pages and how many pdfs were included
+- whether or not the bundle successfully completed or not, and when
+- how many pages and how many pdfs were included (but not their content)
+- if an error occurred, a brief note of the error message (e.g. "Out of memory error")
 - nothing else.
 
 Also by default, the web hosting provider tracks a basic count of how many visits/requests were made to the website over time and the general location (eg 'United Kingdom'), but no other analytics are used.
+
+### How do you save data without tracking?
+
+Neat, isn't it? BunTool autosaves your progress inside your browser, so again all saves are local to your computer and don't involve any uploading or any sharing of personal data. To avoid taking up too much space, saves are purged if they grow large or numerous.
 
 ### GDPR Compliance
 
@@ -44,19 +50,21 @@ We comply with GDPR by not collecting or processing any personal data. There is 
 - Delete
 - Port to another service
 
-# Terms and conditions and other legal notices
+## Terms and conditions and other legal notices
 
-## Not Legal Advice
+### Not Legal Advice
 
 Nothing on this website constitutes legal advice. BunTool is a personal project of its author and is not produced in the capacity of legal advisor or in connection with any professional activity or any company or partnership.
 
-## Intellectual property and Software License
+### Intellectual property and Software License
 
 BunTool is free open-source software. In summary this means you can use it and re-use it freely, but importantly it comes with no warranties and a limitation of liability, but see the full terms of the license are set out below under the heading 'Mozilla Public License Version 2.0'. 
 
 BunTool is a trade mark of Tristan Sherliker and the software is copyright Tristan Sherliker 2026.
 
 ## Mozilla Public License Version 2.0
+
+This software is released under the terms of the Mozilla Public Licence v2.0.
 
 ### 1. Definitions
 
