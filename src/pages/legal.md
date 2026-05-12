@@ -50,6 +50,12 @@ We comply with GDPR by not collecting or processing any personal data. There is 
 - Delete
 - Port to another service
 
+If you want to see the data that's stored in your browser locally, you can do this in Firefox or Chrome by: 
+
+- Pressing F12 to open the console
+- Look at the `Storage` tab (Firefox) or `Application` tab (Chrome) to see the locally stored-data in Local Storage and IndexedDB
+- You can also verify there that there are no cookies.
+
 ## Terms and conditions and other legal notices
 
 ### Not Legal Advice
