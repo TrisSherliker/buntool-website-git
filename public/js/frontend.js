@@ -1339,7 +1339,7 @@ form.addEventListener('submit', async (e) => {
   };
   window.addEventListener('pagehide', _abandonHandler);
 
-  const BUNDLE_TIMEOUT_MS = 120_000;
+  const BUNDLE_TIMEOUT_MS = 240_000;
   let cancelled = false;
   showProcessingOverlay('Building bundle…');
   document.getElementById('processing-cancel-btn')?.classList.remove('hidden');
@@ -1497,7 +1497,7 @@ async function runPreviewIndex() {
     return;
   }
 
-  const BUNDLE_TIMEOUT_MS = 120_000;
+  const BUNDLE_TIMEOUT_MS = 240_000;
   showProcessingOverlay('Building index preview…');
   try {
     const pdfBytes = await Promise.race([
