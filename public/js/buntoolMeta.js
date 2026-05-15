@@ -87,6 +87,21 @@ function copyPage(dstDoc, srcDoc, pageNumber, dstFromSrc) {
  * @param {Object} dstDoc - Destination muPDF document object
  * @param {Object} srcDoc - Source muPDF document object
  */
+/**
+ * Validates a PDF by attempting to open and read it with MuPDF.
+ * @param {Uint8Array} pdfBytes - File bytes to validate
+ * @returns {boolean} True if MuPDF can open and page-count the document
+ */
+export function validatePdf(pdfBytes) {
+  try {
+    const doc = mupdf.Document.openDocument(new Uint8Array(pdfBytes), "application/pdf");
+    doc.countPages();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function copyAllPages(dstDoc, srcDoc) {
   const dstFromSrc = dstDoc.newGraftMap()
   const n = srcDoc.countPages()

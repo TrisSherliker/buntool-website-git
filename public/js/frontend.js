@@ -460,21 +460,20 @@ async function processFiles(files) {
 
   // Process each new file
   for (const file of files){
-    // Validate PDF magic bytes (%PDF-)
-    const headerBytes = new Uint8Array(await file.slice(0, 5).arrayBuffer());
-    const isPdf = headerBytes[0] === 0x25 && headerBytes[1] === 0x50 &&
-                  headerBytes[2] === 0x44 && headerBytes[3] === 0x46 && headerBytes[4] === 0x2D;
-    if (!isPdf) {
+    // Materialise bytes into memory immediately so filesMap holds an in-memory copy,
+    // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+
+    // Validate by attempting to open with MuPDF (catches truncated, encrypted, or non-PDF files)
+    const { validatePdf } = await import('./buntoolMeta.js');
+    if (!validatePdf(fileBytes)) {
       showErrorModal({
         title: 'Not a PDF file',
-        message: `"${file.name}" does not appear to be a PDF file. Please check the file and try again.`,
+        message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again.`,
       });
       continue;
     }
 
-    // Materialise bytes into memory immediately so filesMap holds an in-memory copy,
-    // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
-    const fileBytes = new Uint8Array(await file.arrayBuffer());
     const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
 
     const key = uniqueFilename(file.name);
