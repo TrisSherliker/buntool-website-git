@@ -477,14 +477,23 @@ async function processFiles(files) {
     const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
 
     const key = uniqueFilename(file.name);
-    filesMap.set(key, materializedFile);
     const prettyTitle = prettifyTitle(file.name);
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
     const displayTitle = stripDoubleChars(dateParseObj.name);
     if (!countPdfPages){
       ({countPdfPages} = await import('./buntoolPages.js'));
     }
-    let pageCount = await countPdfPages(materializedFile);
+    let pageCount;
+    try {
+      pageCount = await countPdfPages(materializedFile);
+    } catch {
+      showErrorModal({
+        title: 'Could not read PDF',
+        message: `"${file.name}" could not be read. The file may be corrupted or use unsupported encryption.`,
+      });
+      continue;
+    }
+    filesMap.set(key, materializedFile);
     frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
 
     const row = document.createElement('tr');
@@ -534,7 +543,11 @@ async function processFiles(files) {
 }
 
 fileInput.addEventListener('change', async (e) => {
-  await processFiles(Array.from(e.target.files));
+  try {
+    await processFiles(Array.from(e.target.files));
+  } catch (error) {
+    showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
+  }
   // Reset file input so same file can be selected again if needed
   fileInput.value = '';
 });
@@ -594,7 +607,11 @@ dropZone.addEventListener('dragleave', (e) => {
 dropZone.addEventListener('drop', async (e) => {
   e.preventDefault();
   dropZone.classList.remove('ring-2', 'ring-pink-400');
-  await processFiles(Array.from(e.dataTransfer.files));
+  try {
+    await processFiles(Array.from(e.dataTransfer.files));
+  } catch (error) {
+    showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
+  }
 });
 
 fileTableBody.addEventListener('input', (e) => {
