@@ -20,14 +20,16 @@ import { PDFDocument } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
  * @returns {Array|null} The parsed bundle index metadata array, or null if not found
  */
 export function extractBundleMetadata(pdfBytes) {
+  let doc = null;
+  let firstPage = null;
   try {
     const pdfCopy = new Uint8Array(pdfBytes);
-    let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+    doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
     // Entries are stored in the hidden annotation below.
     // info:BundleIndex contains only config (no entries) to stay under mupdf's ~500-char limit.
     // Read from hidden annotation (all bundles):
-    const firstPage = doc.loadPage(0);
+    firstPage = doc.loadPage(0);
     const annotations = firstPage.getAnnotations();
 
     for (const annot of annotations) {
@@ -84,6 +86,9 @@ export function extractBundleMetadata(pdfBytes) {
   } catch (error) {
     console.error('Error extracting bundle metadata:', error);
     return null;
+  } finally {
+    firstPage?.destroy();
+    doc?.destroy();
   }
 }
 
@@ -208,9 +213,10 @@ const FOOTER_BLOCK_RE = /q\b[\s\S]*?(?:0\.072\s+0\.021\s+0\.073|0\.872\s+0\.032\
  * @returns {Promise<Uint8Array>} The PDF with page number footers removed
  */
 export async function removePageNumbering(pdfBytes) {
+  let doc = null;
   try {
     const pdfCopy = new Uint8Array(pdfBytes);
-    const doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+    doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
     const pageCount = doc.countPages();
     let pagesModified = 0;
 
@@ -230,7 +236,9 @@ export async function removePageNumbering(pdfBytes) {
 
       for (const streamRef of streamRefs) {
         if (!streamRef.isStream()) continue;
-        const text = streamRef.readStream().asString();
+        const streamBuf = streamRef.readStream();
+        const text = streamBuf.asString();
+        streamBuf.destroy();
         if (!BUNTOOL_COLOUR_RE.test(text)) continue;
         FOOTER_BLOCK_RE.lastIndex = 0;
         const cleaned = text.replace(FOOTER_BLOCK_RE, '');
@@ -246,11 +254,15 @@ export async function removePageNumbering(pdfBytes) {
 
     const saved = doc.saveToBuffer("incremental");
     console.log(`Removed page numbers from ${pagesModified}/${pageCount} pages`);
-    return saved.asUint8Array().slice(); // .slice() copies out of WASM heap before it's reallocated
+    const result = saved.asUint8Array().slice();
+    saved.destroy();
+    return result;
 
   } catch (error) {
     console.error('Error removing page numbering:', error);
     return pdfBytes;
+  } finally {
+    doc?.destroy();
   }
 }
 
@@ -269,9 +281,10 @@ const DEFAULT_CONFIG = {
 };
 
 export function parseConfigFromMetadata(pdfBytes) {
+  let doc = null;
   try {
     const pdfCopy = new Uint8Array(pdfBytes);
-    let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+    doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
 
     // Primary path: full config embedded in bundle index (v2+ bundles).
     // Wrapped in its own try/catch so a truncated/corrupt JSON falls through to the fallback below.
@@ -302,5 +315,7 @@ export function parseConfigFromMetadata(pdfBytes) {
   } catch (error) {
     console.error('Error parsing config from metadata:', error);
     return DEFAULT_CONFIG;
+  } finally {
+    doc?.destroy();
   }
 }
