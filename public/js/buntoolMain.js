@@ -15,10 +15,11 @@ import {
   } from './buntoolToc.js';
 import {
   addPageNumberingToPdf,
-  mergeTwoPdfs,
-  mergePdfsByTOC,
+  // mergeTwoPdfs,    // replaced by buntoolMerge.js
+  // mergePdfsByTOC, // replaced by buntoolMerge.js
   validateCoverPage,
   } from './buntoolPages.js';
+import { mergeTwoPdfs, mergePdfsByTOC } from './buntoolMerge.js';
 import {
   addHyperlinks,
   addOutlineItems,
@@ -153,7 +154,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     console.log('Config option justTheIndex is true - returning TOC PDF without merging content PDFs');
     let justIndexPdf = tocPdf;
     if (validatedCoversheet) {
-      justIndexPdf = await mergeTwoPdfs(validatedCoversheet, justIndexPdf);
+      justIndexPdf = mergeTwoPdfs(validatedCoversheet, justIndexPdf);
       console.log(`...prepended coversheet - PDF size: ${justIndexPdf?.length || 0} bytes`);
     }
     onProgress?.('Adding page numbering…');
@@ -179,7 +180,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
 
   console.log('[8/13] Merging TOC with content PDF...');
   try {
-    payloadPdf = await mergeTwoPdfs(tocPdf, payloadPdf);
+    payloadPdf = mergeTwoPdfs(tocPdf, payloadPdf);
     console.log(`[8/13]...done - Combined PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to merge TOC with content: `, error.message);
@@ -189,7 +190,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
   if (validatedCoversheet) {
     console.log('[9/13] Prepending coversheet...');
     try {
-      payloadPdf = await mergeTwoPdfs(validatedCoversheet, payloadPdf);
+      payloadPdf = mergeTwoPdfs(validatedCoversheet, payloadPdf);
       console.log(`[9/13]...done - PDF size with coversheet: ${payloadPdf?.length || 0} bytes`);
     } catch (error) {
       console.error('[ERROR] Failed to prepend coversheet: ', error.message);

@@ -43,7 +43,7 @@ async function loadFontBytes(pdfDoc, fontName) {
  * Used for printable bundle mode to ensure proper double-sided alignment.
  * @returns {Promise<Uint8Array>} A single-page blank PDF as a Uint8Array
  */
-async function makeBlankPage() {
+export async function makeBlankPage() {
   const blankPdf = await pdflib.PDFDocument.create();
   blankPdf.addPage([595.28, 841.89]); // A4 size in points
   return blankPdf.save();
