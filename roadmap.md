@@ -4,6 +4,8 @@
 
 Features with an obvious cost-benefit updside
 
+- [ ] Memory cleanliness. Face up to the mupdf memory copies.
+- [ ] Save local filesystem view of old bundles, restore
 - [x] Handle scanned files with rotation tags
 - [x] Tutorial function
 - [x] Coversheet option

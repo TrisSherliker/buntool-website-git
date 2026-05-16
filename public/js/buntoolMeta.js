@@ -96,6 +96,7 @@ export function validatePdf(pdfBytes) {
   try {
     const doc = mupdf.Document.openDocument(new Uint8Array(pdfBytes), "application/pdf");
     doc.countPages();
+    doc.destroy();
     return true;
   } catch {
     return false;
@@ -122,14 +123,13 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
   const rowsByPage = groupRowsByPage(tocTableRowCoordinates);
   const coversheetOffset = config?.getOption('pageOptions.coversheet') ? 1 : 0;
 
-  const pdfCopy = new Uint8Array(pdfBytes);
-  let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+  let doc = mupdf.Document.openDocument(pdfBytes, "application/pdf");
 
   for (const [pageNumber, rows] of Object.entries(rowsByPage)) {
     const page = doc.loadPage(pageNumber - 1 + coversheetOffset);
     for (const row of rows) {
       const { x, y, width, height, tabNumber} = row;
-      const tocEntry = tabNumber 
+      const tocEntry = tabNumber
         ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null //blank for section beaks, no hyperlink needed
       if (!tocEntry) continue; // skip if no matching TOC entry is found
       const destinationPageNumber = (tocEntry.actualStartPage || tocEntry.thisPage) - 1; // mupdf pages are 0-indexed
@@ -141,16 +141,20 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
             type: "XYZ",
             page: destinationPageNumber,
             x: 0,
-            y: 0, 
+            y: 0,
             zoom: 100
           }
         )
       );
     }
     page.update();
+    page.destroy();
   }
   console.log(`Hyperlinks added`);
-  const outputPdf = doc.saveToBuffer("incremental").asUint8Array()
+  const buf = doc.saveToBuffer("incremental");
+  const outputPdf = buf.asUint8Array().slice();
+  buf.destroy();
+  doc.destroy();
   return outputPdf;
 }
 
@@ -166,9 +170,7 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
  */
 export function addOutlineItems(pdfBytes, tocEntries, config) {
 
-  const pdfCopy = new Uint8Array(pdfBytes);  // TODO: muPDF seems to be clearing and then trying to re-use buffers. Use copy as a temporary fix, but it consumes memory. 
-  
-  let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+  let doc = mupdf.Document.openDocument(pdfBytes, "application/pdf");
 
   const outlineIterator = doc.outlineIterator();
   const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
@@ -221,9 +223,12 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
     }
   });
 
-  //pdfOutputBytes = doc.save();
+  outlineIterator.destroy();
   console.log(`Outline items added`);
-  const outputPdf = doc.saveToBuffer("incremental").asUint8Array()
+  const buf = doc.saveToBuffer("incremental");
+  const outputPdf = buf.asUint8Array().slice();
+  buf.destroy();
+  doc.destroy();
   return outputPdf;
 }
 
@@ -235,9 +240,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
  * @returns {Uint8Array} The PDF with metadata set as a Uint8Array
  */
 export function setMetadata(pdfBytes, tocEntries, config) {
-  // const buffer = Buffer.from(pdfBytes); // Convert Uint8Array to Buffer
-  const pdfCopy = new Uint8Array(pdfBytes);
-  let doc = mupdf.Document.openDocument(pdfCopy, "application/pdf");
+  let doc = mupdf.Document.openDocument(pdfBytes, "application/pdf");
 
   doc.setMetaData("Producer", "BunTool (https://buntool.co.uk)");
   doc.setMetaData("Creator", "BunTool (https://buntool.co.uk)");
@@ -310,11 +313,13 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   metadataAnnotation.setOpacity(0) // set to transparent
   metadataAnnotation.setFlags(2) // set to hidden
   metadataAnnotation.setHiddenForEditing(true)
+  firstPage.destroy();
 
-
-  // pdfOutputBytes = doc.save();
   console.log(`Metadata added`);
-  const outputPdf = doc.saveToBuffer("incremental").asUint8Array()
+  const buf = doc.saveToBuffer("incremental");
+  const outputPdf = buf.asUint8Array().slice();
+  buf.destroy();
+  doc.destroy();
   return outputPdf;
 }
 
