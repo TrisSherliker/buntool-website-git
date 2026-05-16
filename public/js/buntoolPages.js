@@ -214,12 +214,10 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   
   //setup the gubbins
   const pdfDoc = await pdflib.PDFDocument.load(pdfDocBytes);
-  let textLabelFont = await pdfDoc.embedFont(pdflib.StandardFonts.Helvetica); 
-  let fontBytes = [ ];
   const pages = pdfDoc.getPages();
   pdfDoc.registerFontkit(fontkit);
 
-  textLabelFont = await loadFontBytes(pdfDoc, footerFont);
+  const textLabelFont = await loadFontBytes(pdfDoc, footerFont);
 
   //Measurements and sizes
   let textLabelSize = { large: 25, medium: 18, small: 14 }[config.getOption('pageNumbering.footerFontSize')] || 18;
@@ -297,8 +295,6 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
       thisPage.drawText(footerText, { x: leftEdgeOfLabel,        y: maxLabelHeight,                   size: textLabelSize, font: textLabelFont, color: footerColour });
     }
   }
-  const pdfOutputBytes = new Uint8Array(await pdfDoc.save());
-  
   console.log(`Payload paginated successfully`);
-  return pdfOutputBytes;
+  return await pdfDoc.save();
 }

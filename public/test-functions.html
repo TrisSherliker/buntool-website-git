@@ -62,6 +62,8 @@
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
+  import { workerPeaks }
+    from './js/buntoolMerge.js'
   import Config, { validFonts, validPageNumberColours }
     from './js/buntoolConfig.js'
 
@@ -1474,6 +1476,9 @@
       snapshot(`ERROR: ${err.message}`);
     }
 
+    // Snapshot worker peaks before rendering (worker peaks are populated during processTheBundle)
+    const workerPeakSnapshot = { ...workerPeaks };
+
     // Render results
     const hasMem   = performance.memory != null;
     const baseline = log[0]?.used;
@@ -1500,6 +1505,21 @@
       } else {
         html += `<p class="mem-peak">onProgress peak: ${mb(onProgressPeak?.used)} at &ldquo;${onProgressPeak?.stage}&rdquo;</p>`;
       }
+      // Worker heap peaks (not visible to main thread performance.memory)
+      const wps = workerPeakSnapshot;
+      const mainAtMergeDoc   = log.find(e => e.stage === 'Merging documents')?.used;
+      const mainAtMergeIndex = log.find(e => e.stage === 'Merging index with documents')?.used;
+      if (wps.mergePdfsByTOC != null || wps.mergeTwoPdfs != null) {
+        const fmtWorker = (peakMB, mainBytes) => {
+          const wStr = peakMB != null ? peakMB.toFixed(1) + ' MB' : 'n/a';
+          const combined = (peakMB != null && mainBytes != null)
+            ? ` (combined with main: ${(peakMB + mainBytes / 1024 / 1024).toFixed(1)} MB)` : '';
+          return wStr + combined;
+        };
+        html += `<p class="mem-peak">Worker peaks (not in poll): `
+          + `mergePdfsByTOC: ${fmtWorker(wps.mergePdfsByTOC, mainAtMergeDoc)} &nbsp;|&nbsp; `
+          + `mergeTwoPdfs: ${fmtWorker(wps.mergeTwoPdfs, mainAtMergeIndex)}</p>`;
+      }
       html += `<p>Retained after post-GC snapshot: ${retained}</p>`;
     }
 
@@ -1519,7 +1539,7 @@
     html += `</tbody></table>`;
     memEl.innerHTML = html;
 
-    lastMemLog = { label, runTimestamp, log, pollPeak, pdfList, outputSize: outputBytes?.byteLength ?? null };
+    lastMemLog = { label, runTimestamp, log, pollPeak, pdfList, outputSize: outputBytes?.byteLength ?? null, workerPeakSnapshot };
     for (const id of ['memLight', 'memHeavy', 'memMassive', 'downloadMem'])
       document.getElementById(id).disabled = false;
   }
@@ -1530,7 +1550,7 @@
 
   document.getElementById('downloadMem').addEventListener('click', () => {
     if (!lastMemLog) return;
-    const { label, runTimestamp, log, pollPeak, pdfList, outputSize } = lastMemLog;
+    const { label, runTimestamp, log, pollPeak, pdfList, outputSize, workerPeakSnapshot: wps } = lastMemLog;
     const labelSlug = label.toLowerCase().replace(/\s+/g, '-');
     const fileTs    = runTimestamp.replace(/[:.]/g, '-').slice(0, 19);
     const hasMem    = log.some(e => e.used != null);
@@ -1549,6 +1569,8 @@
       `Output size: ${outputSize != null ? mbTxt(outputSize) + ' MB' : 'n/a'}`,
       `JS heap tracked: ${hasMem ? 'yes (Chrome/Edge)' : 'no — use Firefox Profiler memory track'}`,
       ...(hasMem && pollPeak ? [`Continuous poll peak: ${mbTxt(pollPeak.used)} MB (during "${pollPeak.stage}")`] : []),
+      ...(wps?.mergePdfsByTOC != null ? [`Worker peak (mergePdfsByTOC): ${wps.mergePdfsByTOC.toFixed(2)} MB`] : []),
+      ...(wps?.mergeTwoPdfs   != null ? [`Worker peak (mergeTwoPdfs): ${wps.mergeTwoPdfs.toFixed(2)} MB`]   : []),
       '',
       'Stage\tElapsed (s)\tJS Heap Used (MB)\tDelta from start (MB)',
       ...log.map(e => `${e.stage}\t${e.elapsed}\t${mbTxt(e.used)}\t${deltaTxt(e.used)}`),
