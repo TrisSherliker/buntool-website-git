@@ -23,6 +23,12 @@
     .fail-row { background: #fff0f0; }
     .detail   { color: #666; font-size: 0.85em; white-space: pre-wrap; max-width: 320px; overflow-wrap: break-word; }
     .group-header td { background: #f7f7f7; font-weight: bold; color: #444; border-top: 2px solid #ccc; }
+
+    #memResults { margin-top: 2em; }
+    #memResults h2 { font-size: 1em; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin: 1.8em 0 0.4em; color: #333; }
+    #memResults p  { color: #555; margin: 4px 0; font-size: 0.9em; }
+    .mem-note { font-style: italic; color: #888; }
+    .mem-peak { font-weight: bold; }
   </style>
 </head>
 <body>
@@ -32,9 +38,15 @@
 <button id="runAll" disabled>Run All Tests</button>
 <button id="copyAll" disabled>Copy All</button>
 <button id="copyFailures" disabled>Copy Failures</button>
+&nbsp;&nbsp;
+<button id="memLight" disabled>Memtest Light</button>
+<button id="memHeavy" disabled>Memtest Heavy</button>
+<button id="memMassive" disabled>Memtest Massive</button>
+<button id="downloadMem" disabled>Download Results (.txt)</button>
 <div id="status"></div>
 <div id="summary"></div>
 <div id="results"></div>
+<div id="memResults"></div>
 
 <script type="module">
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
@@ -57,7 +69,10 @@
   const wasmEl = document.getElementById('wasmStatus');
   try { if (mupdf.ready) await mupdf.ready; } catch {}
   wasmEl.textContent = 'mupdf WASM ready.';
-  document.getElementById('runAll').disabled = false;
+  document.getElementById('runAll').disabled    = false;
+  document.getElementById('memLight').disabled  = false;
+  document.getElementById('memHeavy').disabled  = false;
+  document.getElementById('memMassive').disabled = false;
 
 
   // ── Mock Config ──────────────────────────────────────────────────────────────
@@ -1258,6 +1273,296 @@
   document.getElementById('runAll').addEventListener('click', runAll);
   makeCopyHandler(() => true,       'copyAll');
   makeCopyHandler(r => !r.passed,   'copyFailures');
+
+
+  // ── Memory tests ─────────────────────────────────────────────────────────────
+
+  const LIGHT_PDFS = [
+    { filename: 'Document 1 30 April 2021.pdf',                    title: 'Document 1',                  date: '2021-04-30', subdir: 'extras' },
+    { filename: 'The Second Document example 22 January 2022.pdf', title: 'The Second Document example', date: '2022-01-22', subdir: 'extras' },
+    { filename: 'Example Doc number three 29 January 2026.pdf',    title: 'Example Doc number three',    date: '2026-01-29', subdir: 'extras' },
+  ];
+
+  const HEAVY_PDFS = [
+    { filename: 'COPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_.pdf',            title: 'COPA v Wright [2024] EWHC 1809',        date: '2024-07-16', subdir: '' },
+    { filename: 'COPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_.pdf',        title: 'COPA v Wright [2024] EWHC 3315',        date: '2024-12-19', subdir: '' },
+    { filename: 'Lidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_.pdf',            title: 'Lidl v Tesco [2024] EWCA Civ 262',     date: '2024-03-19', subdir: '' },
+    { filename: 'Lidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_.pdf',           title: 'Lidl v Tesco [2023] EWHC 873',         date: '2023-04-19', subdir: '' },
+    { filename: 'Praesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_.pdf',        title: 'Praesidad v Zaun [2024] EWHC 1549',   date: '2024-06-13', subdir: '' },
+    { filename: 'Rothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_.pdf', title: "Rothy's v Giesswein [2020] EWHC 3391", date: '2020-12-16', subdir: '' },
+    { filename: 'Warren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_.pdf',           title: 'Warren v Lidl [2021] EWHC 1097',       date: '2021-04-30', subdir: '' },
+    { filename: 'Warren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_.pdf',          title: 'Warren v Lidl [2021] EWHC 2372',       date: '2021-08-26', subdir: '' },
+    { filename: 'Wise_v_WithWise_2024_EWHC_3448_IPEC_13 December 2024.pdf',     title: 'Wise v WithWise [2024] EWHC 3448',    date: '2024-12-13', subdir: '' },
+  ];
+
+  const MASSIVE_PDFS = [
+    // testpdfs/ root
+    { filename: 'COPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_.pdf',            title: 'COPA v Wright [2024] EWHC 1809',        date: '2024-07-16', subdir: '' },
+    { filename: 'COPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_.pdf',        title: 'COPA v Wright [2024] EWHC 3315',        date: '2024-12-19', subdir: '' },
+    { filename: 'Lidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_.pdf',            title: 'Lidl v Tesco [2024] EWCA Civ 262',     date: '2024-03-19', subdir: '' },
+    { filename: 'Lidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_.pdf',           title: 'Lidl v Tesco [2023] EWHC 873',         date: '2023-04-19', subdir: '' },
+    { filename: 'Praesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_.pdf',        title: 'Praesidad v Zaun [2024] EWHC 1549',   date: '2024-06-13', subdir: '' },
+    { filename: 'Rothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_.pdf', title: "Rothy's v Giesswein [2020] EWHC 3391", date: '2020-12-16', subdir: '' },
+    { filename: 'Warren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_.pdf',           title: 'Warren v Lidl [2021] EWHC 1097',       date: '2021-04-30', subdir: '' },
+    { filename: 'Warren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_.pdf',          title: 'Warren v Lidl [2021] EWHC 2372',       date: '2021-08-26', subdir: '' },
+    { filename: 'Wise_v_WithWise_2024_EWHC_3448_IPEC_13 December 2024.pdf',     title: 'Wise v WithWise [2024] EWHC 3448',    date: '2024-12-13', subdir: '' },
+    { filename: 'thing from last tuesday.pdf',                                   title: 'Thing From Last Tuesday',              date: '2026-05-12', subdir: '' },
+    // testpdfs/extras/ — simple docs
+    { filename: 'Document 1 30 April 2021.pdf',                                  title: 'Document 1',                           date: '2021-04-30', subdir: 'extras' },
+    { filename: 'The Second Document example 22 January 2022.pdf',               title: 'The Second Document example',          date: '2022-01-22', subdir: 'extras' },
+    { filename: 'Example Doc number three 29 January 2026.pdf',                  title: 'Example Doc number three',             date: '2026-01-29', subdir: 'extras' },
+    { filename: 'two-page.pdf',                                                   title: 'Two Page',                             date: '2026-01-01', subdir: 'extras' },
+    // testpdfs/extras/ — y* (tripled concatenations)
+    { filename: 'yCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1yCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1yCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1.pdf', title: 'COPA v Wright 1809 (×3)', date: '2024-07-16', subdir: 'extras' },
+    { filename: 'yCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1yCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1yCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1.pdf', title: 'COPA v Wright 3315 (×3)', date: '2024-12-19', subdir: 'extras' },
+    { filename: 'yLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1yLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1yLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1.pdf', title: 'Lidl v Tesco 2024 (×3)', date: '2024-03-19', subdir: 'extras' },
+    { filename: 'yLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-1yLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-1yLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-1.pdf', title: 'Lidl v Tesco 2023 (×3)', date: '2023-04-19', subdir: 'extras' },
+    { filename: 'yPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1yPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1yPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1.pdf', title: 'Praesidad v Zaun (×3)', date: '2024-06-13', subdir: 'extras' },
+    { filename: 'yRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1yRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1yRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1.pdf', title: "Rothy's v Giesswein (×3)", date: '2020-12-16', subdir: 'extras' },
+    { filename: 'yWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-1yWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-1yWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-1.pdf', title: 'Warren v Lidl 1097 (×3)', date: '2021-04-30', subdir: 'extras' },
+    { filename: 'yWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1yWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1yWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1.pdf', title: 'Warren v Lidl 2372 (×3)', date: '2021-08-26', subdir: 'extras' },
+    { filename: 'ytwo-page-1ytwo-page-1ytwo-page-1.pdf',                         title: 'Two Page (×3)',                        date: '2026-01-01', subdir: 'extras' },
+    // testpdfs/extras/ — z* COPA v Wright 1809 splits
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1-2-3.pdf',     title: 'COPA 1809 pts 1+2+3',                  date: '2024-07-16', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1-2.pdf',       title: 'COPA 1809 pts 1+2',                    date: '2024-07-16', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-1-3.pdf',       title: 'COPA 1809 pts 1+3',                    date: '2024-07-16', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-2-3.pdf',       title: 'COPA 1809 pts 2+3',                    date: '2024-07-16', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-2.pdf',         title: 'COPA 1809 pt 2',                       date: '2024-07-16', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_-3.pdf',         title: 'COPA 1809 pt 3',                       date: '2024-07-16', subdir: 'extras' },
+    // z* COPA v Wright 3315 splits
+    { filename: 'zCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1-2-3.pdf', title: 'COPA 3315 pts 1+2+3',                  date: '2024-12-19', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1-2.pdf',   title: 'COPA 3315 pts 1+2',                    date: '2024-12-19', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-1-3.pdf',   title: 'COPA 3315 pts 1+3',                    date: '2024-12-19', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-2.pdf',     title: 'COPA 3315 pt 2',                       date: '2024-12-19', subdir: 'extras' },
+    { filename: 'zCOPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_-3.pdf',     title: 'COPA 3315 pt 3',                       date: '2024-12-19', subdir: 'extras' },
+    // z* Lidl v Tesco 2024 splits
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1-2-3.pdf',    title: 'Lidl v Tesco 2024 pts 1+2+3',          date: '2024-03-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1-2.pdf',      title: 'Lidl v Tesco 2024 pts 1+2',            date: '2024-03-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-1-3.pdf',      title: 'Lidl v Tesco 2024 pts 1+3',            date: '2024-03-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-2-3.pdf',      title: 'Lidl v Tesco 2024 pts 2+3',            date: '2024-03-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-2.pdf',        title: 'Lidl v Tesco 2024 pt 2',               date: '2024-03-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_-3.pdf',        title: 'Lidl v Tesco 2024 pt 3',               date: '2024-03-19', subdir: 'extras' },
+    // z* Lidl v Tesco [2023] splits
+    { filename: 'zLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-1-2.pdf',     title: 'Lidl v Tesco 2023 pts 1+2',            date: '2023-04-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-1-3.pdf',     title: 'Lidl v Tesco 2023 pts 1+3',            date: '2023-04-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-2-3.pdf',     title: 'Lidl v Tesco 2023 pts 2+3',            date: '2023-04-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-2.pdf',       title: 'Lidl v Tesco 2023 pt 2',               date: '2023-04-19', subdir: 'extras' },
+    { filename: 'zLidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_-3.pdf',       title: 'Lidl v Tesco 2023 pt 3',               date: '2023-04-19', subdir: 'extras' },
+    // z* Praesidad v Zaun splits
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1-2-3.pdf', title: 'Praesidad v Zaun pts 1+2+3',           date: '2024-06-13', subdir: 'extras' },
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1-2.pdf',   title: 'Praesidad v Zaun pts 1+2',             date: '2024-06-13', subdir: 'extras' },
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-1-3.pdf',   title: 'Praesidad v Zaun pts 1+3',             date: '2024-06-13', subdir: 'extras' },
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-2-3.pdf',   title: 'Praesidad v Zaun pts 2+3',             date: '2024-06-13', subdir: 'extras' },
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-2.pdf',     title: 'Praesidad v Zaun pt 2',                date: '2024-06-13', subdir: 'extras' },
+    { filename: 'zPraesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_-3.pdf',     title: 'Praesidad v Zaun pt 3',                date: '2024-06-13', subdir: 'extras' },
+    // z* Rothy's v Giesswein splits
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1-2-3.pdf", title: "Rothy's v Giesswein pts 1+2+3", date: '2020-12-16', subdir: 'extras' },
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1-2.pdf",   title: "Rothy's v Giesswein pts 1+2",   date: '2020-12-16', subdir: 'extras' },
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-1-3.pdf",   title: "Rothy's v Giesswein pts 1+3",   date: '2020-12-16', subdir: 'extras' },
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-2-3.pdf",   title: "Rothy's v Giesswein pts 2+3",   date: '2020-12-16', subdir: 'extras' },
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-2.pdf",     title: "Rothy's v Giesswein pt 2",      date: '2020-12-16', subdir: 'extras' },
+    { filename: "zRothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_-3.pdf",     title: "Rothy's v Giesswein pt 3",      date: '2020-12-16', subdir: 'extras' },
+    // z* Warren v Lidl 1097 splits
+    { filename: 'zWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-1-2.pdf',      title: 'Warren v Lidl 1097 pts 1+2',          date: '2021-04-30', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-1-3.pdf',      title: 'Warren v Lidl 1097 pts 1+3',          date: '2021-04-30', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-2-3.pdf',      title: 'Warren v Lidl 1097 pts 2+3',          date: '2021-04-30', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-2.pdf',        title: 'Warren v Lidl 1097 pt 2',             date: '2021-04-30', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_-3.pdf',        title: 'Warren v Lidl 1097 pt 3',             date: '2021-04-30', subdir: 'extras' },
+    // z* Warren v Lidl 2372 splits
+    { filename: 'zWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1-2-3.pdf',   title: 'Warren v Lidl 2372 pts 1+2+3',        date: '2021-08-26', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1-2.pdf',     title: 'Warren v Lidl 2372 pts 1+2',          date: '2021-08-26', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-1-3.pdf',     title: 'Warren v Lidl 2372 pts 1+3',          date: '2021-08-26', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-2-3.pdf',     title: 'Warren v Lidl 2372 pts 2+3',          date: '2021-08-26', subdir: 'extras' },
+    { filename: 'zWarren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_-2.pdf',       title: 'Warren v Lidl 2372 pt 2',             date: '2021-08-26', subdir: 'extras' },
+    // z* two-page splits
+    { filename: 'ztwo-page-1-2-3.pdf',                                           title: 'Two Page pts 1+2+3',                   date: '2026-01-01', subdir: 'extras' },
+    { filename: 'ztwo-page-1-2.pdf',                                             title: 'Two Page pts 1+2',                     date: '2026-01-01', subdir: 'extras' },
+    { filename: 'ztwo-page-1-3.pdf',                                             title: 'Two Page pts 1+3',                     date: '2026-01-01', subdir: 'extras' },
+    { filename: 'ztwo-page-2-3.pdf',                                             title: 'Two Page pts 2+3',                     date: '2026-01-01', subdir: 'extras' },
+    { filename: 'ztwo-page-2.pdf',                                               title: 'Two Page pt 2',                        date: '2026-01-01', subdir: 'extras' },
+    { filename: 'ztwo-page-3.pdf',                                               title: 'Two Page pt 3',                        date: '2026-01-01', subdir: 'extras' },
+  ];
+
+  let lastMemLog = null;
+
+  async function runMemtest(label, pdfList) {
+    const memEl = document.getElementById('memResults');
+    for (const id of ['memLight', 'memHeavy', 'memMassive', 'downloadMem'])
+      document.getElementById(id).disabled = true;
+    lastMemLog = null;
+    memEl.innerHTML = `<h2>${label}</h2><p><em>Loading files…</em></p>`;
+
+    const runTimestamp = new Date().toISOString();
+    const log = [];
+    const t0  = performance.now();
+
+    // Continuous polling to capture intra-stage heap peaks (onProgress only fires pre-stage)
+    let pollInterval  = null;
+    let pollPeak      = null; // { used, stage }
+    let currentStage  = 'start';
+
+    function startPolling() {
+      pollInterval = setInterval(() => {
+        const mem = performance.memory;
+        if (!mem) return;
+        if (pollPeak === null || mem.usedJSHeapSize > pollPeak.used)
+          pollPeak = { used: mem.usedJSHeapSize, stage: currentStage };
+      }, 200);
+    }
+
+    function stopPolling() {
+      if (pollInterval !== null) { clearInterval(pollInterval); pollInterval = null; }
+    }
+
+    function snapshot(stage) {
+      const mem = performance.memory;
+      log.push({
+        stage,
+        elapsed: ((performance.now() - t0) / 1000).toFixed(2),
+        used:    mem ? mem.usedJSHeapSize  : null,
+        total:   mem ? mem.totalJSHeapSize : null,
+      });
+      performance.mark(`buntool-memtest:${stage}`);
+    }
+
+    snapshot('start');
+    startPolling();
+
+    const filesMap  = new Map();
+    const indexData = [];
+
+    for (const entry of pdfList) {
+      const { filename, title, date, subdir = '' } = entry;
+      try {
+        const url   = `/testpdfs/${subdir ? subdir + '/' : ''}${encodeURIComponent(filename)}`;
+        const res   = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const file  = { arrayBuffer: () => Promise.resolve(bytes.buffer), name: filename };
+        filesMap.set(filename, file);
+        const pageCount = await countPdfPages(file);
+        indexData.push({ filename, title, date, pageCount, sectionMarker: 0 });
+      } catch (err) {
+        log.push({ stage: `FETCH ERROR: ${filename}`, elapsed: ((performance.now() - t0) / 1000).toFixed(2), used: null, total: null });
+        console.error(`Memtest: failed to load ${filename}:`, err);
+      }
+    }
+
+    snapshot('files-loaded');
+    memEl.querySelector('p').textContent = 'Running pipeline…';
+
+    const config = makeConfig({
+      'heading.bundleTitle': `${label} — Memory Test`,
+      'heading.projectName': 'Memory Test Case',
+      'heading.claimNumber': 'MT-2026-001',
+    });
+
+    let outputBytes = null;
+    try {
+      outputBytes = await processTheBundle(filesMap, indexData, config, (stageName) => {
+        currentStage = stageName.replace(/…$/, '').trim();
+        snapshot(currentStage);
+      });
+      currentStage = 'complete';
+      snapshot('complete');
+      stopPolling();
+      // Post-GC snapshot: allow browser GC to run, then sample again
+      await new Promise(r => setTimeout(r, 2000));
+      snapshot('post-GC (2s after complete)');
+    } catch (err) {
+      stopPolling();
+      snapshot(`ERROR: ${err.message}`);
+    }
+
+    // Render results
+    const hasMem   = performance.memory != null;
+    const baseline = log[0]?.used;
+
+    function mb(bytes)  { return bytes != null ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : 'n/a'; }
+    function delta(used) {
+      if (used == null || baseline == null) return 'n/a';
+      const d = (used - baseline) / 1024 / 1024;
+      return `${d >= 0 ? '+' : ''}${d.toFixed(1)} MB`;
+    }
+
+    const onProgressPeak = hasMem ? log.reduce((m, e) => (e.used ?? 0) > (m.used ?? 0) ? e : m, log[0]) : null;
+    const final          = log[log.length - 1];
+
+    let html = `<h2>${label} — ${new Date().toLocaleTimeString()}</h2>`;
+    html += `<p>Files: ${filesMap.size} of ${pdfList.length} loaded &nbsp;|&nbsp; Output: ${outputBytes ? mb(outputBytes.byteLength) : 'n/a'}</p>`;
+
+    if (!hasMem) {
+      html += `<p class="mem-note">performance.memory not available in this browser — JS heap column shows n/a. performance.mark() labels have been set; open the Firefox Profiler and they will appear as named markers on the memory timeline.</p>`;
+    } else {
+      const retained = final.used != null ? delta(final.used) : 'n/a';
+      if (pollPeak) {
+        html += `<p class="mem-peak">Continuous poll peak: ${mb(pollPeak.used)} (during &ldquo;${pollPeak.stage}&rdquo;) &nbsp;|&nbsp; onProgress peak: ${mb(onProgressPeak?.used)} at &ldquo;${onProgressPeak?.stage}&rdquo;</p>`;
+      } else {
+        html += `<p class="mem-peak">onProgress peak: ${mb(onProgressPeak?.used)} at &ldquo;${onProgressPeak?.stage}&rdquo;</p>`;
+      }
+      html += `<p>Retained after post-GC snapshot: ${retained}</p>`;
+    }
+
+    html += `<table><thead><tr>
+      <th>Stage</th><th>Elapsed (s)</th><th>JS heap used</th><th>Delta from start</th>
+    </tr></thead><tbody>`;
+
+    for (const e of log) {
+      const isPeak = hasMem && e === onProgressPeak;
+      html += `<tr${isPeak ? ' style="background:#fffbe6"' : ''}>
+        <td>${e.stage}</td>
+        <td>${e.elapsed}</td>
+        <td>${mb(e.used)}</td>
+        <td>${delta(e.used)}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+    memEl.innerHTML = html;
+
+    lastMemLog = { label, runTimestamp, log, pollPeak, pdfList, outputSize: outputBytes?.byteLength ?? null };
+    for (const id of ['memLight', 'memHeavy', 'memMassive', 'downloadMem'])
+      document.getElementById(id).disabled = false;
+  }
+
+  document.getElementById('memLight').addEventListener('click',   () => runMemtest('Memtest Light',   LIGHT_PDFS));
+  document.getElementById('memHeavy').addEventListener('click',   () => runMemtest('Memtest Heavy',   HEAVY_PDFS));
+  document.getElementById('memMassive').addEventListener('click', () => runMemtest('Memtest Massive', MASSIVE_PDFS));
+
+  document.getElementById('downloadMem').addEventListener('click', () => {
+    if (!lastMemLog) return;
+    const { label, runTimestamp, log, pollPeak, pdfList, outputSize } = lastMemLog;
+    const labelSlug = label.toLowerCase().replace(/\s+/g, '-');
+    const fileTs    = runTimestamp.replace(/[:.]/g, '-').slice(0, 19);
+    const hasMem    = log.some(e => e.used != null);
+    const baseline  = log[0]?.used;
+
+    function mbTxt(b)   { return b != null ? (b / 1024 / 1024).toFixed(2) : 'n/a'; }
+    function deltaTxt(used) {
+      if (used == null || baseline == null) return 'n/a';
+      return ((used - baseline) / 1024 / 1024).toFixed(2);
+    }
+
+    const lines = [
+      `BunTool Memory Test — ${label} — ${runTimestamp}`,
+      `Browser: ${navigator.userAgent}`,
+      `Files (${pdfList.length}): ${pdfList.map(p => p.filename).join(', ')}`,
+      `Output size: ${outputSize != null ? mbTxt(outputSize) + ' MB' : 'n/a'}`,
+      `JS heap tracked: ${hasMem ? 'yes (Chrome/Edge)' : 'no — use Firefox Profiler memory track'}`,
+      ...(hasMem && pollPeak ? [`Continuous poll peak: ${mbTxt(pollPeak.used)} MB (during "${pollPeak.stage}")`] : []),
+      '',
+      'Stage\tElapsed (s)\tJS Heap Used (MB)\tDelta from start (MB)',
+      ...log.map(e => `${e.stage}\t${e.elapsed}\t${mbTxt(e.used)}\t${deltaTxt(e.used)}`),
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `memtest-buntool-${labelSlug}-${fileTs}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  });
 </script>
 </body>
 </html>
