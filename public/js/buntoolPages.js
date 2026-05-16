@@ -298,3 +298,65 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   console.log(`Payload paginated successfully`);
   return await pdfDoc.save();
 }
+
+
+// --- worker-based version ---
+
+const FOOTER_WORKER_URL = new URL('./workers/buntoolFooterWorker.js', import.meta.url);
+
+// Worker peak reading from the most recent footer worker run (pdf-lib JS heap, not wasm).
+export const footerWorkerPeaks = {};
+
+/**
+ * Runs addPageNumberingToPdf inside a dedicated worker.
+ * Transfers the input buffer to the worker (zero-copy); caller must not use the
+ * original Uint8Array after this call.
+ *
+ * @param {Uint8Array} pdfBytes
+ * @param {Object} config - BunTool Config instance
+ * @returns {Promise<Uint8Array>}
+ */
+export function addPageNumberingViaWorker(pdfBytes, config) {
+  if (config.getOption('pageNumbering.numberingStyle') === 'None') {
+    return Promise.resolve(pdfBytes);
+  }
+
+  const configValues = {
+    'pageNumbering.footerPrefix':     config.getOption('pageNumbering.footerPrefix'),
+    'pageNumbering.alignment':        config.getOption('pageNumbering.alignment'),
+    'pageNumbering.numberingStyle':   config.getOption('pageNumbering.numberingStyle'),
+    'pageNumbering.footerFont':       config.getOption('pageNumbering.footerFont'),
+    'pageNumbering.footerFontSize':   config.getOption('pageNumbering.footerFontSize'),
+    'pageNumbering.pageNumberColour': config.getOption('pageNumbering.pageNumberColour'),
+  };
+
+  const buf = pdfBytes.buffer.byteLength === pdfBytes.byteLength
+    ? pdfBytes.buffer : pdfBytes.slice().buffer;
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(FOOTER_WORKER_URL, { type: 'module' });
+
+    worker.onmessage = (e) => {
+      if (e.data?.ready) {
+        worker.postMessage({ buffer: buf, configValues }, [buf]);
+        return;
+      }
+      worker.terminate();
+      if (e.data?.workerPeakMB != null) footerWorkerPeaks.pageNumbering = e.data.workerPeakMB;
+      if (e.data?.error) reject(new Error(e.data.error));
+      else resolve(e.data.result);
+    };
+
+    worker.onerror = (e) => {
+      console.error('[FooterWorker] onerror:', e.message, e);
+      worker.terminate();
+      reject(new Error(e.message ?? 'Worker error'));
+    };
+
+    worker.addEventListener('messageerror', (e) => {
+      console.error('[FooterWorker] messageerror:', e);
+      worker.terminate();
+      reject(new Error('Worker messageerror'));
+    });
+  });
+}

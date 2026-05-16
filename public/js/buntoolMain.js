@@ -14,17 +14,19 @@ import {
   makeDummyTocPages,
   } from './buntoolToc.js';
 import {
-  addPageNumberingToPdf,
-  // mergeTwoPdfs,    // replaced by buntoolMerge.js
-  // mergePdfsByTOC, // replaced by buntoolMerge.js
+  // addPageNumberingToPdf,  // replaced by footer worker
+  // mergeTwoPdfs,           // replaced by buntoolMerge.js
+  // mergePdfsByTOC,         // replaced by buntoolMerge.js
+  addPageNumberingViaWorker,
   validateCoverPage,
   } from './buntoolPages.js';
 // import { mergeTwoPdfs, mergePdfsByTOC } from './buntoolMerge.js'; // direct (no worker)
 import { mergeTwoPdfsViaWorker as mergeTwoPdfs, mergePdfsByTOCViaWorker as mergePdfsByTOC } from './buntoolMerge.js';
 import {
-  addHyperlinks,
-  addOutlineItems,
-  setMetadata,
+  // addHyperlinks,    // replaced by meta worker
+  // addOutlineItems,  // replaced by meta worker
+  // setMetadata,      // replaced by meta worker
+  runMetaViaWorker,
 } from './buntoolMeta.js';
 
 /**
@@ -159,7 +161,8 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
       console.log(`...prepended coversheet - PDF size: ${justIndexPdf?.length || 0} bytes`);
     }
     onProgress?.('Adding page numbering…');
-    justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config);
+    // justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config); // replaced by footer worker
+    justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config);
     console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
     return justIndexPdf;
   }
@@ -203,7 +206,8 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
 
   console.log('[10/13] Adding page numbering...');
   try {
-    payloadPdf = await addPageNumberingToPdf(payloadPdf, config);
+    // payloadPdf = await addPageNumberingToPdf(payloadPdf, config); // replaced by footer worker
+    payloadPdf = await addPageNumberingViaWorker(payloadPdf, config);
     console.log(`[10/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add page numbering: `, error.message);
@@ -211,32 +215,15 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
   }
   onProgress?.('Adding hyperlinks…');
 
-  console.log('[11/13] Adding hyperlinks to TOC entries...');
+  console.log('[11-13/13] Running meta worker (hyperlinks → bookmarks → metadata)...');
   try {
-    payloadPdf = addHyperlinks(payloadPdf, tocTableRowCoordinates, tocEntries, config);
-    console.log(`[11/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
+    // payloadPdf = addHyperlinks(payloadPdf, tocTableRowCoordinates, tocEntries, config);    // replaced by meta worker
+    // payloadPdf = addOutlineItems(payloadPdf, tocEntries, config);                          // replaced by meta worker
+    // payloadPdf = setMetadata(payloadPdf, tocEntries, config);                              // replaced by meta worker
+    payloadPdf = await runMetaViaWorker(payloadPdf, tocTableRowCoordinates, tocEntries, config, onProgress);
+    console.log(`[11-13/13]...done - Final PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
-    console.error(`[ERROR] Failed to add hyperlinks: `, error.message);
-    throw error;
-  }
-  onProgress?.('Adding bookmarks…');
-
-  console.log('[12/13] Adding outline items and metadata...');
-  try {
-    payloadPdf = addOutlineItems(payloadPdf, tocEntries, config);
-    console.log(`[12/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
-  } catch (error) {
-    console.error(`[ERROR] Failed to add outline items: `, error.message);
-    throw error;
-  }
-  onProgress?.('Preparing file for save…');
-
-  console.log('[13/13] Setting PDF metadata...');
-  try {
-    payloadPdf = setMetadata(payloadPdf, tocEntries, config);
-    console.log(`[13/13]...done - Final PDF size: ${payloadPdf?.length || 0} bytes`)
-  } catch (error) {
-    console.error(`[ERROR] Failed to set metadata: `, error.message);
+    console.error(`[ERROR] Failed in meta worker: `, error.message);
     throw error;
   }
 

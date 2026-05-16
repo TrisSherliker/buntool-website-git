@@ -52,9 +52,11 @@
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
   import * as pdflib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
 
-  import { countPdfPages, mergeTwoPdfs, mergePdfsByTOC, addPageNumberingToPdf, validateCoverPage }
+  import { countPdfPages, mergeTwoPdfs, mergePdfsByTOC, addPageNumberingToPdf, validateCoverPage,
+           addPageNumberingViaWorker, footerWorkerPeaks }
     from './js/buntoolPages.js'
-  import { addHyperlinks, addOutlineItems, setMetadata }
+  import { addHyperlinks, addOutlineItems, setMetadata,
+           runMetaViaWorker, metaWorkerPeaks }
     from './js/buntoolMeta.js'
   import { createTocEntries, makeTocPages, makeDummyTocPages }
     from './js/buntoolToc.js'
@@ -62,7 +64,7 @@
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
-  import { workerPeaks }
+  import { workerPeaks, mergeTwoPdfsViaWorker, mergePdfsByTOCViaWorker }
     from './js/buntoolMerge.js'
   import Config, { validFonts, validPageNumberColours }
     from './js/buntoolConfig.js'
@@ -328,6 +330,41 @@
     return ok('mergePdfsByTOC printable: odd-page doc gets blank page (3+1+4=8)', getPageCount(merged), 8);
   }
 
+  // mergeTwoPdfsViaWorker / mergePdfsByTOCViaWorker (mupdf worker versions) ------
+
+  async function test_mergeTwoPdfsViaWorker() {
+    const a = await makePdf(3, 'wA');
+    const b = await makePdf(5, 'wB');
+    return ok('mergeTwoPdfsViaWorker: 3+5=8', getPageCount(await mergeTwoPdfsViaWorker(a, b)), 8);
+  }
+
+  async function test_mergePdfsByTOCViaWorker() {
+    const config = makeConfig();
+    const [p3, p5, p2] = await Promise.all([makePdf(3,'wD1'), makePdf(5,'wD2'), makePdf(2,'wD3')]);
+    const filesMap   = filesMapOf([['d1.pdf',p3],['d2.pdf',p5],['d3.pdf',p2]]);
+    const tocEntries = [
+      { tabNumber: 1, title: 'D1',  filename: 'd1.pdf', sectionBreak: null },
+      { tabNumber: '', title: 'Sec', filename: null,    sectionBreak: 'Section 1' }, // skipped
+      { tabNumber: 2, title: 'D2',  filename: 'd2.pdf', sectionBreak: null },
+      { tabNumber: 3, title: 'D3',  filename: 'd3.pdf', sectionBreak: null },
+    ];
+    const merged = await mergePdfsByTOCViaWorker(tocEntries, filesMap, config);
+    return ok('mergePdfsByTOCViaWorker: 3+5+2=10 (section header skipped)', getPageCount(merged), 10);
+  }
+
+  async function test_mergePdfsByTOCViaWorker_printable() {
+    const config = makeConfig({ 'pageOptions.printableBundle': true });
+    const [odd, even] = await Promise.all([makePdf(3,'wOdd'), makePdf(4,'wEven')]);
+    const filesMap   = filesMapOf([['odd.pdf',odd],['even.pdf',even]]);
+    const tocEntries = [
+      { tabNumber: 1, title: 'Odd',  filename: 'odd.pdf',  sectionBreak: null },
+      { tabNumber: 2, title: 'Even', filename: 'even.pdf', sectionBreak: null },
+    ];
+    const merged = await mergePdfsByTOCViaWorker(tocEntries, filesMap, config);
+    // 3 (odd) + 1 blank + 4 (even) = 8
+    return ok('mergePdfsByTOCViaWorker printable: odd-page doc gets blank page (3+1+4=8)', getPageCount(merged), 8);
+  }
+
   async function test_addPageNumbering_count() {
     const config  = makeConfig({ 'pageNumbering.numberingStyle': 'PageX' });
     const pdf     = await makePdf(4, 'num');
@@ -467,6 +504,30 @@
       ));
     }
     return results;
+  }
+
+  // addPageNumberingViaWorker ----------------------------------------------------
+
+  async function test_addPageNumberingViaWorker_count() {
+    const config = makeConfig({ 'pageNumbering.numberingStyle': 'PageX' });
+    const pdf    = await makePdf(4, 'workerNum');
+    const result = await addPageNumberingViaWorker(pdf, config);
+    return ok('addPageNumberingViaWorker: page count unchanged', getPageCount(result), 4);
+  }
+
+  async function test_addPageNumberingViaWorker_footer() {
+    const config = makeConfig({ 'pageNumbering.numberingStyle': 'PageX' });
+    const pdf    = await makePdf(3, 'workerFooter');
+    const result = await addPageNumberingViaWorker(pdf, config);
+    const t1 = getPageText(result, 0);
+    return truthy('addPageNumberingViaWorker: page 1 has "Page 1"', t1.includes('Page 1'), t1.slice(0, 120));
+  }
+
+  async function test_addPageNumberingViaWorker_none() {
+    const config = makeConfig({ 'pageNumbering.numberingStyle': 'None' });
+    const pdf    = await makePdf(3, 'workerNone');
+    const result = await addPageNumberingViaWorker(pdf, config);
+    return ok('addPageNumberingViaWorker None: no-op, page count unchanged', getPageCount(result), 3);
   }
 
   async function test_removePageNumbering_eachColour() {
@@ -902,6 +963,45 @@
     ];
   }
 
+  // runMetaViaWorker ----------------------------------------------------------
+
+  async function test_runMetaViaWorker_basic() {
+    const config     = makeConfig();
+    const pdf        = await makePdf(5, 'metaWorker');
+    const tocEntries = [
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+    ];
+    const result = await runMetaViaWorker(pdf, [], tocEntries, config);
+    const meta   = getMeta(result);
+    return [
+      truthy('runMetaViaWorker: PDF valid',                   (() => { try { openDoc(result); return true; } catch { return false; } })()),
+      truthy('runMetaViaWorker: Producer contains "BunTool"', meta.producer?.includes('BunTool'), `"${meta.producer}"`),
+      ok    ('runMetaViaWorker: Title = bundleTitle',         meta.title,  'Test Bundle'),
+      ok    ('runMetaViaWorker: BundleIndex version = 2',     meta.bundleIndex?.version, 2),
+    ];
+  }
+
+  async function test_runMetaViaWorker_hyperlinks() {
+    const config  = makeConfig();
+    const tocPdf  = await makePdf(2, 'wToc');
+    const content = await makePdf(5, 'wBody');
+    const merged  = await mergeTwoPdfs(tocPdf, content);
+    const rowCoords = [
+      { rowNumber: 1, tabNumber: 1, x: 25, y: 50, width: 160, height: 10, pageNumber: 1 },
+      { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
+    ];
+    const tocEntries = [
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+    ];
+    const result = await runMetaViaWorker(merged, rowCoords, tocEntries, config);
+    const links  = getLinks(result, 0);
+    return [
+      ok('runMetaViaWorker hyperlinks: two links on TOC page 1', links.length, 2),
+      truthy('runMetaViaWorker hyperlinks: Producer set',        getMeta(result).producer?.includes('BunTool')),
+    ];
+  }
+
   // buntoolRestore ------------------------------------------------------------
 
   async function test_removePageNumbering_removesFooter() {
@@ -1122,10 +1222,21 @@
         test_addPageNumbering_colourStrip_allFonts,
         test_addPageNumbering_eachColour,
         test_addPageNumbering_correctColourInStream,
+        test_addPageNumberingViaWorker_count,
+        test_addPageNumberingViaWorker_footer,
+        test_addPageNumberingViaWorker_none,
         test_removePageNumbering_eachColour,
         test_validateCoverPage_singlePage,
         test_validateCoverPage_multiPage,
         test_validateCoverPage_invalid,
+      ],
+    },
+    {
+      label: 'buntoolMerge',
+      tests: [
+        test_mergeTwoPdfsViaWorker,
+        test_mergePdfsByTOCViaWorker,
+        test_mergePdfsByTOCViaWorker_printable,
       ],
     },
     {
@@ -1165,6 +1276,8 @@
         test_addHyperlinks,
         test_addHyperlinks_destinationsDiffer,
         test_addHyperlinks_coversheetOffset,
+        test_runMetaViaWorker_basic,
+        test_runMetaViaWorker_hyperlinks,
       ],
     },
     {
@@ -1476,8 +1589,8 @@
       snapshot(`ERROR: ${err.message}`);
     }
 
-    // Snapshot worker peaks before rendering (worker peaks are populated during processTheBundle)
-    const workerPeakSnapshot = { ...workerPeaks };
+    // Snapshot all worker peaks before rendering (populated during processTheBundle)
+    const workerPeakSnapshot = { ...workerPeaks, ...footerWorkerPeaks, ...metaWorkerPeaks };
 
     // Render results
     const hasMem   = performance.memory != null;
@@ -1505,20 +1618,25 @@
       } else {
         html += `<p class="mem-peak">onProgress peak: ${mb(onProgressPeak?.used)} at &ldquo;${onProgressPeak?.stage}&rdquo;</p>`;
       }
-      // Worker heap peaks (not visible to main thread performance.memory)
+      // Worker heap peaks (mupdf workers: wasm heap invisible to performance.memory — expect ~0)
       const wps = workerPeakSnapshot;
-      const mainAtMergeDoc   = log.find(e => e.stage === 'Merging documents')?.used;
-      const mainAtMergeIndex = log.find(e => e.stage === 'Merging index with documents')?.used;
-      if (wps.mergePdfsByTOC != null || wps.mergeTwoPdfs != null) {
-        const fmtWorker = (peakMB, mainBytes) => {
-          const wStr = peakMB != null ? peakMB.toFixed(1) + ' MB' : 'n/a';
-          const combined = (peakMB != null && mainBytes != null)
-            ? ` (combined with main: ${(peakMB + mainBytes / 1024 / 1024).toFixed(1)} MB)` : '';
-          return wStr + combined;
-        };
-        html += `<p class="mem-peak">Worker peaks (not in poll): `
-          + `mergePdfsByTOC: ${fmtWorker(wps.mergePdfsByTOC, mainAtMergeDoc)} &nbsp;|&nbsp; `
-          + `mergeTwoPdfs: ${fmtWorker(wps.mergeTwoPdfs, mainAtMergeIndex)}</p>`;
+      const stageUsed = s => log.find(e => e.stage === s)?.used;
+      const fmtWorker = (peakMB, mainBytes) => {
+        if (peakMB == null) return 'n/a';
+        const combined = mainBytes != null
+          ? ` (combined with main: ${(peakMB + mainBytes / 1024 / 1024).toFixed(1)} MB)` : '';
+        return peakMB.toFixed(1) + ' MB' + combined;
+      };
+      const workerRows = [
+        ['mergePdfsByTOC (mupdf)',  wps.mergePdfsByTOC,  stageUsed('Merging documents')],
+        ['mergeTwoPdfs (mupdf)',    wps.mergeTwoPdfs,    stageUsed('Merging index with documents')],
+        ['pageNumbering (pdf-lib)', wps.pageNumbering,   stageUsed('Adding page numbering')],
+        ['meta (mupdf)',            wps.meta,            stageUsed('Adding hyperlinks')],
+      ].filter(([, peak]) => peak != null);
+      if (workerRows.length) {
+        html += `<p class="mem-peak">Worker peaks (not in main-thread poll):<br>`
+          + workerRows.map(([name, peak, main]) => `&nbsp;&nbsp;${name}: ${fmtWorker(peak, main)}`).join('<br>')
+          + `</p>`;
       }
       html += `<p>Retained after post-GC snapshot: ${retained}</p>`;
     }
@@ -1569,8 +1687,10 @@
       `Output size: ${outputSize != null ? mbTxt(outputSize) + ' MB' : 'n/a'}`,
       `JS heap tracked: ${hasMem ? 'yes (Chrome/Edge)' : 'no — use Firefox Profiler memory track'}`,
       ...(hasMem && pollPeak ? [`Continuous poll peak: ${mbTxt(pollPeak.used)} MB (during "${pollPeak.stage}")`] : []),
-      ...(wps?.mergePdfsByTOC != null ? [`Worker peak (mergePdfsByTOC): ${wps.mergePdfsByTOC.toFixed(2)} MB`] : []),
-      ...(wps?.mergeTwoPdfs   != null ? [`Worker peak (mergeTwoPdfs): ${wps.mergeTwoPdfs.toFixed(2)} MB`]   : []),
+      ...(wps?.mergePdfsByTOC != null ? [`Worker peak (mergePdfsByTOC, mupdf):  ${wps.mergePdfsByTOC.toFixed(2)} MB`] : []),
+      ...(wps?.mergeTwoPdfs   != null ? [`Worker peak (mergeTwoPdfs, mupdf):    ${wps.mergeTwoPdfs.toFixed(2)} MB`]   : []),
+      ...(wps?.pageNumbering  != null ? [`Worker peak (pageNumbering, pdf-lib): ${wps.pageNumbering.toFixed(2)} MB`]  : []),
+      ...(wps?.meta           != null ? [`Worker peak (meta, mupdf):            ${wps.meta.toFixed(2)} MB`]           : []),
       '',
       'Stage\tElapsed (s)\tJS Heap Used (MB)\tDelta from start (MB)',
       ...log.map(e => `${e.stage}\t${e.elapsed}\t${mbTxt(e.used)}\t${deltaTxt(e.used)}`),

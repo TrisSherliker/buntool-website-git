@@ -323,3 +323,74 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   return outputPdf;
 }
 
+
+// --- worker-based version ---
+
+const META_WORKER_URL = new URL('./workers/buntoolMetaWorker.js', import.meta.url);
+
+// Worker peak reading from the most recent meta worker run (mupdf wasm heap — likely 0 in performance.memory).
+export const metaWorkerPeaks = {};
+
+/**
+ * Runs addHyperlinks → addOutlineItems → setMetadata inside a single dedicated worker.
+ * Transfers the input buffer to the worker (zero-copy).
+ * Sends interim { progress } messages between stages for UI updates.
+ *
+ * @param {Uint8Array} pdfBytes
+ * @param {Array<Object>} tocTableRowCoordinates
+ * @param {Array<Object>} tocEntries
+ * @param {Object} config - BunTool Config instance
+ * @param {Function} [onProgress]
+ * @returns {Promise<Uint8Array>}
+ */
+export function runMetaViaWorker(pdfBytes, tocTableRowCoordinates, tocEntries, config, onProgress) {
+  const configValues = {
+    'pageOptions.coversheet':        config.getOption('pageOptions.coversheet'),
+    'pageOptions.printableBundle':   config.getOption('pageOptions.printableBundle'),
+    'index.outlineItemStyle':        config.getOption('index.outlineItemStyle'),
+    'index.fontFace':                config.getOption('index.fontFace'),
+    'index.dateStyle':               config.getOption('index.dateStyle'),
+    'heading.confidential':          config.getOption('heading.confidential'),
+    'heading.bundleTitle':           config.getOption('heading.bundleTitle'),
+    'heading.projectName':           config.getOption('heading.projectName'),
+    'heading.claimNumber':           config.getOption('heading.claimNumber'),
+    'pageNumbering.footerFont':      config.getOption('pageNumbering.footerFont'),
+    'pageNumbering.alignment':       config.getOption('pageNumbering.alignment'),
+    'pageNumbering.numberingStyle':  config.getOption('pageNumbering.numberingStyle'),
+    'pageNumbering.footerPrefix':    config.getOption('pageNumbering.footerPrefix'),
+  };
+
+  const buf = pdfBytes.buffer.byteLength === pdfBytes.byteLength
+    ? pdfBytes.buffer : pdfBytes.slice().buffer;
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(META_WORKER_URL, { type: 'module' });
+
+    worker.onmessage = (e) => {
+      if (e.data?.ready) {
+        worker.postMessage({ buffer: buf, tocTableRowCoordinates, tocEntries, configValues }, [buf]);
+        return;
+      }
+      if (e.data?.progress) {
+        onProgress?.(e.data.progress);
+        return;
+      }
+      worker.terminate();
+      if (e.data?.workerPeakMB != null) metaWorkerPeaks.meta = e.data.workerPeakMB;
+      if (e.data?.error) reject(new Error(e.data.error));
+      else resolve(e.data.result);
+    };
+
+    worker.onerror = (e) => {
+      console.error('[MetaWorker] onerror:', e.message, e);
+      worker.terminate();
+      reject(new Error(e.message ?? 'Worker error'));
+    };
+
+    worker.addEventListener('messageerror', (e) => {
+      console.error('[MetaWorker] messageerror:', e);
+      worker.terminate();
+      reject(new Error('Worker messageerror'));
+    });
+  });
+}
