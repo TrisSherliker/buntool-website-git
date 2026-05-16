@@ -10,6 +10,7 @@
 
 let processTheBundle;
 let countPdfPages;
+let validateAndCountPages;
 let validateCoverPage;
 let coversheetFile = null;
 let bundleConfirmed = false;
@@ -240,7 +241,7 @@ async function applySnapshot(snapshot) {
  ***********************************/
 
 window.addEventListener('DOMContentLoaded', () => {
-  import('./buntoolPages.js').then(m => countPdfPages = m.countPdfPages);
+  import('./buntoolPages.js').then(m => { countPdfPages = m.countPdfPages; validateAndCountPages = m.validateAndCountPages; });
   import('./buntoolMain.js').then(m => processTheBundle = m.default ?? m.processTheBundle);
   import('https://esm.sh/chrono-node@2.9.0').then(m => chrono = m);
 
@@ -464,35 +465,24 @@ async function processFiles(files) {
     // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
     const fileBytes = new Uint8Array(await file.arrayBuffer());
 
-    // Validate by attempting to open with MuPDF (catches truncated, encrypted, or non-PDF files)
-    const { validatePdf } = await import('./buntoolMeta.js');
-    if (!validatePdf(fileBytes)) {
-      showErrorModal({
-        title: 'Not a PDF file',
-        message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again.`,
-      });
-      continue;
-    }
-
-    const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
-
     const key = uniqueFilename(file.name);
     const prettyTitle = prettifyTitle(file.name);
     const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
     const displayTitle = stripDoubleChars(dateParseObj.name);
     if (!countPdfPages){
-      ({countPdfPages} = await import('./buntoolPages.js'));
+      ({countPdfPages, validateAndCountPages} = await import('./buntoolPages.js'));
     }
-    let pageCount;
-    try {
-      pageCount = await countPdfPages(materializedFile);
-    } catch {
+    const validation = await validateAndCountPages(fileBytes);
+    if (validation.error) {
       showErrorModal({
-        title: 'Could not read PDF',
-        message: `"${file.name}" could not be read. The file may be corrupted or use unsupported encryption.`,
+        title: 'Not a valid PDF file',
+        message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again.`,
       });
       continue;
     }
+    const pageCount = validation.pageCount;
+
+    const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
     filesMap.set(key, materializedFile);
     frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
 

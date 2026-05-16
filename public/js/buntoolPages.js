@@ -79,6 +79,20 @@ export async function countPdfPages(file) {
 }
 
 /**
+ * Validates a PDF and returns its page count in a single pdf-lib load.
+ * @param {Uint8Array} pdfBytes
+ * @returns {Promise<{pageCount: number}|{error: string}>}
+ */
+export async function validateAndCountPages(pdfBytes) {
+  try {
+    const pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
+    return { pageCount: pdfDoc.getPageCount() };
+  } catch (err) {
+    return { error: err.message ?? 'Not a valid PDF' };
+  }
+}
+
+/**
  * Validates a coversheet PDF and returns its first page as a Uint8Array.
  * If the file has more than one page, only the first page is extracted.
  * @param {File} file - The PDF file to use as a coversheet
