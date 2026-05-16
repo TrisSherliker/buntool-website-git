@@ -28,12 +28,20 @@ BunTool runs entirely in your browser. Your documents are **never uploaded** to 
 
 ### Backend modules
 
-- **buntoolMain.js** - Main logic for bundle creation.
-- **buntoolConfig.js** - Configuration. Data structure and validator for data passed from frontend to backend. 
-- **buntoolPages.js** - Manage input PDF pages. Merge, organise, measure and page numbering functions (depends on pdf-lib and fontkit)
-- **buntoolToc.js** - Create new PDF pages. Functions for table of contents / index generation and date management (depends on jspdf and jspdf-autotable).
-- **buntoolMeta.js** - Metadata and innards management. Functions for internal hyperlinking, bookmarking and annotation of bundles (depends on mupdf WASM).
+- **buntoolMain.js** - Main orchestration logic for bundle creation.
+- **buntoolConfig.js** - Configuration. Data structure and validator for data passed from frontend to backend.
+- **buntoolPages.js** - Input PDF management. Page counting, validation, cover page handling, and page numbering (depends on pdf-lib and fontkit).
+- **buntoolMerge.js** - PDF merging using mupdf. Grafts source documents one at a time so peak memory stays at ~(destination + 1 source) rather than all sources simultaneously. Provides both direct and worker-based variants.
+- **buntoolToc.js** - Index generation. Creates the table of contents PDF pages and manages date formatting (depends on jspdf and jspdf-autotable).
+- **buntoolMeta.js** - Metadata and navigation. Adds internal hyperlinks, PDF bookmarks/outlines, and bundle metadata/annotations (depends on mupdf WASM).
 
+### Workers
+
+Each worker runs in an isolated thread and is terminated after use, freeing its entire wasm/JS heap.
+
+- **workers/buntoolMergeWorker.js** - Runs mupdf PDF merge operations (mergePdfsByTOC, mergeTwoPdfs).
+- **workers/buntoolFooterWorker.js** - Runs pdf-lib page numbering so the large pdf-lib heap is isolated and freed after each run.
+- **workers/buntoolMetaWorker.js** - Runs the full metadata pipeline (hyperlinks → bookmarks → metadata annotation) in a single worker pass.
 
 ### Frontend modules
 
