@@ -345,7 +345,7 @@ export function addPageNumberingViaWorker(pdfBytes, config) {
       }
       worker.terminate();
       if (e.data?.workerPeakMB != null) footerWorkerPeaks.pageNumbering = e.data.workerPeakMB;
-      if (e.data?.error) reject(new Error(e.data.error));
+      if (e.data?.error) { const err = new Error(e.data.error); if (e.data.stack) err.stack = e.data.stack; reject(err); }
       else resolve(e.data.result);
     };
 

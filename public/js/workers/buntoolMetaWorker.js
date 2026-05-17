@@ -217,6 +217,6 @@ self.addEventListener('message', async (e) => {
   } catch (err) {
     clearInterval(peakPoll);
     console.error('[MetaWorker] error:', err);
-    self.postMessage({ error: err.message });
+    self.postMessage({ error: err.message, stack: err.stack });
   }
 });

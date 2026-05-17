@@ -157,6 +157,6 @@ self.addEventListener('message', async (e) => {
 
   } catch (err) {
     clearInterval(peakPoll);
-    self.postMessage({ error: err.message });
+    self.postMessage({ error: err.message, stack: err.stack });
   }
 });

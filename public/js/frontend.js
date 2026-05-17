@@ -1167,7 +1167,10 @@ function showErrorModal({ title, message, error } = {}) {
   }
 
   if (error) {
+    const buildSpan = document.querySelector('footer span.text-xs.text-gray-400');
+    const build = buildSpan ? buildSpan.textContent.trim() : 'unknown';
     const details = [
+      `Build: ${build}`,
       `Time: ${new Date().toISOString()}`,
       `Browser: ${navigator.userAgent}`,
       `Error: ${error.message || error}`,

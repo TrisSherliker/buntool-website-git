@@ -236,7 +236,7 @@ function runWorkerOp(message, transferables) {
       }
       worker.terminate();
       if (e.data?.workerPeakMB != null) workerPeaks[message.op] = e.data.workerPeakMB;
-      if (e.data?.error) reject(new Error(e.data.error));
+      if (e.data?.error) { const err = new Error(e.data.error); if (e.data.stack) err.stack = e.data.stack; reject(err); }
       else resolve(e.data.result);
     };
 

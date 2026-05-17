@@ -148,6 +148,6 @@ self.addEventListener('message', async (e) => {
   } catch (err) {
     clearInterval(peakPoll);
     console.error('[FooterWorker] error:', err);
-    self.postMessage({ error: err.message });
+    self.postMessage({ error: err.message, stack: err.stack });
   }
 });
