@@ -256,7 +256,7 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   const footerColour = colourMap[config.getOption('pageNumbering.pageNumberColour')] ?? colourMap.black;
 
   for (const [pageIdx, thisPage] of pages.entries()) {
-    // Construct footer text
+    // Construct footer tgext
     const footerTextFormats = {
       'PageX': `Page ${pageIdx + 1}`,
       'PageXofY': `Page ${pageIdx + 1} of ${totalPageCount}`,
