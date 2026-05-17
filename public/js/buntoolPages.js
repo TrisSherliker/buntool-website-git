@@ -204,10 +204,10 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   * a prefix if specified.
   * Strategy: use PDF-lib to add a text label to each page.
   */
-  const footerLabelText = config.getOption('pageNumbering.footerPrefix')
-  const footerAlignment = config.getOption('pageNumbering.alignment')
-  const pageNumberingStyle = config.getOption('pageNumbering.numberingStyle')
-  const footerFont = config.getOption('pageNumbering.footerFont')
+  const footerLabelText = config.getOption('pageNumbering.footerPrefix') || '';
+  const footerAlignment = config.getOption('pageNumbering.alignment') || 'right';
+  const pageNumberingStyle = config.getOption('pageNumbering.numberingStyle') || 'PageX';
+  const footerFont = config.getOption('pageNumbering.footerFont') || 'helvetica';
   
   if (pageNumberingStyle === "None") {
     console.log(`No page numbering applied`);
@@ -248,6 +248,13 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
     }
   }
 
+  const colourMap = {
+    black: pdflib.rgb(0.072, 0.021, 0.073),
+    red:   pdflib.rgb(0.872, 0.032, 0.101),
+    blue:  pdflib.rgb(0.083, 0.221, 0.873),
+  };
+  const footerColour = colourMap[config.getOption('pageNumbering.pageNumberColour')] ?? colourMap.black;
+
   for (const [pageIdx, thisPage] of pages.entries()) {
     // Construct footer text
     const footerTextFormats = {
@@ -277,15 +284,6 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
     } else {
       leftEdgeOfLabel = footerAxisSize - maxLabelWidth - 5;
     }
-
-    //apply text - position and rotation depend on page /Rotate flag
-    const pageNumberColourSetting = config.getOption('pageNumbering.pageNumberColour');
-    const colourMap = {
-      black: pdflib.rgb(0.072, 0.021, 0.073),
-      red:   pdflib.rgb(0.872, 0.032, 0.101),
-      blue:  pdflib.rgb(0.083, 0.221, 0.873),
-    };
-    const footerColour = colourMap[pageNumberColourSetting] ?? colourMap.black;
 
     if (rotation === 90) {
       thisPage.drawText(footerText, { x: width - maxLabelHeight, y: leftEdgeOfLabel,                  size: textLabelSize, font: textLabelFont, color: footerColour, rotate: pdflib.degrees(90) });
