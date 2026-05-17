@@ -22,22 +22,9 @@ console.log('[MergeWorker] mupdf imported, ready =', typeof mupdf.ready);
 
 // --- mupdf helpers (same logic as buntoolMerge.js) ---
 
-function graftPage(dstDoc, srcDoc, pageIndex, graft) {
-  const srcPage = srcDoc.findPage(pageIndex);
-  const dstPage = dstDoc.newDictionary();
-  dstPage.put("Type", dstDoc.newName("Page"));
-  if (srcPage.get("MediaBox"))  dstPage.put("MediaBox",  graft.graftObject(srcPage.get("MediaBox")));
-  if (srcPage.get("Rotate"))    dstPage.put("Rotate",    graft.graftObject(srcPage.get("Rotate")));
-  if (srcPage.get("Resources")) dstPage.put("Resources", graft.graftObject(srcPage.get("Resources")));
-  if (srcPage.get("Contents"))  dstPage.put("Contents",  graft.graftObject(srcPage.get("Contents")));
-  dstDoc.insertPage(-1, dstDoc.addObject(dstPage));
-}
-
 function graftAllAndDestroy(dstDoc, srcDoc) {
   const pageCount = srcDoc.countPages();
-  const graft = dstDoc.newGraftMap();
-  for (let i = 0; i < pageCount; i++) graftPage(dstDoc, srcDoc, i, graft);
-  graft.destroy();
+  for (let i = 0; i < pageCount; i++) dstDoc.graftPage(-1, srcDoc, i);
   srcDoc.destroy();
   return pageCount;
 }

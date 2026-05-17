@@ -270,14 +270,8 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
 
     //alignment calcs
     const marginSidePadding = 30;
-    let width, height, rotation;
-    try {
-      ({ width, height } = thisPage.getSize());
-      rotation = thisPage.getRotation().angle; // 0, 90, 180, 270
-    } catch (e) {
-      console.warn(`Page ${pageIdx + 1}: could not read page size/rotation (${e.message}), using A4 fallback`);
-      width = 595.28; height = 841.89; rotation = 0;
-    }
+    const { width, height } = thisPage.getSize();
+    const rotation = thisPage.getRotation().angle; // 0, 90, 180, 270
     const footerAxisSize = (rotation === 90 || rotation === 270) ? height : width; // footer runs along width normally, height when rotated 90/270
     let leftEdgeOfLabel;
     if (footerAlignment === "left") {

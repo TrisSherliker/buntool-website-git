@@ -19,30 +19,19 @@ import { makeBlankPage } from './buntoolPages.js';
  * @param {number} pageIndex - zero-based page index in srcDoc
  * @param {Object} graft - mupdf graft map (reused across pages for efficiency)
  */
-function graftPage(dstDoc, srcDoc, pageIndex, graft) {
-  const srcPage = srcDoc.findPage(pageIndex);
-  const dstPage = dstDoc.newDictionary();
-  dstPage.put("Type", dstDoc.newName("Page"));
-  if (srcPage.get("MediaBox"))  dstPage.put("MediaBox",  graft.graftObject(srcPage.get("MediaBox")));
-  if (srcPage.get("Rotate"))    dstPage.put("Rotate",    graft.graftObject(srcPage.get("Rotate")));
-  if (srcPage.get("Resources")) dstPage.put("Resources", graft.graftObject(srcPage.get("Resources")));
-  if (srcPage.get("Contents"))  dstPage.put("Contents",  graft.graftObject(srcPage.get("Contents")));
-  dstDoc.insertPage(-1, dstDoc.addObject(dstPage));
-}
-
 /**
- * Grafts all pages from srcDoc into dstDoc, then destroys srcDoc and the graft map.
+ * Grafts all pages from srcDoc into dstDoc, then destroys srcDoc.
+ * Uses the built-in dstDoc.graftPage which correctly resolves inherited
+ * page attributes (MediaBox, Rotate, Resources) from parent Pages nodes.
  * @param {Object} dstDoc - mupdf destination document
  * @param {Object} srcDoc - mupdf source document (will be destroyed)
  * @returns {number} The number of pages grafted
  */
 function graftAllAndDestroy(dstDoc, srcDoc) {
   const pageCount = srcDoc.countPages();
-  const graft = dstDoc.newGraftMap();
   for (let i = 0; i < pageCount; i++) {
-    graftPage(dstDoc, srcDoc, i, graft);
+    dstDoc.graftPage(-1, srcDoc, i);
   }
-  graft.destroy();
   srcDoc.destroy();
   return pageCount;
 }
