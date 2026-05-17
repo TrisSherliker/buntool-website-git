@@ -11,7 +11,8 @@
 console.log('[FooterWorker] script loading…');
 
 import * as cantoopdfLib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm';
-import fontkit from 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/+esm';
+import * as fontkitNS from 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/+esm';
+const fontkit = fontkitNS.default ?? fontkitNS;
 
 const pdflib = cantoopdfLib;
 
