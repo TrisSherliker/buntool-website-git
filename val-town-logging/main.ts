@@ -36,17 +36,19 @@
 
     await sqlite.execute(`
       CREATE TABLE IF NOT EXISTS bundle_log (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        uuid         TEXT NOT NULL,
-        ts_started   TEXT NOT NULL,
-        ts_completed TEXT,
-        did_complete INTEGER DEFAULT 0,
-        duration_ms  INTEGER,
-        file_count   INTEGER,
-        page_count   INTEGER,
-        ts_errored   TEXT,
-        error_type   TEXT,
-        error_message TEXT
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        uuid          TEXT NOT NULL,
+        ts_started    TEXT NOT NULL,
+        ts_completed  TEXT,
+        did_complete  INTEGER DEFAULT 0,
+        duration_ms   INTEGER,
+        file_count    INTEGER,
+        page_count    INTEGER,
+        total_size_mb REAL,
+        ts_errored    TEXT,
+        error_type    TEXT,
+        error_message TEXT,
+        error_stack   TEXT
       )
     `);
 
@@ -54,6 +56,8 @@
       "ADD COLUMN ts_errored TEXT",
       "ADD COLUMN error_type TEXT",
       "ADD COLUMN error_message TEXT",
+      "ADD COLUMN total_size_mb REAL",
+      "ADD COLUMN error_stack TEXT",
     ]) {
       try { await sqlite.execute(`ALTER TABLE bundle_log ${col}`); } catch {}
     }
@@ -63,8 +67,8 @@
     if (body.event === "start") {
       await sqlite.execute({
         sql:
-          `INSERT INTO bundle_log (uuid, ts_started, file_count) VALUES (?, datetime('now'), ?)`,
-        args: [body.uuid, body.file_count ?? null],
+          `INSERT INTO bundle_log (uuid, ts_started, file_count, total_size_mb) VALUES (?, datetime('now'), ?, ?)`,
+        args: [body.uuid, body.file_count ?? null, body.total_size_mb ?? null],
       });
     } else if (body.event === "complete") {
       await sqlite.execute({
@@ -76,9 +80,11 @@
     } else if (body.event === "error") {
       await sqlite.execute({
         sql: `UPDATE bundle_log
-              SET ts_errored = datetime('now'), duration_ms = ?, error_type = ?, error_message = ?
+              SET ts_errored = datetime('now'), duration_ms = ?, error_type = ?, error_message = ?,
+                  error_stack = ?, page_count = ?, total_size_mb = ?
               WHERE uuid = ?`,
-        args: [body.duration_ms ?? null, body.error_type ?? null, body.error_message ?? null, body.uuid],
+        args: [body.duration_ms ?? null, body.error_type ?? null, body.error_message ?? null,
+               body.error_stack ?? null, body.page_count ?? null, body.total_size_mb ?? null, body.uuid],
       });
     } else if (body.event === "abandoned") {
       await sqlite.execute({

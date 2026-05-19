@@ -432,25 +432,11 @@ async function processFiles(files) {
 
   // Block if over 500MB
   if (totalSizeMB > 500) {
-    alert(
-      `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle.\n\n` +
-      `This is too big to be handled reliably, and exceeds the permitted file size.\n\n` +
-      `Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`
-    );
+    showErrorModal({
+      title: 'Total file size too large',
+      message: `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle. This is too big to be handled reliably, and exceeds the permitted file size. Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`,
+    });
     return;
-  }
-
-  // Warn if over 100MB
-  if (totalSizeMB > 100) {
-    const proceed = confirm(
-      `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle.\n\n` +
-      `Normally, it is better to split the documents into multiple volumes to avoid huge file sizes (often labelled 'A', 'B' etc).\n\n` +
-      `Would you like to proceed to create a very large bundle, or select documents again?`
-    );
-
-    if (!proceed) {
-      return;
-    }
   }
 
   // Hide the step 2 hint once files have been added
@@ -530,6 +516,23 @@ async function processFiles(files) {
     fileTableBody.appendChild(row);
     markDirty({ immediate: true });
   };
+
+  // After adding all files, warn if the total upload is very large
+  let totalPagesNow = 0;
+  let totalSizeMbNow = 0;
+  for (const [fn, f] of filesMap) {
+    totalSizeMbNow += f.size / (1024 * 1024);
+    totalPagesNow += frontendInputData[fn]?.pageCount ?? 0;
+  }
+  if (totalPagesNow > 1000 || totalSizeMbNow > 100) {
+    const parts = [];
+    if (totalPagesNow > 1000) parts.push(`${totalPagesNow} pages`);
+    if (totalSizeMbNow > 100) parts.push(`${totalSizeMbNow.toFixed(1)} MB`);
+    showUploadWarningModal({
+      title: '⚠️ Very large bundle',
+      message: `Your documents total ${parts.join(' and ')}. It's very rare for single court bundles to exceed 1000 pages or 100 MB. You may want to consider splitting the documents into separate volumes (e.g. "Bundle A" and "Bundle B"). If you proceed, BunTool may take longer than usual to process.`,
+    });
+  }
 }
 
 fileInput.addEventListener('change', async (e) => {
@@ -1148,6 +1151,15 @@ function isMemoryError(error) {
     || msg.includes('memory exhausted');
 }
 
+function showUploadWarningModal({ title, message } = {}) {
+  const modal = document.getElementById('upload-warning-modal');
+  const titleEl = document.getElementById('upload-warning-modal-title');
+  const msgEl = document.getElementById('upload-warning-modal-msg');
+  if (titleEl) titleEl.textContent = title || '⚠️ Large upload';
+  if (msgEl) msgEl.textContent = message || '';
+  modal?.classList.remove('hidden');
+}
+
 function showErrorModal({ title, message, error } = {}) {
   const modal = document.getElementById('error-modal');
   const titleEl = document.getElementById('error-modal-title');
@@ -1336,7 +1348,8 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  await logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size });
+  const inputSizeMb = Array.from(filesMap.values()).reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+  await logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: filesMap.size, total_size_mb: Math.round(inputSizeMb * 10) / 10 });
 
   const _abandonHandler = (e) => {
     navigator.sendBeacon(BUNDLE_LOG_URL, JSON.stringify({
@@ -1391,6 +1404,7 @@ form.addEventListener('submit', async (e) => {
   } catch (error) {
     _cancelReject = null;
     document.getElementById('processing-cancel-btn')?.classList.add('hidden');
+    const inputPageCount = indexData.filter(e => !e.sectionMarker).reduce((sum, e) => sum + (e.pageCount || 0), 0);
     if (error.message === '__cancelled__') {
       cancelled = true;
       logBundleEvent({
@@ -1399,6 +1413,8 @@ form.addEventListener('submit', async (e) => {
         duration_ms: Date.now() - bundleTsStart,
         error_type: 'cancelled',
         error_message: 'Aborted by user action',
+        page_count: inputPageCount || undefined,
+        total_size_mb: Math.round(inputSizeMb * 10) / 10,
       });
       hideProcessingOverlay();
       return;
@@ -1411,6 +1427,9 @@ form.addEventListener('submit', async (e) => {
       duration_ms: Date.now() - bundleTsStart,
       error_type: errorType,
       error_message: error.message === '__timeout__' ? undefined : error.message,
+      error_stack: error.stack ? error.stack.slice(0, 800) : undefined,
+      page_count: inputPageCount || undefined,
+      total_size_mb: Math.round(inputSizeMb * 10) / 10,
     });
     if (error.message === '__timeout__') {
       showErrorModal({
