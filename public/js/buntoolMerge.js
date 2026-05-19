@@ -44,7 +44,7 @@ function graftAllAndDestroy(dstDoc, srcDoc) {
  * @returns {Uint8Array} The saved PDF bytes (on JS heap, safe to hold)
  */
 function saveAndDestroy(doc) {
-  const buf = doc.saveToBuffer("pdf");
+  const buf = doc.saveToBuffer("pdf,garbage=compact");
   const result = buf.asUint8Array().slice();
   buf.destroy();
   doc.destroy();

@@ -30,7 +30,7 @@ function graftAllAndDestroy(dstDoc, srcDoc) {
 }
 
 function saveAndDestroy(doc) {
-  const buf = doc.saveToBuffer("pdf");
+  const buf = doc.saveToBuffer("pdf,garbage=compact");
   const result = buf.asUint8Array().slice();
   buf.destroy();
   doc.destroy();

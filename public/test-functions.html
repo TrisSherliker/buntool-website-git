@@ -35,18 +35,14 @@
 
 <h1>BunTool Function Tests</h1>
 <div id="wasmStatus">Loading mupdf WASM…</div>
-<button id="runAll" disabled>Run All Tests</button>
-<button id="copyAll" disabled>Copy All</button>
-<button id="copyFailures" disabled>Copy Failures</button>
-&nbsp;&nbsp;
-<button id="memLight" disabled>Memtest Light</button>
-<button id="memHeavy" disabled>Memtest Heavy</button>
-<button id="memMassive" disabled>Memtest Massive</button>
-<button id="downloadMem" disabled>Download Results (.txt)</button>
+<div><button id="runAll" disabled>Run All Tests</button> <button id="copyAll" disabled>Copy All</button> <button id="copyFailures" disabled>Copy Failures</button></div>
+<div style="margin-top:6px"><button id="memLight" disabled>Memtest Light</button> <button id="memHeavy" disabled>Memtest Heavy</button> <button id="memMassive" disabled>Memtest Massive</button> <button id="downloadMem" disabled>Download Results (.txt)</button></div>
+<div id="saveOptBtnsRow" style="margin-top:6px"><em>Save Options (loading…)</em></div>
 <div id="status"></div>
 <div id="summary"></div>
 <div id="results"></div>
 <div id="memResults"></div>
+<div id="saveOptResults"></div>
 
 <script type="module">
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
@@ -71,12 +67,29 @@
 
   // ── WASM init ────────────────────────────────────────────────────────────────
   const wasmEl = document.getElementById('wasmStatus');
+  // Must be declared before the top-level await so initSaveOptButtons() can reference them.
+  const SAVE_OPTS_VARIANTS = [
+    { opts: 'pdf',                              label: 'pdf (baseline)',  note: 'baseline — no optimisation' },
+    { opts: 'pdf,garbage',                      label: 'garbage',         note: 'basic GC: removes unreferenced objects' },
+    { opts: 'pdf,garbage=compact',              label: 'compact',         note: 'GC + compact xref table' },
+    { opts: 'pdf,garbage=deduplicate',          label: 'deduplicate',     note: 'GC + deduplicate shared objects (fonts, images)' },
+    { opts: 'pdf,compress',                     label: 'compress',        note: 'compress all streams' },
+    { opts: 'pdf,compress-fonts',               label: 'cmp-fonts',       note: 'compress embedded font data only' },
+    { opts: 'pdf,compress-images',              label: 'cmp-images',      note: 'compress image streams only' },
+    { opts: 'pdf,garbage=deduplicate,compress', label: 'dedup+compress',  note: 'deduplicate + compress — recommended for OOM' },
+    { opts: 'pdf,objstms',                      label: 'objstms',         note: 'PDF 1.5 object streams' },
+    { opts: 'pdf,incremental',                  label: 'incremental',     note: 'incremental update — appends; not a full rewrite' },
+  ];
+  const SAVE_OPTS_KEY   = 'buntool_saveOpts_results';
+  const heapMbStr = (b) => b != null ? (b / 1024 / 1024).toFixed(1) + ' MB' : 'n/a';
+
   try { if (mupdf.ready) await mupdf.ready; } catch {}
   wasmEl.textContent = 'mupdf WASM ready.';
-  document.getElementById('runAll').disabled    = false;
-  document.getElementById('memLight').disabled  = false;
-  document.getElementById('memHeavy').disabled  = false;
+  document.getElementById('runAll').disabled     = false;
+  document.getElementById('memLight').disabled   = false;
+  document.getElementById('memHeavy').disabled   = false;
   document.getElementById('memMassive').disabled = false;
+  initSaveOptButtons();
 
 
   // ── Mock Config ──────────────────────────────────────────────────────────────
@@ -363,72 +376,6 @@
     const merged = await mergePdfsByTOCViaWorker(tocEntries, filesMap, config);
     // 3 (odd) + 1 blank + 4 (even) = 8
     return ok('mergePdfsByTOCViaWorker printable: odd-page doc gets blank page (3+1+4=8)', getPageCount(merged), 8);
-  }
-
-  // mupdf saveToBuffer option variants ------------------------------------------
-  // Each test merges 4 × 5-page PDFs then saves with a different option string.
-  // Page count must be 20; output size is reported in the detail column so you
-  // can compare the effect of each option vs baseline.
-
-  async function test_saveOptions_mupdf() {
-    const pdfs = await Promise.all([
-      makePdf(5, 'S1'), makePdf(5, 'S2'), makePdf(5, 'S3'), makePdf(5, 'S4'),
-    ]);
-
-    function mergeWith(opts) {
-      const dst = mupdf.Document.openDocument(new Uint8Array(pdfs[0]), 'application/pdf');
-      try {
-        for (let i = 1; i < pdfs.length; i++) {
-          const src = mupdf.Document.openDocument(new Uint8Array(pdfs[i]), 'application/pdf');
-          const n = src.countPages();
-          for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
-          src.destroy();
-        }
-        const buf = dst.saveToBuffer(opts);
-        const bytes = buf.asUint8Array().slice();
-        buf.destroy();
-        return bytes;
-      } finally {
-        dst.destroy();
-      }
-    }
-
-    const variants = [
-      { opts: 'pdf',                              note: 'baseline — no optimisation' },
-      { opts: 'pdf,garbage',                      note: 'garbage: removes unreferenced objects' },
-      { opts: 'pdf,garbage=compact',              note: 'garbage=compact: GC + compact xref table' },
-      { opts: 'pdf,garbage=deduplicate',          note: 'garbage=deduplicate: GC + compact + deduplicate shared objects (fonts, images) — most relevant for large merges' },
-      { opts: 'pdf,compress',                     note: 'compress: compress all streams' },
-      { opts: 'pdf,compress-fonts',               note: 'compress-fonts: compress embedded font data only' },
-      { opts: 'pdf,compress-images',              note: 'compress-images: compress image streams only' },
-      { opts: 'pdf,garbage=deduplicate,compress', note: 'garbage=deduplicate,compress: recommended combination for OOM reduction' },
-      { opts: 'pdf,objstms',                      note: 'objstms: PDF 1.5 object streams (grouped object compression)' },
-      { opts: 'pdf,incremental',                  note: 'incremental: appends changes to original bytes rather than rewriting — expect LARGER output than baseline for merge' },
-    ];
-
-    let baselineBytes = null;
-    const results = [];
-
-    for (const { opts, note } of variants) {
-      let bytes;
-      try {
-        bytes = mergeWith(opts);
-      } catch (err) {
-        results.push({ name: `saveToBuffer("${opts}")`, passed: false, expected: 20, actual: `ERROR: ${err.message}`, detail: note });
-        continue;
-      }
-      const pages = getPageCount(bytes);
-      const kb = bytes.byteLength / 1024;
-      if (baselineBytes === null) baselineBytes = bytes.byteLength;
-      const pctVal = (bytes.byteLength - baselineBytes) / baselineBytes * 100;
-      const pctStr = baselineBytes !== bytes.byteLength ? ` (${pctVal >= 0 ? '+' : ''}${pctVal.toFixed(0)}% vs baseline)` : '';
-      results.push(ok(
-        `saveToBuffer("${opts}")`,
-        pages, 20,
-        `${note} — ${kb.toFixed(1)} KB${pctStr}`,
-      ));
-    }
-    return results;
   }
 
   async function test_addPageNumbering_count() {
@@ -1306,12 +1253,6 @@
       ],
     },
     {
-      label: 'mupdf save options',
-      tests: [
-        test_saveOptions_mupdf,
-      ],
-    },
-    {
       label: 'buntoolConfig',
       tests: [
         test_config_validFonts_accepted,
@@ -1737,6 +1678,169 @@
   document.getElementById('memLight').addEventListener('click',   () => runMemtest('Memtest Light',   LIGHT_PDFS));
   document.getElementById('memHeavy').addEventListener('click',   () => runMemtest('Memtest Heavy',   HEAVY_PDFS));
   document.getElementById('memMassive').addEventListener('click', () => runMemtest('Memtest Massive', MASSIVE_PDFS));
+
+
+  // ── mupdf save options comparison (one variant per fresh tab, results in localStorage) ──
+
+  function loadSaveOptsResults() {
+    try { return JSON.parse(localStorage.getItem(SAVE_OPTS_KEY) || '{}'); } catch { return {}; }
+  }
+
+
+  function renderSaveOptsTable() {
+    const el = document.getElementById('saveOptResults');
+    const stored = loadSaveOptsResults();
+    const baseline = stored['pdf'];
+
+    const rows = SAVE_OPTS_VARIANTS.map(({ opts, label, note }) => {
+      const r = stored[opts];
+      if (!r) return `<tr>
+        <td><code>${opts}</code></td>
+        <td colspan="5" style="color:#aaa">not yet run — open a fresh tab and click "${label}"</td>
+        <td>${note}</td>
+      </tr>`;
+
+      const outMb = (r.outputBytes / 1024 / 1024).toFixed(2);
+      const outPct = baseline ? (r.outputBytes - baseline.outputBytes) / baseline.outputBytes * 100 : null;
+      const outPctStr   = outPct == null || r.outputBytes === baseline.outputBytes ? '—'
+        : `${outPct >= 0 ? '+' : ''}${outPct.toFixed(1)}%`;
+      const outPctStyle = outPct != null && outPct < -5 ? 'color:#2a7a2a;font-weight:bold'
+        : outPct != null && outPct > 5 ? 'color:#c00;font-weight:bold' : '';
+
+      const hpct = (baseline?.heapPeak != null && r.heapPeak != null)
+        ? (r.heapPeak - baseline.heapPeak) / baseline.heapPeak * 100 : null;
+      const hpctStr   = hpct == null || r.heapPeak === baseline?.heapPeak ? '—'
+        : `${hpct >= 0 ? '+' : ''}${hpct.toFixed(1)}%`;
+      const hpctStyle = hpct != null && hpct < -5 ? 'color:#2a7a2a;font-weight:bold'
+        : hpct != null && hpct > 5 ? 'color:#c00;font-weight:bold' : '';
+
+      const ts = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '';
+      return `<tr>
+        <td><code>${opts}</code></td>
+        <td>${outMb} MB</td>
+        <td style="${outPctStyle}">${outPctStr}</td>
+        <td>${heapMbStr(r.heapPeak)}</td>
+        <td style="${hpctStyle}">${hpctStr}</td>
+        <td>${heapMbStr(r.heapAfterFree)}</td>
+        <td>${r.elapsed}s</td>
+        <td style="color:#aaa;font-size:0.8em">${ts}</td>
+        <td>${note}</td>
+      </tr>`;
+    }).join('');
+
+    const runCount = Object.keys(stored).length;
+    el.innerHTML = `<h2>Save Options Results (Heavy PDFs)</h2>
+      <p>Heap peak = <code>usedJSHeapSize</code> immediately after <code>saveToBuffer</code> returns
+      (merged doc + save buffer both live in WASM heap). Chrome/Edge only.
+      ${runCount}/${SAVE_OPTS_VARIANTS.length} variants run.</p>
+      <table><thead><tr>
+        <th>Option</th>
+        <th>Output</th><th>vs baseline</th>
+        <th title="usedJSHeapSize after saveToBuffer returns — doc + buffer both live">Heap peak</th><th>vs baseline</th>
+        <th title="usedJSHeapSize after destroy() calls — WASM cleared">Heap after free</th>
+        <th>Time</th><th>Recorded</th><th>Note</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  // Tab-level cache so multiple runs in the same tab don't re-fetch
+  let cachedHeavyBufs = null;
+
+  async function getHeavyBufs() {
+    if (cachedHeavyBufs) return cachedHeavyBufs;
+    const bufs = [];
+    for (const { filename, subdir = '' } of HEAVY_PDFS) {
+      const url = `/testpdfs/${subdir ? subdir + '/' : ''}${encodeURIComponent(filename)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${filename}`);
+      bufs.push(new Uint8Array(await res.arrayBuffer()));
+    }
+    cachedHeavyBufs = bufs;
+    return bufs;
+  }
+
+  async function runSaveOpt(variantIndex) {
+    const { opts, label } = SAVE_OPTS_VARIANTS[variantIndex];
+    const btnId = `saveOpt_${variantIndex}`;
+    const btn   = document.getElementById(btnId);
+    btn.disabled = true;
+    btn.textContent = `${label} — fetching…`;
+
+    let bufs;
+    try {
+      bufs = await getHeavyBufs();
+    } catch (err) {
+      btn.textContent = `${label} — fetch error`;
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = `${label} — merging…`;
+    await new Promise(r => setTimeout(r, 0));
+
+    const t0 = performance.now();
+    let bytes, heapPeak, heapAfterFree, errMsg;
+    try {
+      const dst = mupdf.Document.openDocument(bufs[0], 'application/pdf');
+      try {
+        for (let i = 1; i < bufs.length; i++) {
+          const src = mupdf.Document.openDocument(bufs[i], 'application/pdf');
+          const n = src.countPages();
+          for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
+          src.destroy();
+        }
+        const buf = dst.saveToBuffer(opts);
+        heapPeak = performance.memory?.usedJSHeapSize ?? null;
+        bytes = buf.asUint8Array().slice();
+        buf.destroy();
+      } finally {
+        dst.destroy();
+      }
+      heapAfterFree = performance.memory?.usedJSHeapSize ?? null;
+    } catch (err) {
+      errMsg = err.message;
+    }
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+    if (errMsg) {
+      btn.textContent = `${label} — ERROR`;
+      btn.disabled = false;
+      const stored = loadSaveOptsResults();
+      stored[opts] = { error: errMsg, elapsed, timestamp: new Date().toISOString() };
+      localStorage.setItem(SAVE_OPTS_KEY, JSON.stringify(stored));
+    } else {
+      const stored = loadSaveOptsResults();
+      stored[opts] = {
+        outputBytes:  bytes.byteLength,
+        heapPeak:     heapPeak,
+        heapAfterFree: heapAfterFree,
+        elapsed,
+        timestamp: new Date().toISOString(),
+      };
+      localStorage.setItem(SAVE_OPTS_KEY, JSON.stringify(stored));
+      btn.textContent = `${label} ✓`;
+      btn.disabled = false;
+    }
+
+    renderSaveOptsTable();
+  }
+
+  function initSaveOptButtons() {
+    const row = document.getElementById('saveOptBtnsRow');
+    row.innerHTML = '<em style="color:#555">Save Options — Heavy PDFs (run each in a fresh tab):</em> '
+      + SAVE_OPTS_VARIANTS.map((v, i) => `<button id="saveOpt_${i}">${v.label}</button>`).join(' ')
+      + ' <button id="saveOptsClear" style="margin-left:12px;color:#c00">Clear Results</button>';
+
+    SAVE_OPTS_VARIANTS.forEach((_, i) => {
+      document.getElementById(`saveOpt_${i}`).addEventListener('click', () => runSaveOpt(i));
+    });
+    document.getElementById('saveOptsClear').addEventListener('click', () => {
+      localStorage.removeItem(SAVE_OPTS_KEY);
+      cachedHeavyBufs = null;
+      renderSaveOptsTable();
+    });
+
+    renderSaveOptsTable();
+  }
 
   document.getElementById('downloadMem').addEventListener('click', () => {
     if (!lastMemLog) return;
