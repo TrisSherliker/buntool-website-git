@@ -38,11 +38,13 @@
 <div><button id="runAll" disabled>Run All Tests</button> <button id="copyAll" disabled>Copy All</button> <button id="copyFailures" disabled>Copy Failures</button></div>
 <div style="margin-top:6px"><button id="memLight" disabled>Memtest Light</button> <button id="memHeavy" disabled>Memtest Heavy</button> <button id="memMassive" disabled>Memtest Massive</button> <button id="downloadMem" disabled>Download Results (.txt)</button></div>
 <div id="saveOptBtnsRow" style="margin-top:6px"><em>Save Options (loading…)</em></div>
+<div id="graftBtnsRow" style="margin-top:6px"><em>Graft Map Tests (loading…)</em></div>
 <div id="status"></div>
 <div id="summary"></div>
 <div id="results"></div>
 <div id="memResults"></div>
 <div id="saveOptResults"></div>
+<div id="graftResults"></div>
 
 <script type="module">
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
@@ -83,6 +85,12 @@
   const SAVE_OPTS_KEY   = 'buntool_saveOpts_results';
   const heapMbStr = (b) => b != null ? (b / 1024 / 1024).toFixed(1) + ' MB' : 'n/a';
 
+  const GRAFT_VARIANTS = [
+    { id: 'per-page',  label: 'per-page (current)',  note: 'dst.graftPage() per call — new temporary graft map each time' },
+    { id: 'per-doc',   label: 'per-doc map',          note: 'dst.newGraftMap() once per source doc — deduplicates within-doc resources' },
+  ];
+  const GRAFT_RESULTS_KEY = 'buntool_graft_results';
+
   try { if (mupdf.ready) await mupdf.ready; } catch {}
   wasmEl.textContent = 'mupdf WASM ready.';
   document.getElementById('runAll').disabled     = false;
@@ -90,6 +98,7 @@
   document.getElementById('memHeavy').disabled   = false;
   document.getElementById('memMassive').disabled = false;
   initSaveOptButtons();
+  initGraftButtons();
 
 
   // ── Mock Config ──────────────────────────────────────────────────────────────
@@ -1840,6 +1849,179 @@
     });
 
     renderSaveOptsTable();
+  }
+
+  // ── graft map comparison (per-page vs per-doc, one per fresh tab, results in localStorage) ──
+
+  function loadGraftResults() {
+    try { return JSON.parse(localStorage.getItem(GRAFT_RESULTS_KEY) || '{}'); } catch { return {}; }
+  }
+
+  function renderGraftTable() {
+    const el = document.getElementById('graftResults');
+    const stored = loadGraftResults();
+    const baseline = stored['per-page'];
+
+    const rows = GRAFT_VARIANTS.map(({ id, label, note }) => {
+      const r = stored[id];
+      if (!r) return `<tr>
+        <td>${label}</td>
+        <td colspan="8" style="color:#aaa">not yet run — open a fresh tab and click "${label}"</td>
+        <td>${note}</td>
+      </tr>`;
+
+      if (r.error) return `<tr style="background:#fff0f0">
+        <td>${label}</td>
+        <td colspan="8" style="color:#c00">ERROR: ${r.error}</td>
+        <td>${note}</td>
+      </tr>`;
+
+      const outMb = (r.outputBytes / 1024 / 1024).toFixed(2);
+      const outPct = baseline ? (r.outputBytes - baseline.outputBytes) / baseline.outputBytes * 100 : null;
+      const outPctStr   = !baseline || r.outputBytes === baseline.outputBytes ? '—'
+        : `${outPct >= 0 ? '+' : ''}${outPct.toFixed(1)}%`;
+      const outPctStyle = outPct != null && outPct < -2 ? 'color:#2a7a2a;font-weight:bold'
+        : outPct != null && outPct > 2 ? 'color:#c00;font-weight:bold' : '';
+
+      const hpct = (baseline?.heapPeak != null && r.heapPeak != null)
+        ? (r.heapPeak - baseline.heapPeak) / baseline.heapPeak * 100 : null;
+      const hpctStr   = hpct == null || r.heapPeak === baseline?.heapPeak ? '—'
+        : `${hpct >= 0 ? '+' : ''}${hpct.toFixed(1)}%`;
+      const hpctStyle = hpct != null && hpct < -2 ? 'color:#2a7a2a;font-weight:bold'
+        : hpct != null && hpct > 2 ? 'color:#c00;font-weight:bold' : '';
+
+      const ts = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '';
+      const pagesOk = r.outputPages != null && r.expectedPages != null && r.outputPages === r.expectedPages;
+      const pagesMismatch = r.outputPages != null && r.expectedPages != null && r.outputPages !== r.expectedPages;
+      const pagesStr = r.outputPages != null ? `${r.outputPages}` : 'n/a';
+      const expectedStr = r.expectedPages != null ? `${r.expectedPages}` : 'n/a';
+      const pagesStyle = pagesMismatch ? 'color:#c00;font-weight:bold' : pagesOk ? 'color:#2a7a2a' : '';
+      return `<tr>
+        <td>${label}</td>
+        <td>${outMb} MB</td><td style="${outPctStyle}">${outPctStr}</td>
+        <td style="${pagesStyle}">${pagesStr}</td><td>${expectedStr}</td>
+        <td>${heapMbStr(r.heapPeak)}</td><td style="${hpctStyle}">${hpctStr}</td>
+        <td>${heapMbStr(r.heapAfterFree)}</td>
+        <td>${r.elapsed}s</td>
+        <td style="color:#aaa;font-size:0.8em">${ts}</td>
+        <td>${note}</td>
+      </tr>`;
+    }).join('');
+
+    const runCount = Object.keys(stored).length;
+    el.innerHTML = `<h2>Graft Map Results (Heavy PDFs)</h2>
+      <p>Compares per-page graftPage (current) vs per-doc GraftMap.
+      Heap peak = <code>usedJSHeapSize</code> after <code>saveToBuffer</code> returns. Chrome/Edge only.
+      ${runCount}/${GRAFT_VARIANTS.length} variants run. Save option: <code>pdf,garbage=compact</code>.</p>
+      <table><thead><tr>
+        <th>Variant</th>
+        <th>Output</th><th>vs baseline</th>
+        <th>Pages out</th><th>Expected</th>
+        <th>Heap peak</th><th>vs baseline</th>
+        <th>Heap after free</th>
+        <th>Time</th><th>Recorded</th><th>Note</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  async function runGraftTest(variantId) {
+    const variant = GRAFT_VARIANTS.find(v => v.id === variantId);
+    const btn = document.getElementById(`graftBtn_${variantId}`);
+    btn.disabled = true;
+    btn.textContent = `${variant.label} — fetching…`;
+
+    let bufs;
+    try {
+      bufs = await getHeavyBufs();
+    } catch (err) {
+      btn.textContent = `${variant.label} — fetch error`;
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = `${variant.label} — merging…`;
+    await new Promise(r => setTimeout(r, 0));
+
+    // Compute total input size and expected page count from source bufs
+    const inputBytes = bufs.reduce((s, b) => s + b.byteLength, 0);
+    let expectedPages = 0;
+    for (const buf of bufs) {
+      const d = mupdf.Document.openDocument(buf, 'application/pdf');
+      expectedPages += d.countPages();
+      d.destroy();
+    }
+
+    const t0 = performance.now();
+    let bytes, heapPeak, heapAfterFree, outputPages, errMsg;
+    try {
+      const dst = mupdf.Document.openDocument(bufs[0], 'application/pdf');
+      try {
+        for (let i = 1; i < bufs.length; i++) {
+          const src = mupdf.Document.openDocument(bufs[i], 'application/pdf');
+          const n = src.countPages();
+
+          if (variantId === 'per-page') {
+            // Current approach: temporary graft map per graftPage call
+            for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
+
+          } else if (variantId === 'per-doc') {
+            // New approach: one persistent graft map per source doc,
+            // deduplicating shared resources (fonts, images) across all pages of that doc
+            const graftMap = dst.newGraftMap();
+            for (let p = 0; p < n; p++) graftMap.graftPage(-1, src, p);
+            graftMap.destroy();
+          }
+
+          src.destroy();
+        }
+        outputPages = dst.countPages();
+        const buf = dst.saveToBuffer('pdf,garbage=compact');
+        heapPeak = performance.memory?.usedJSHeapSize ?? null;
+        bytes = buf.asUint8Array().slice();
+        buf.destroy();
+      } finally {
+        dst.destroy();
+      }
+      heapAfterFree = performance.memory?.usedJSHeapSize ?? null;
+    } catch (err) {
+      errMsg = err.message;
+    }
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+    const stored = loadGraftResults();
+    stored[variantId] = errMsg
+      ? { error: errMsg, elapsed, timestamp: new Date().toISOString() }
+      : { outputBytes: bytes.byteLength, outputPages, expectedPages, inputBytes, heapPeak, heapAfterFree, elapsed, timestamp: new Date().toISOString() };
+    localStorage.setItem(GRAFT_RESULTS_KEY, JSON.stringify(stored));
+
+    btn.textContent = errMsg ? `${variant.label} — ERROR` : `${variant.label} ✓`;
+    btn.disabled = false;
+    renderGraftTable();
+
+    if (bytes) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      a.download = `graft-${variantId}-output.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  }
+
+  function initGraftButtons() {
+    const row = document.getElementById('graftBtnsRow');
+    row.innerHTML = '<em style="color:#555">Graft Map Test — Heavy PDFs (run each in a fresh tab):</em> '
+      + GRAFT_VARIANTS.map(v => `<button id="graftBtn_${v.id}">${v.label}</button>`).join(' ')
+      + ' <button id="graftClear" style="margin-left:12px;color:#c00">Clear Results</button>';
+
+    GRAFT_VARIANTS.forEach(v => {
+      document.getElementById(`graftBtn_${v.id}`).addEventListener('click', () => runGraftTest(v.id));
+    });
+    document.getElementById('graftClear').addEventListener('click', () => {
+      localStorage.removeItem(GRAFT_RESULTS_KEY);
+      cachedHeavyBufs = null;
+      renderGraftTable();
+    });
+
+    renderGraftTable();
   }
 
   document.getElementById('downloadMem').addEventListener('click', () => {

@@ -29,9 +29,9 @@ import { makeBlankPage } from './buntoolPages.js';
  */
 function graftAllAndDestroy(dstDoc, srcDoc) {
   const pageCount = srcDoc.countPages();
-  for (let i = 0; i < pageCount; i++) {
-    dstDoc.graftPage(-1, srcDoc, i);
-  }
+  const graftMap = dstDoc.newGraftMap();
+  for (let i = 0; i < pageCount; i++) graftMap.graftPage(-1, srcDoc, i);
+  graftMap.destroy();
   srcDoc.destroy();
   return pageCount;
 }
