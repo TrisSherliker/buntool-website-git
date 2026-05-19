@@ -445,7 +445,19 @@ async function processFiles(files) {
     if (hint) hint.style.display = 'none';
   }
 
+  // Show validation progress bar
+  const validationProgress   = document.getElementById('validation-progress');
+  const validationBar        = document.getElementById('validation-progress-bar');
+  const validationLabel      = document.getElementById('validation-progress-label');
+  const totalNewFiles = files.length;
+  if (validationProgress && totalNewFiles > 0) {
+    validationProgress.classList.remove('hidden');
+    validationBar.style.width = '0%';
+    validationLabel.textContent = `0 / ${totalNewFiles}`;
+  }
+
   // Process each new file
+  let validatedCount = 0;
   for (const file of files){
     // Materialise bytes into memory immediately so filesMap holds an in-memory copy,
     // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
@@ -515,7 +527,15 @@ async function processFiles(files) {
 
     fileTableBody.appendChild(row);
     markDirty({ immediate: true });
+
+    validatedCount++;
+    if (validationBar) {
+      validationBar.style.width = `${(validatedCount / totalNewFiles) * 100}%`;
+      validationLabel.textContent = `${validatedCount} / ${totalNewFiles}`;
+    }
   };
+
+  if (validationProgress) validationProgress.classList.add('hidden');
 
   // After adding all files, warn if the total upload is very large
   let totalPagesNow = 0;

@@ -134,6 +134,17 @@
       </div>
     </div>
 
+    <!-- Validation progress bar (shown while files are being read and validated) -->
+    <div id="validation-progress" class="hidden rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-xs font-medium text-slate-600">Validating input files…</span>
+        <span id="validation-progress-label" class="text-xs text-slate-400"></span>
+      </div>
+      <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+        <div id="validation-progress-bar" class="h-2 bg-pink-500 rounded-full transition-all duration-200" style="width:0%"></div>
+      </div>
+    </div>
+
     <!-- Step 3: Review Table -->
     <div id="file-table" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200">
       <div class="px-3 py-2 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-xl flex items-center justify-between gap-3 flex-wrap">
