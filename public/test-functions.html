@@ -365,6 +365,72 @@
     return ok('mergePdfsByTOCViaWorker printable: odd-page doc gets blank page (3+1+4=8)', getPageCount(merged), 8);
   }
 
+  // mupdf saveToBuffer option variants ------------------------------------------
+  // Each test merges 4 × 5-page PDFs then saves with a different option string.
+  // Page count must be 20; output size is reported in the detail column so you
+  // can compare the effect of each option vs baseline.
+
+  async function test_saveOptions_mupdf() {
+    const pdfs = await Promise.all([
+      makePdf(5, 'S1'), makePdf(5, 'S2'), makePdf(5, 'S3'), makePdf(5, 'S4'),
+    ]);
+
+    function mergeWith(opts) {
+      const dst = mupdf.Document.openDocument(new Uint8Array(pdfs[0]), 'application/pdf');
+      try {
+        for (let i = 1; i < pdfs.length; i++) {
+          const src = mupdf.Document.openDocument(new Uint8Array(pdfs[i]), 'application/pdf');
+          const n = src.countPages();
+          for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
+          src.destroy();
+        }
+        const buf = dst.saveToBuffer(opts);
+        const bytes = buf.asUint8Array().slice();
+        buf.destroy();
+        return bytes;
+      } finally {
+        dst.destroy();
+      }
+    }
+
+    const variants = [
+      { opts: 'pdf',                              note: 'baseline — no optimisation' },
+      { opts: 'pdf,garbage',                      note: 'garbage: removes unreferenced objects' },
+      { opts: 'pdf,garbage=compact',              note: 'garbage=compact: GC + compact xref table' },
+      { opts: 'pdf,garbage=deduplicate',          note: 'garbage=deduplicate: GC + compact + deduplicate shared objects (fonts, images) — most relevant for large merges' },
+      { opts: 'pdf,compress',                     note: 'compress: compress all streams' },
+      { opts: 'pdf,compress-fonts',               note: 'compress-fonts: compress embedded font data only' },
+      { opts: 'pdf,compress-images',              note: 'compress-images: compress image streams only' },
+      { opts: 'pdf,garbage=deduplicate,compress', note: 'garbage=deduplicate,compress: recommended combination for OOM reduction' },
+      { opts: 'pdf,objstms',                      note: 'objstms: PDF 1.5 object streams (grouped object compression)' },
+      { opts: 'pdf,incremental',                  note: 'incremental: appends changes to original bytes rather than rewriting — expect LARGER output than baseline for merge' },
+    ];
+
+    let baselineBytes = null;
+    const results = [];
+
+    for (const { opts, note } of variants) {
+      let bytes;
+      try {
+        bytes = mergeWith(opts);
+      } catch (err) {
+        results.push({ name: `saveToBuffer("${opts}")`, passed: false, expected: 20, actual: `ERROR: ${err.message}`, detail: note });
+        continue;
+      }
+      const pages = getPageCount(bytes);
+      const kb = bytes.byteLength / 1024;
+      if (baselineBytes === null) baselineBytes = bytes.byteLength;
+      const pctVal = (bytes.byteLength - baselineBytes) / baselineBytes * 100;
+      const pctStr = baselineBytes !== bytes.byteLength ? ` (${pctVal >= 0 ? '+' : ''}${pctVal.toFixed(0)}% vs baseline)` : '';
+      results.push(ok(
+        `saveToBuffer("${opts}")`,
+        pages, 20,
+        `${note} — ${kb.toFixed(1)} KB${pctStr}`,
+      ));
+    }
+    return results;
+  }
+
   async function test_addPageNumbering_count() {
     const config  = makeConfig({ 'pageNumbering.numberingStyle': 'PageX' });
     const pdf     = await makePdf(4, 'num');
@@ -1237,6 +1303,12 @@
         test_mergeTwoPdfsViaWorker,
         test_mergePdfsByTOCViaWorker,
         test_mergePdfsByTOCViaWorker_printable,
+      ],
+    },
+    {
+      label: 'mupdf save options',
+      tests: [
+        test_saveOptions_mupdf,
       ],
     },
     {
