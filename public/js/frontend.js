@@ -474,7 +474,15 @@ async function processFiles(files) {
     if (validation.error) {
       showErrorModal({
         title: 'Not a valid PDF file',
-        message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again.`,
+        message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again. Reasons may include:
+
+        - The file is password-protected (if so, you can save as unprotected PDF or "print" to a new pdf and try again)
+        
+        - The file is not actually a PDF (e.g. a Word document - needs converting)
+        
+        - The file is corrupted or incomplete (if so, try to get a better copy)
+        
+        - The file is digitally signed by software that adds non-standard elements (if so, try "printing" to a new PDF file, to flatten it) `,
       });
       continue;
     }
