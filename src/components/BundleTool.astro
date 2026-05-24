@@ -155,13 +155,21 @@
           </h3>
           <p class="mt-1 text-xs text-slate-200">Click titles/dates to edit</p>
         </div>
-        <div class="flex items-center gap-2 shrink-0" title="Switch between drag-to-reorder and arrow buttons">
-          <span class="text-xs text-slate-300">Sort with: &#x2195;</span>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="reorder-toggle-btn" class="sr-only peer" checked>
-            <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
-          </label>
-          <span class="text-xs text-slate-300">Drag</span>
+        <div class="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+          <button id="add-section-btn" type="button" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Section
+          </button>
+          <div class="flex items-center gap-2" title="Switch between drag-to-reorder and arrow buttons">
+            <span class="text-xs text-slate-300">Sort with: &#x2195;</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="reorder-toggle-btn" class="sr-only peer" checked>
+              <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-400 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            </label>
+            <span class="text-xs text-slate-300">Drag</span>
+          </div>
         </div>
       </div>
 
@@ -194,20 +202,14 @@
               <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody id="file-table-body" class="bg-white divide-y divide-gray-200">
-            <!-- Rows will be added here by frontend.js -->
+          <tbody id="tbody-section-0000" class="section-tbody bg-white divide-y divide-gray-200" data-section-id="0000">
+            <!-- Default section — rows added by frontend.js -->
           </tbody>
         </table>
       </div>
 
       <!-- Table Controls -->
-      <div class="px-4 py-2 border-t border-gray-200 flex justify-between items-center gap-2 flex-wrap">
-        <button id="add-section-break-btn" type="button" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">
-          <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Section Break
-        </button>
+      <div class="px-4 py-2 border-t border-gray-200 flex justify-end items-center gap-2 flex-wrap">
         <button id="clear-all-rows-btn" type="button" class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-lg transition">
           <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -216,6 +218,18 @@
         </button>
       </div>
     </div>
+
+    <!-- Section add-files popover (shown when clicking main add-files while sectioned) -->
+    <div id="section-picker-popover" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+      <div class="bg-white rounded-xl shadow-xl border border-gray-200 p-4 w-80 max-w-full mx-4">
+        <h4 class="text-sm font-semibold text-gray-800 mb-3">Add files to which section?</h4>
+        <div id="section-picker-list" class="flex flex-col gap-2 mb-3"></div>
+        <button id="section-picker-cancel" type="button" class="w-full text-xs text-gray-500 hover:text-gray-700 transition py-1">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Hidden file input triggered by per-section add-files buttons -->
+    <input type="file" id="section-file-input" multiple accept="application/pdf" class="sr-only" />
 
     <!-- Step 4: Generate or Configure -->
     <div id="step-4-choice" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 no-docs">
@@ -759,7 +773,7 @@
   }
 
   /* Table cell styling for proper wrapping and prominence */
-  #file-table-body td {
+  .section-tbody td {
     vertical-align: top;
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
@@ -768,7 +782,7 @@
   }
 
   /* Title field styling - make it prominent */
-  #file-table-body .title-cell {
+  .section-tbody .title-cell {
     font-weight: 600;
     font-size: 1rem;
     color: #1e293b;
@@ -776,13 +790,13 @@
     min-height: 2.5rem;
   }
 
-  #file-table-body .title-cell:hover {
+  .section-tbody .title-cell:hover {
     background-color: #fce7f3;
     cursor: pointer;
   }
 
   /* Date field styling - make it prominent */
-  #file-table-body .date-cell {
+  .section-tbody .date-cell {
     font-weight: 500;
     font-size: 0.95rem;
     color: #475569;
@@ -790,13 +804,13 @@
     white-space: normal;
   }
 
-  #file-table-body .date-cell:hover {
+  .section-tbody .date-cell:hover {
     background-color: #fce7f3;
     cursor: pointer;
   }
 
   /* Filename styling - force wrapping */
-  #file-table-body .filename-cell {
+  .section-tbody .filename-cell {
     font-size: 0.875rem;
     color: #64748b;
     line-height: 1.4;
@@ -807,11 +821,11 @@
   }
 
   /* Title cell - use textarea for multiline */
-  #file-table-body .title-cell {
+  .section-tbody .title-cell {
     width: 50%;
   }
 
-  #file-table-body .title-cell textarea {
+  .section-tbody .title-cell textarea {
     min-width: 0;
     width: 100%;
     resize: vertical;
@@ -821,17 +835,17 @@
   }
 
   /* Date cell - constrain width */
-  #file-table-body .date-cell {
+  .section-tbody .date-cell {
     max-width: 180px;
     width: 180px;
   }
 
-  #file-table-body .date-cell input {
+  .section-tbody .date-cell input {
     min-width: 0;
   }
 
   /* Pages styling */
-  #file-table-body .pages-cell {
+  .section-tbody .pages-cell {
     font-size: 0.875rem;
     color: #64748b;
     text-align: center;
@@ -840,8 +854,62 @@
   }
 
   /* Row hover effect */
-  #file-table-body tr:hover {
+  .section-tbody tr.file-row:hover {
     background-color: #f8fafc;
+  }
+
+  /* Section header row */
+  .section-header-row {
+    background: linear-gradient(to right, #eff6ff, #e0f2fe);
+    border-top: 2px solid #3b82f6;
+  }
+
+  .section-header-row td {
+    padding: 0.5rem 0.5rem;
+    vertical-align: middle;
+  }
+
+  .section-label-input {
+    width: 3.5rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #93c5fd;
+    border-radius: 0.375rem;
+    background: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: #1d4ed8;
+    text-align: center;
+  }
+
+  .section-name-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #93c5fd;
+    border-radius: 0.375rem;
+    background: white;
+    font-size: 0.875rem;
+    color: #1e40af;
+  }
+
+  .section-label-input:focus, .section-name-input:focus {
+    outline: none;
+    ring: 2px solid #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  /* Section tbody drag-over indicator */
+  .section-tbody.drag-over-section {
+    outline: 2px dashed #3b82f6;
+    outline-offset: -2px;
+  }
+
+  /* Section 0000 header — hidden by default, shown when sectioned */
+  #tbody-section-0000 .section-header-row {
+    display: none;
+  }
+
+  #file-table.sectioned #tbody-section-0000 .section-header-row {
+    display: table-row;
   }
 
   /* Arrow buttons hidden by default (drag mode) */
@@ -862,9 +930,9 @@
   #file-table.arrow-mode table { display: block; table-layout: auto; }
   #file-table.arrow-mode colgroup { display: none; }
   #file-table.arrow-mode thead { display: none; }
-  #file-table.arrow-mode tbody { display: block; }
+  #file-table.arrow-mode .section-tbody { display: block; }
 
-  #file-table.arrow-mode tbody tr {
+  #file-table.arrow-mode .section-tbody tr.file-row {
     display: flex !important;
     flex-wrap: wrap;
     margin-bottom: 0.5rem;
@@ -876,7 +944,7 @@
     box-sizing: border-box;
   }
 
-  #file-table.arrow-mode tbody td {
+  #file-table.arrow-mode .section-tbody tr.file-row td {
     display: block;
     border: none;
     padding: 0.25rem 0;
@@ -884,11 +952,11 @@
     max-width: none;
   }
 
-  #file-table.arrow-mode tbody td:nth-child(2) { order: 1; flex: 1 1 auto; font-weight: 500; padding-right: 0.5rem; min-width: 0; }
-  #file-table.arrow-mode tbody td:nth-child(6) { order: 2; flex: 0 0 auto; display: flex; gap: 0.5rem; align-items: center; }
-  #file-table.arrow-mode tbody td:nth-child(3) { order: 3; flex: 1 1 100%; margin-top: 0.25rem; }
-  #file-table.arrow-mode tbody td:nth-child(4) { order: 4; flex: 1 1 55%; margin-top: 0.25rem; }
-  #file-table.arrow-mode tbody td:nth-child(5) { order: 5; flex: 1 1 40%; margin-top: 0.25rem; text-align: right; }
+  #file-table.arrow-mode .section-tbody tr.file-row td:nth-child(2) { order: 1; flex: 1 1 auto; font-weight: 500; padding-right: 0.5rem; min-width: 0; }
+  #file-table.arrow-mode .section-tbody tr.file-row td:nth-child(6) { order: 2; flex: 0 0 auto; display: flex; gap: 0.5rem; align-items: center; }
+  #file-table.arrow-mode .section-tbody tr.file-row td:nth-child(3) { order: 3; flex: 1 1 100%; margin-top: 0.25rem; }
+  #file-table.arrow-mode .section-tbody tr.file-row td:nth-child(4) { order: 4; flex: 1 1 55%; margin-top: 0.25rem; }
+  #file-table.arrow-mode .section-tbody tr.file-row td:nth-child(5) { order: 5; flex: 1 1 40%; margin-top: 0.25rem; text-align: right; }
 
   /* Mobile card layout */
   @media (max-width: 767px) {
@@ -915,12 +983,12 @@
       display: none;
     }
 
-    #file-table tbody {
+    #file-table .section-tbody {
       display: block;
     }
 
-    /* Make rows into cards */
-    #file-table tbody tr {
+    /* Make file rows into cards */
+    #file-table .section-tbody tr.file-row {
       display: flex !important;
       flex-wrap: wrap;
       margin-bottom: 0.75rem;
@@ -933,7 +1001,7 @@
     }
 
     /* Reset all table cells */
-    #file-table tbody td {
+    #file-table .section-tbody tr.file-row td {
       display: block;
       border: none;
       padding: 0.25rem 0;
@@ -942,12 +1010,12 @@
     }
 
     /* Hide drag handle on mobile */
-    #file-table tbody td:nth-child(1) {
+    #file-table .section-tbody tr.file-row td:nth-child(1) {
       display: none;
     }
 
     /* Row 1: Filename (grow) */
-    #file-table tbody td:nth-child(2) {
+    #file-table .section-tbody tr.file-row td:nth-child(2) {
       order: 1;
       flex: 1 1 auto;
       font-weight: 500;
@@ -956,7 +1024,7 @@
     }
 
     /* Row 1: Actions (shrink) */
-    #file-table tbody td:nth-child(6) {
+    #file-table .section-tbody tr.file-row td:nth-child(6) {
       order: 2;
       flex: 0 0 auto;
       display: flex;
@@ -965,21 +1033,21 @@
     }
 
     /* Row 2: Title (full width) */
-    #file-table tbody td:nth-child(3) {
+    #file-table .section-tbody tr.file-row td:nth-child(3) {
       order: 3;
       flex: 1 1 100%;
       margin-top: 0.5rem;
     }
 
     /* Row 3: Date */
-    #file-table tbody td:nth-child(4) {
+    #file-table .section-tbody tr.file-row td:nth-child(4) {
       order: 4;
       flex: 1 1 55%;
       margin-top: 0.5rem;
     }
 
     /* Row 3: Pages */
-    #file-table tbody td:nth-child(5) {
+    #file-table .section-tbody tr.file-row td:nth-child(5) {
       order: 5;
       flex: 1 1 40%;
       text-align: right;
@@ -987,13 +1055,13 @@
     }
 
     /* Make inputs full width on mobile */
-    #file-table-body .title-cell textarea,
-    #file-table-body .date-cell input {
+    .section-tbody .title-cell textarea,
+    .section-tbody .date-cell input {
       width: 100%;
     }
 
     /* Pages label for mobile */
-    #file-table-body .pages-cell::before {
+    .section-tbody .pages-cell::before {
       content: "Pages: ";
       color: #64748b;
     }
@@ -1017,25 +1085,31 @@
 <link href="https://unpkg.com/tabulator-tables@6.4.0/dist/css/tabulator.min.css" rel="stylesheet">
 
 <script>
-  const fileTableBody = document.getElementById('file-table-body');
   const step4Choice = document.getElementById('step-4-choice');
 
   function updateDocState() {
-    const hasFiles = fileTableBody.querySelectorAll('tr').length > 0;
-    // Toggle empty state and table content visibility
+    const hasFiles = document.querySelectorAll('.section-tbody tr.file-row').length > 0;
     document.getElementById('file-table-empty')?.classList.toggle('hidden', hasFiles);
     document.getElementById('file-table-content')?.classList.toggle('hidden', !hasFiles);
-    // Toggle inactive state on action buttons
     document.querySelectorAll('.btn-needs-docs').forEach(btn => {
       btn.classList.toggle('docs-inactive', !hasFiles);
     });
   }
 
   const observer = new MutationObserver(updateDocState);
+  document.querySelectorAll('.section-tbody').forEach(tbody => {
+    observer.observe(tbody, { childList: true });
+  });
 
-  if (fileTableBody) {
-    observer.observe(fileTableBody, { childList: true });
-  }
+  // Re-observe when new section tbodys are added to the table
+  const tableObserver = new MutationObserver(() => {
+    document.querySelectorAll('.section-tbody').forEach(tbody => {
+      observer.observe(tbody, { childList: true });
+    });
+    updateDocState();
+  });
+  const tableEl = document.querySelector('#file-table table');
+  if (tableEl) tableObserver.observe(tableEl, { childList: true });
 
   /*
     NEW FEATURE MODAL LOGIC — uncomment together with the HTML block above

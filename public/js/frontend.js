@@ -32,13 +32,28 @@ async function logBundleEvent(payload) {
 }
 let chrono;
 let draggedRow = null;
+let draggedSection = null;
 let reorderMode = 'drag'; // 'drag' | 'arrows'
+let isSectioned = false;  // true when ≥1 explicit section (0001+) exists
+let nextSectionNum = 1;   // counter for new section IDs
 
 import Config from './buntoolConfig.js';
+import { IndexData } from './buntoolIndexData.js';
 import { init as initAutosave, markDirty, saveNow, listSnapshots, loadSnapshot } from './buntoolAutosave.js';
 
 const fileInput = document.getElementById('file-input');
-const fileTableBody = document.getElementById('file-table-body');
+
+function getDefaultSection0000() {
+  return document.getElementById('tbody-section-0000');
+}
+
+function getAllSectionTbodys() {
+  return Array.from(document.querySelectorAll('.section-tbody'));
+}
+
+function getAllFileRows() {
+  return Array.from(document.querySelectorAll('.section-tbody tr.file-row'));
+}
 
 function pulseStep2() {
   const step2 = document.getElementById('file-drop-zone');
@@ -48,9 +63,7 @@ function pulseStep2() {
   setTimeout(() => step2.classList.remove('pulse-ring'), 1500);
 }
 const form = document.getElementById('upload-form');
-const addSectionBreakBtn = document.getElementById('add-section-break-btn');
 const clearAllRowsBtn = document.getElementById('clear-all-rows-btn');
-const indexData = [];
 
 // Globals for inputs, files and config:
 const filesMap = new Map(); // filename -> File
@@ -82,12 +95,13 @@ async function getAutosaveState() {
   }
 
   const tableOrder = [];
-  fileTableBody.querySelectorAll('tr').forEach(row => {
-    if (row.dataset.sectionBreak === 'true') {
-      tableOrder.push({ type: 'section', title: row.querySelector('.section-break-title')?.value || '' });
-    } else if (row.dataset.filename) {
-      tableOrder.push({ type: 'file', filename: row.dataset.filename });
-    }
+  getAllSectionTbodys().forEach(tbody => {
+    const sectionID = tbody.dataset.sectionId;
+    const headerRow = tbody.querySelector('.section-header-row');
+    const label = headerRow?.querySelector('.section-label-input')?.value ?? '';
+    const name  = headerRow?.querySelector('.section-name-input')?.value  ?? '';
+    const filenames = Array.from(tbody.querySelectorAll('tr.file-row')).map(r => r.dataset.filename).filter(Boolean);
+    tableOrder.push({ type: 'section', sectionID, label, name, filenames });
   });
 
   const config = {
@@ -122,9 +136,15 @@ async function applySnapshot(snapshot) {
   // Clear current state
   filesMap.clear();
   Object.keys(frontendInputData).forEach(k => delete frontendInputData[k]);
-  fileTableBody.innerHTML = '';
+  // Remove any extra section tbodys (keep 0000 only)
+  document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(el => el.remove());
+  const section0000 = getDefaultSection0000();
+  if (section0000) section0000.innerHTML = '';
   coversheetFile = null;
   setCoversheetSelected(null);
+  isSectioned = false;
+  nextSectionNum = 1;
+  document.getElementById('file-table')?.classList.remove('sectioned');
 
   // Restore files into filesMap
   for (const { filename, bytes } of snapshot.files) {
@@ -134,70 +154,40 @@ async function applySnapshot(snapshot) {
   // Restore inputData
   Object.assign(frontendInputData, snapshot.inputData);
 
-  // Rebuild table rows in saved order
+  // Rebuild section tbodys in saved order
+  const table = document.querySelector('#file-table table');
   for (const item of snapshot.tableOrder) {
-    if (item.type === 'section') {
-      const row = document.createElement('tr');
-      row.draggable = reorderMode === 'drag';
-      row.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
-      row.dataset.sectionBreak = 'true';
-      row.innerHTML = `
-        <td class="drag-handle px-2 py-3 cursor-move">
-          <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-          </svg>
-        </td>
-        <td colspan="4" class="px-6 py-3">
-          <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-align-left focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Type section name e.g. 'Part 1: Evidence'"/>
-        </td>
-        <td class="px-6 py-3 flex gap-2">
-          <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-          <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-          <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">❌</button>
-        </td>`;
-      row.querySelector('.section-break-title').value = item.title;
-      row.addEventListener('dragstart', handleDragStart);
-      row.addEventListener('dragover', handleDragOver);
-      row.addEventListener('drop', handleDrop);
-      row.addEventListener('dragend', handleDragEnd);
-      fileTableBody.appendChild(row);
+    if (item.type !== 'section') continue;
+    let tbody;
+    if (item.sectionID === '0000') {
+      tbody = getDefaultSection0000();
     } else {
+      tbody = createSectionTbody(item.sectionID, item.label || '', item.name || '');
+      table?.appendChild(tbody);
+      if (!isSectioned) {
+        isSectioned = true;
+        document.getElementById('file-table')?.classList.add('sectioned');
+      }
+      const num = parseInt(item.sectionID, 10);
+      if (!isNaN(num) && num >= nextSectionNum) nextSectionNum = num + 1;
+    }
+    for (const filename of (item.filenames || [])) {
+      const data = frontendInputData[filename];
+      if (!data) continue;
+      const row = makeFileRow(filename, data);
+      tbody.appendChild(row);
+    }
+  }
+
+  // Legacy snapshot support: flat tableOrder array
+  if (snapshot.tableOrder.length && snapshot.tableOrder[0].type === 'file') {
+    for (const item of snapshot.tableOrder) {
+      if (item.type !== 'file') continue;
       const data = frontendInputData[item.filename];
       if (!data) continue;
-      const row = document.createElement('tr');
-      row.draggable = reorderMode === 'drag';
-      row.dataset.filename = item.filename;
-      row.classList.add('hover:bg-gray-50', 'transition');
-      row.innerHTML = `
-        <td class="drag-handle px-2 py-3 cursor-move">
-          <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-          </svg>
-        </td>
-        <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
-        <td class="px-4 py-3 title-cell">
-          <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
-        </td>
-        <td class="px-4 py-3 date-cell">
-          <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
-        </td>
-        <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
-        <td class="px-4 py-3 flex gap-2 actions-cell">
-          <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-          <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-          <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">💾</button>
-          <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">❌</button>
-        </td>`;
-      row.querySelector('.filename-cell').textContent = item.filename;
-      row.querySelector('.title-input').value = data.title || '';
-      row.querySelector('.date-input').value  = data.date  || '';
-      row.querySelector('.pages-cell').textContent = data.pageCount ?? '';
-      row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = item.filename);
-      row.addEventListener('dragstart', handleDragStart);
-      row.addEventListener('dragover', handleDragOver);
-      row.addEventListener('drop', handleDrop);
-      row.addEventListener('dragend', handleDragEnd);
-      fileTableBody.appendChild(row);
+      const tbody = getDefaultSection0000();
+      const row = makeFileRow(item.filename, data, tbody);
+      tbody.appendChild(row);
     }
   }
 
@@ -334,26 +324,8 @@ window.addEventListener('DOMContentLoaded', () => {
       h.querySelector('.sort-indicator').textContent = '';
     });
     th.querySelector('.sort-indicator').textContent = sortDir === 'asc' ? '▲' : '▼';
-    const rows = Array.from(fileTableBody.querySelectorAll('tr'));
-    rows.sort((a, b) => {
-      const aSection = a.dataset.sectionBreak === 'true';
-      const bSection = b.dataset.sectionBreak === 'true';
-      if (aSection && bSection) return 0;
-      if (aSection) return 1;
-      if (bSection) return -1;
-      let aVal, bVal;
-      if (col === 'pages') {
-        aVal = parseInt(a.querySelector('.pages-cell')?.textContent || '0', 10);
-        bVal = parseInt(b.querySelector('.pages-cell')?.textContent || '0', 10);
-        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-      if (col === 'filename') { aVal = a.dataset.filename || ''; bVal = b.dataset.filename || ''; }
-      else if (col === 'title') { aVal = a.querySelector('.title-input')?.value || ''; bVal = b.querySelector('.title-input')?.value || ''; }
-      else if (col === 'date') { aVal = a.querySelector('.date-input')?.value || ''; bVal = b.querySelector('.date-input')?.value || ''; }
-      const cmp = aVal.localeCompare(bVal, undefined, { sensitivity: 'base', numeric: true });
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    rows.forEach(row => fileTableBody.appendChild(row));
+    // Sort within each section independently
+    getAllSectionTbodys().forEach(tbody => sortSection(tbody, col, sortDir));
   });
 
   document.getElementById('reorder-toggle-btn')?.addEventListener('change', (e) => {
@@ -361,10 +333,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const table = document.getElementById('file-table');
     if (reorderMode === 'arrows') {
       table.classList.add('arrow-mode');
-      fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = false);
+      getAllFileRows().forEach(r => r.draggable = false);
+      document.querySelectorAll('.section-tbody').forEach(t => t.draggable = false);
     } else {
       table.classList.remove('arrow-mode');
-      fileTableBody.querySelectorAll('tr').forEach(r => r.draggable = true);
+      getAllFileRows().forEach(r => r.draggable = true);
+      document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(t => t.draggable = true);
     }
   });
 });
@@ -375,62 +349,343 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
-// Drag and Drop Handlers
+// ─── Build IndexData from current section tbodys ─────────────────────────────
+function buildIndexData() {
+  const sections = [];
+  getAllSectionTbodys().forEach(tbody => {
+    const sectionID = tbody.dataset.sectionId;
+    const headerRow = tbody.querySelector('.section-header-row');
+    const sectionLabel = headerRow?.querySelector('.section-label-input')?.value.trim() ?? '';
+    const sectionName  = headerRow?.querySelector('.section-name-input')?.value.trim()  ?? '';
+    const files = [];
+    tbody.querySelectorAll('tr.file-row').forEach(row => {
+      const fn = row.dataset.filename;
+      if (fn && frontendInputData[fn]) {
+        files.push({
+          filename: fn,
+          title: frontendInputData[fn].title,
+          date: frontendInputData[fn].date || '',
+          pageCount: frontendInputData[fn].pageCount,
+        });
+      }
+    });
+    sections.push({ sectionID, sectionLabel, sectionName, files });
+  });
+  return new IndexData(sections);
+}
+
+// ─── Helper: build a file row <tr> ───────────────────────────────────────────
+const DRAG_ICON_SVG = `<svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/></svg>`;
+
+function makeFileRow(filename, data) {
+  const row = document.createElement('tr');
+  row.draggable = reorderMode === 'drag';
+  row.dataset.filename = filename;
+  row.classList.add('file-row', 'hover:bg-gray-50', 'transition');
+  row.innerHTML = `
+    <td class="drag-handle px-2 py-3 cursor-move">${DRAG_ICON_SVG}</td>
+    <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
+    <td class="px-4 py-3 title-cell">
+      <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
+    </td>
+    <td class="px-4 py-3 date-cell">
+      <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
+    </td>
+    <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
+    <td class="px-4 py-3 flex gap-2 actions-cell">
+      <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
+      <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
+      <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">💾</button>
+      <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">❌</button>
+    </td>`;
+  row.querySelector('.filename-cell').textContent = filename;
+  row.querySelector('.title-input').value = data.title || '';
+  row.querySelector('.date-input').value  = data.date  || '';
+  row.querySelector('.pages-cell').textContent = data.pageCount ?? '';
+  row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = filename);
+  row.addEventListener('dragstart', handleDragStart);
+  row.addEventListener('dragover', handleFileDragOver);
+  row.addEventListener('drop', handleFileDrop);
+  row.addEventListener('dragend', handleDragEnd);
+  return row;
+}
+
+// ─── Helper: build a section <tbody> ─────────────────────────────────────────
+function nextSectionLabel() {
+  const explicit = document.querySelectorAll('.section-tbody:not(#tbody-section-0000)');
+  const idx = explicit.length; // 0-based before the new one is added
+  return String.fromCharCode(65 + (idx % 26)); // A, B, C …
+}
+
+function createSectionTbody(sectionID, label, name) {
+  const tbody = document.createElement('tbody');
+  tbody.className = 'section-tbody bg-white divide-y divide-gray-200';
+  tbody.id = `tbody-section-${sectionID}`;
+  tbody.dataset.sectionId = sectionID;
+  tbody.draggable = true;
+
+  tbody.innerHTML = `
+    <tr class="section-header-row" data-section-id="${sectionID}">
+      <td class="drag-handle px-2 py-2 cursor-move">${DRAG_ICON_SVG}</td>
+      <td class="px-2 py-2">
+        <input type="text" class="section-label-input" value="${label}" placeholder="${nextSectionLabel()}" title="Section label (e.g. A, B, 1)" />
+      </td>
+      <td colspan="3" class="px-2 py-2">
+        <input type="text" class="section-name-input" value="${name}" placeholder="Section name (optional)…" />
+      </td>
+      <td class="px-2 py-2 whitespace-nowrap">
+        <label class="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
+          + Files
+          <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="${sectionID}" />
+        </label>
+        <button type="button" class="section-sort-btn text-xs text-gray-500 hover:text-gray-700 transition mr-1" data-section-id="${sectionID}" title="Sort files in this section">⇅</button>
+        <button type="button" class="section-delete-btn text-xs text-red-500 hover:text-red-700 transition" data-section-id="${sectionID}" title="Delete this section">✕</button>
+      </td>
+    </tr>`;
+
+  // Section-level drag handlers (drag the whole tbody)
+  tbody.addEventListener('dragstart', handleSectionDragStart);
+  tbody.addEventListener('dragover', handleSectionDragOver);
+  tbody.addEventListener('drop', handleSectionDrop);
+  tbody.addEventListener('dragend', handleSectionDragEnd);
+
+  // Per-section add-files input
+  tbody.querySelector('.section-add-files-input')?.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (files.length) await processFiles(files, tbody);
+  });
+
+  // Section sort button → show dropdown-ish inline sort
+  tbody.querySelector('.section-sort-btn')?.addEventListener('click', () => sortSectionPopover(tbody));
+
+  // Section delete button
+  tbody.querySelector('.section-delete-btn')?.addEventListener('click', () => deleteSection(tbody));
+
+  // Section header drag-handle initiates section drag
+  const headerDragHandle = tbody.querySelector('.section-header-row .drag-handle');
+  headerDragHandle?.addEventListener('mousedown', () => { tbody.draggable = true; });
+
+  markDirty();
+  return tbody;
+}
+
+// ─── Add Section ─────────────────────────────────────────────────────────────
+function addSection() {
+  const sectionID = String(nextSectionNum++).padStart(4, '0');
+  const tbody = createSectionTbody(sectionID, '', '');
+  const table = document.querySelector('#file-table table');
+  table?.appendChild(tbody);
+
+  if (!isSectioned) {
+    isSectioned = true;
+    document.getElementById('file-table')?.classList.add('sectioned');
+    // Insert section-0000 header row now that we're sectioned
+    const section0000 = getDefaultSection0000();
+    if (section0000 && !section0000.querySelector('.section-header-row')) {
+      const headerTr = document.createElement('tr');
+      headerTr.className = 'section-header-row';
+      headerTr.dataset.sectionId = '0000';
+      headerTr.innerHTML = `
+        <td class="px-2 py-2 text-xs text-slate-400 italic" colspan="5">Default section — files added from main button</td>
+        <td class="px-2 py-2 whitespace-nowrap">
+          <label class="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded cursor-pointer transition" title="Add files to default section">
+            + Files
+            <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="0000" />
+          </label>
+        </td>`;
+      headerTr.querySelector('.section-add-files-input')?.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        e.target.value = '';
+        if (files.length) await processFiles(files, section0000);
+      });
+      section0000.insertBefore(headerTr, section0000.firstChild);
+    }
+  }
+  markDirty();
+}
+
+document.getElementById('add-section-btn')?.addEventListener('click', addSection);
+
+// ─── Delete Section ───────────────────────────────────────────────────────────
+function deleteSection(tbody) {
+  const fileRows = Array.from(tbody.querySelectorAll('tr.file-row'));
+  if (fileRows.length > 0) {
+    const choice = confirm('This section has files. Move them to the Default section, or delete them?\n\nOK = Move to Default\nCancel = Delete files too');
+    if (choice) {
+      const section0000 = getDefaultSection0000();
+      fileRows.forEach(row => section0000.appendChild(row));
+    } else {
+      fileRows.forEach(row => {
+        const fn = row.dataset.filename;
+        if (fn) { filesMap.delete(fn); delete frontendInputData[fn]; }
+      });
+    }
+  }
+  tbody.remove();
+
+  // If no explicit sections remain, revert to unsectioned
+  if (!document.querySelector('.section-tbody:not(#tbody-section-0000)')) {
+    isSectioned = false;
+    document.getElementById('file-table')?.classList.remove('sectioned');
+    const section0000 = getDefaultSection0000();
+    section0000?.querySelector('.section-header-row')?.remove();
+  }
+  markDirty();
+}
+
+// ─── Sort section popover ─────────────────────────────────────────────────────
+function sortSection(tbody, col, dir) {
+  const fileRows = Array.from(tbody.querySelectorAll('tr.file-row'));
+  fileRows.sort((a, b) => {
+    let aVal, bVal;
+    if (col === 'filename') { aVal = a.dataset.filename || ''; bVal = b.dataset.filename || ''; }
+    else if (col === 'title') { aVal = a.querySelector('.title-input')?.value || ''; bVal = b.querySelector('.title-input')?.value || ''; }
+    else if (col === 'date')  { aVal = a.querySelector('.date-input')?.value  || ''; bVal = b.querySelector('.date-input')?.value  || ''; }
+    else if (col === 'pages') {
+      return dir === 'asc'
+        ? (parseInt(a.querySelector('.pages-cell')?.textContent || '0') - parseInt(b.querySelector('.pages-cell')?.textContent || '0'))
+        : (parseInt(b.querySelector('.pages-cell')?.textContent || '0') - parseInt(a.querySelector('.pages-cell')?.textContent || '0'));
+    }
+    const cmp = (aVal || '').localeCompare(bVal || '', undefined, { sensitivity: 'base', numeric: true });
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  fileRows.forEach(row => tbody.appendChild(row));
+  markDirty();
+}
+
+function sortSectionPopover(tbody) {
+  const existing = document.getElementById('section-sort-popover');
+  existing?.remove();
+  const btn = tbody.querySelector('.section-sort-btn');
+  if (!btn) return;
+  const pop = document.createElement('div');
+  pop.id = 'section-sort-popover';
+  pop.className = 'absolute z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-2 text-xs flex flex-col gap-1';
+  pop.style.minWidth = '140px';
+  const opts = [
+    ['Filename ▲', 'filename', 'asc'], ['Filename ▼', 'filename', 'desc'],
+    ['Title ▲',    'title',    'asc'], ['Title ▼',    'title',    'desc'],
+    ['Date ▲',     'date',     'asc'], ['Date ▼',     'date',     'desc'],
+    ['Pages ▲',    'pages',    'asc'], ['Pages ▼',    'pages',    'desc'],
+  ];
+  opts.forEach(([label, col, dir]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'text-left px-2 py-1 rounded hover:bg-blue-50 hover:text-blue-700 transition';
+    b.textContent = label;
+    b.addEventListener('click', () => { sortSection(tbody, col, dir); pop.remove(); });
+    pop.appendChild(b);
+  });
+  document.body.appendChild(pop);
+  const rect = btn.getBoundingClientRect();
+  pop.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+  pop.style.left = (rect.left  + window.scrollX)     + 'px';
+  const dismiss = (e) => { if (!pop.contains(e.target) && e.target !== btn) { pop.remove(); document.removeEventListener('click', dismiss); } };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
+}
+
+// ─── Section drag and drop ────────────────────────────────────────────────────
+function handleSectionDragStart(e) {
+  // Only drag from section header drag-handle
+  if (!e.target.closest('.section-header-row .drag-handle')) { e.preventDefault(); return; }
+  draggedSection = this;
+  e.dataTransfer.effectAllowed = 'move';
+  e.stopPropagation();
+  this.style.opacity = '0.5';
+}
+
+function handleSectionDragOver(e) {
+  if (!draggedSection || draggedSection === this) return;
+  if (this.id === 'tbody-section-0000') return; // section-0000 stays first
+  e.preventDefault();
+  e.stopPropagation();
+  this.classList.add('drag-over-section');
+}
+
+function handleSectionDrop(e) {
+  if (!draggedSection || draggedSection === this) return;
+  if (this.id === 'tbody-section-0000') return;
+  e.preventDefault();
+  e.stopPropagation();
+  this.classList.remove('drag-over-section');
+  const table = this.parentNode;
+  const allTbodys = Array.from(table.querySelectorAll('.section-tbody'));
+  const fromIdx = allTbodys.indexOf(draggedSection);
+  const toIdx   = allTbodys.indexOf(this);
+  if (fromIdx < toIdx) {
+    table.insertBefore(draggedSection, this.nextSibling);
+  } else {
+    table.insertBefore(draggedSection, this);
+  }
+  markDirty();
+}
+
+function handleSectionDragEnd() {
+  this.style.opacity = '1';
+  document.querySelectorAll('.section-tbody').forEach(t => t.classList.remove('drag-over-section'));
+  draggedSection = null;
+}
+
+// ─── File-row drag and drop ───────────────────────────────────────────────────
 function handleDragStart(e) {
   draggedRow = this;
+  draggedSection = null; // clear any section drag
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/html', this.innerHTML);
+  e.stopPropagation();
   this.style.opacity = '0.4';
 }
 
-function handleDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
+function handleFileDragOver(e) {
+  if (!draggedRow) return;
+  e.preventDefault();
+  e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
-  return false;
 }
 
-function handleDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation();
+function handleFileDrop(e) {
+  if (!draggedRow || draggedRow === this) return;
+  e.preventDefault();
+  e.stopPropagation();
+  // If dropping on a section-header-row: append to that section
+  if (this.classList.contains('section-header-row')) {
+    this.closest('tbody').appendChild(draggedRow);
+    markDirty();
+    return;
   }
-  if (draggedRow !== this) {
-    const allRows = Array.from(fileTableBody.querySelectorAll('tr'));
+  // Normal same/cross-section reorder
+  const myTbody = this.closest('tbody');
+  const draggedTbody = draggedRow.closest('tbody');
+  if (myTbody === draggedTbody) {
+    const allRows = Array.from(myTbody.querySelectorAll('tr.file-row'));
     const draggedIndex = allRows.indexOf(draggedRow);
+    const targetIndex  = allRows.indexOf(this);
+    if (draggedIndex < targetIndex) myTbody.insertBefore(draggedRow, this.nextSibling);
+    else myTbody.insertBefore(draggedRow, this);
+  } else {
+    const allRows = Array.from(myTbody.querySelectorAll('tr.file-row'));
     const targetIndex = allRows.indexOf(this);
-
-    if (draggedIndex < targetIndex) {
-      this.parentNode.insertBefore(draggedRow, this.nextSibling);
-    } else {
-      this.parentNode.insertBefore(draggedRow, this);
-    }
+    if (targetIndex < 0) myTbody.appendChild(draggedRow);
+    else myTbody.insertBefore(draggedRow, this);
   }
-  return false;
+  markDirty();
 }
 
 function handleDragEnd() {
   this.style.opacity = '1';
+  draggedRow = null;
 }
 
-async function processFiles(files) {
+async function processFiles(files, targetTbody) {
+  if (!targetTbody) targetTbody = getDefaultSection0000();
 
   // Check total filesize (including existing files)
   let totalSize = 0;
-
-  // Add existing files' sizes
-  for (const existingFile of filesMap.values()) {
-    totalSize += existingFile.size;
-  }
-
-  // Add new files' sizes
-  for (const file of files) {
-    totalSize += file.size;
-  }
+  for (const existingFile of filesMap.values()) totalSize += existingFile.size;
+  for (const file of files) totalSize += file.size;
 
   const totalSizeMB = totalSize / (1024 * 1024);
-
-  // Block if over 500MB
   if (totalSizeMB > 500) {
     showErrorModal({
       title: 'Total file size too large',
@@ -439,16 +694,14 @@ async function processFiles(files) {
     return;
   }
 
-  // Hide the step 2 hint once files have been added
   if (files.length > 0) {
     const hint = document.getElementById('file-input-hint');
     if (hint) hint.style.display = 'none';
   }
 
-  // Show validation progress bar
-  const validationProgress   = document.getElementById('validation-progress');
-  const validationBar        = document.getElementById('validation-progress-bar');
-  const validationLabel      = document.getElementById('validation-progress-label');
+  const validationProgress = document.getElementById('validation-progress');
+  const validationBar      = document.getElementById('validation-progress-bar');
+  const validationLabel    = document.getElementById('validation-progress-label');
   const totalNewFiles = files.length;
   if (validationProgress && totalNewFiles > 0) {
     validationProgress.classList.remove('hidden');
@@ -456,18 +709,14 @@ async function processFiles(files) {
     validationLabel.textContent = `0 / ${totalNewFiles}`;
   }
 
-  // Process each new file
   let validatedCount = 0;
-  for (const file of files){
-    // Materialise bytes into memory immediately so filesMap holds an in-memory copy,
-    // not a live OS file reference that can expire (ChromeOS sandbox, network drives, permission changes)
+  for (const file of files) {
     const fileBytes = new Uint8Array(await file.arrayBuffer());
-
     const key = uniqueFilename(file.name);
     const prettyTitle = prettifyTitle(file.name);
-    const dateParseObj = await parseDateFromFilename(prettyTitle); // returns .date (as date obj), .name (stripped of date)
+    const dateParseObj = await parseDateFromFilename(prettyTitle);
     const displayTitle = stripDoubleChars(dateParseObj.name);
-    if (!countPdfPages){
+    if (!countPdfPages) {
       ({countPdfPages, validateAndCountPages} = await import('./buntoolPages.js'));
     }
     const validation = await validateAndCountPages(fileBytes);
@@ -477,11 +726,11 @@ async function processFiles(files) {
         message: `"${file.name}" does not appear to be a valid PDF file. Please check the file and try again. Reasons may include:
 
         - The file is password-protected (if so, you can save as unprotected PDF or "print" to a new pdf and try again)
-        
+
         - The file is not actually a PDF (e.g. a Word document - needs converting)
-        
+
         - The file is corrupted or incomplete (if so, try to get a better copy)
-        
+
         - The file is digitally signed by software that adds non-standard elements (if so, try "printing" to a new PDF file, to flatten it) `,
       });
       continue;
@@ -490,50 +739,10 @@ async function processFiles(files) {
 
     const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
     filesMap.set(key, materializedFile);
-    frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount: pageCount };
+    frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount };
 
-    const row = document.createElement('tr');
-    row.draggable = reorderMode === 'drag';
-    row.dataset.filename = key;
-    row.classList.add('hover:bg-gray-50', 'transition');
-    row.innerHTML = `
-      <td class="drag-handle px-2 py-3 cursor-move">
-        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-        </svg>
-      </td>
-      <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
-      <td class="px-4 py-3 title-cell">
-        <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
-      </td>
-      <td class="px-4 py-3 date-cell">
-        <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
-      </td>
-      <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
-      <td class="px-4 py-3 flex gap-2 actions-cell">
-        <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-        <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-        <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">
-          💾
-        </button>
-        <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">
-          ❌
-        </button>
-      </td>
-    `;
-    row.querySelector('.filename-cell').textContent = key;
-    row.querySelector('.title-input').value = displayTitle;
-    row.querySelector('.date-input').value = dateParseObj.date || '';
-    row.querySelector('.pages-cell').textContent = pageCount ?? '';
-    row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = key);
-
-    // Add drag event listeners
-    row.addEventListener('dragstart', handleDragStart);
-    row.addEventListener('dragover', handleDragOver);
-    row.addEventListener('drop', handleDrop);
-    row.addEventListener('dragend', handleDragEnd);
-
-    fileTableBody.appendChild(row);
+    const row = makeFileRow(key, { title: displayTitle, date: dateParseObj.date, pageCount });
+    targetTbody.appendChild(row);
     markDirty({ immediate: true });
 
     validatedCount++;
@@ -564,13 +773,63 @@ async function processFiles(files) {
 }
 
 fileInput.addEventListener('change', async (e) => {
-  try {
-    await processFiles(Array.from(e.target.files));
-  } catch (error) {
-    showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
-  }
-  // Reset file input so same file can be selected again if needed
+  const files = Array.from(e.target.files);
   fileInput.value = '';
+  if (!files.length) return;
+  if (isSectioned) {
+    showSectionPicker(files);
+  } else {
+    try {
+      await processFiles(files);
+    } catch (error) {
+      showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
+    }
+  }
+});
+
+function showSectionPicker(files) {
+  const popover  = document.getElementById('section-picker-popover');
+  const list     = document.getElementById('section-picker-list');
+  if (!popover || !list) return;
+  list.innerHTML = '';
+
+  const tbodys = getAllSectionTbodys();
+  tbodys.forEach(tbody => {
+    const sectionID = tbody.dataset.sectionId;
+    const label = tbody.querySelector('.section-label-input')?.value.trim()
+      || tbody.querySelector('.section-header-row td')?.textContent?.trim()
+      || (sectionID === '0000' ? 'Default' : sectionID);
+    const name  = tbody.querySelector('.section-name-input')?.value.trim();
+    const btn   = document.createElement('button');
+    btn.type    = 'button';
+    btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-sm';
+    btn.innerHTML = `<span class="font-semibold text-blue-700">${label}</span>${name ? `<span class="text-gray-600 ml-2 text-xs">${name}</span>` : ''}`;
+    btn.addEventListener('click', async () => {
+      popover.classList.add('hidden');
+      try { await processFiles(files, tbody); }
+      catch (err) { showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error: err }); }
+    });
+    list.appendChild(btn);
+  });
+
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.className = 'w-full text-left px-3 py-2 rounded-lg border border-dashed border-blue-300 hover:bg-blue-50 text-blue-600 text-sm transition';
+  newBtn.textContent = '+ Create new section';
+  newBtn.addEventListener('click', async () => {
+    popover.classList.add('hidden');
+    addSection();
+    const newTbody = document.querySelector('.section-tbody:last-of-type');
+    try { if (newTbody) await processFiles(files, newTbody); }
+    catch (err) { showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error: err }); }
+  });
+  list.appendChild(newBtn);
+
+  popover.classList.remove('hidden');
+}
+
+document.getElementById('section-picker-cancel')?.addEventListener('click', () => {
+  document.getElementById('section-picker-popover')?.classList.add('hidden');
 });
 
 const coversheetInput    = document.getElementById('coversheet-input');
@@ -635,119 +894,118 @@ dropZone.addEventListener('drop', async (e) => {
   }
 });
 
-fileTableBody.addEventListener('input', (e) => {
+document.getElementById('file-table')?.addEventListener('input', (e) => {
   const target = e.target;
   if (target.classList.contains('title-input')) {
     const filename = target.getAttribute('data-filename');
-    frontendInputData[filename].title = target.value;
-    markDirty();
+    if (frontendInputData[filename]) { frontendInputData[filename].title = target.value; markDirty(); }
   }
   if (target.classList.contains('date-input')) {
     const filename = target.getAttribute('data-filename');
-    frontendInputData[filename].date = target.value;
-    markDirty();
+    if (frontendInputData[filename]) { frontendInputData[filename].date = target.value; markDirty(); }
   }
 });
 
-// Handle download, delete, and move button clicks
-fileTableBody.addEventListener('click', (e) => {
-  // Handle move up button
+// Handle download, delete, and move button clicks (delegated from #file-table)
+document.getElementById('file-table')?.addEventListener('click', (e) => {
+  // Move up
   if (e.target.classList.contains('move-up-btn')) {
     const row = e.target.closest('tr');
-    const prev = row.previousElementSibling;
-    if (prev) {
-      row.parentNode.insertBefore(row, prev);
+    if (!row) return;
+    if (row.classList.contains('section-header-row')) {
+      // Move entire section tbody up
+      const tbody = row.closest('tbody');
+      const prev = tbody?.previousElementSibling;
+      if (prev && prev.id !== 'tbody-section-0000' && prev.classList.contains('section-tbody')) {
+        tbody.parentNode.insertBefore(tbody, prev);
+        markDirty();
+      }
+      return;
     }
+    const prev = row.previousElementSibling;
+    if (prev && !prev.classList.contains('section-header-row')) {
+      row.parentNode.insertBefore(row, prev);
+    } else {
+      // Breach section boundary — move to end of previous section
+      const tbody = row.closest('tbody');
+      const prevTbody = tbody?.previousElementSibling;
+      if (prevTbody?.classList.contains('section-tbody')) {
+        prevTbody.appendChild(row);
+      }
+    }
+    markDirty();
+    return;
   }
 
-  // Handle move down button
+  // Move down
   if (e.target.classList.contains('move-down-btn')) {
     const row = e.target.closest('tr');
+    if (!row) return;
+    if (row.classList.contains('section-header-row')) {
+      // Move entire section tbody down
+      const tbody = row.closest('tbody');
+      const next = tbody?.nextElementSibling;
+      if (next?.classList.contains('section-tbody')) {
+        tbody.parentNode.insertBefore(next, tbody);
+        markDirty();
+      }
+      return;
+    }
     const next = row.nextElementSibling;
     if (next) {
       row.parentNode.insertBefore(next, row);
+    } else {
+      // Breach section boundary — move to start of next section (after header)
+      const tbody = row.closest('tbody');
+      const nextTbody = tbody?.nextElementSibling;
+      if (nextTbody?.classList.contains('section-tbody')) {
+        const afterHeader = nextTbody.querySelector('.section-header-row')?.nextSibling || nextTbody.firstChild;
+        nextTbody.insertBefore(row, afterHeader);
+      }
     }
+    markDirty();
+    return;
   }
 
-  // Handle download button for extracted PDFs
-  if (e.target.classList.contains('download-pdf-btn')) {
-    const filename = e.target.getAttribute('data-filename');
-    const file = filesMap.get(filename);
-
+  // Download
+  if (e.target.classList.contains('download-pdf-btn') || e.target.closest('.download-pdf-btn')) {
+    const btn = e.target.closest('.download-pdf-btn');
+    const filename = btn?.getAttribute('data-filename');
+    const file = filename ? filesMap.get(filename) : null;
     if (file) {
-      // Create download link
       const blob = new Blob([file], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
       setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
-
-      console.log(`Downloaded: ${filename}`);
-    } else {
-      console.error(`File not found in filesMap: ${filename}`);
     }
+    return;
   }
 
+  // Delete file row
   if (e.target.classList.contains('delete-row-btn')) {
     const filename = e.target.getAttribute('data-filename');
     filesMap.delete(filename);
     delete frontendInputData[filename];
     e.target.closest('tr').remove();
     markDirty();
-  }
-
-  // Handle section break deletion
-  if (e.target.classList.contains('delete-section-break-btn')) {
-    e.target.closest('tr').remove();
-    markDirty();
+    return;
   }
 });
 
 // Handle "Clear All Rows" button
 clearAllRowsBtn?.addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all documents and section breaks?')) {
+  if (confirm('Are you sure you want to clear all documents and sections?')) {
     filesMap.clear();
     Object.keys(frontendInputData).forEach(key => delete frontendInputData[key]);
-    fileTableBody.innerHTML = '';
+    document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(el => el.remove());
+    const section0000 = getDefaultSection0000();
+    if (section0000) section0000.innerHTML = '';
+    isSectioned = false;
+    nextSectionNum = 1;
+    document.getElementById('file-table')?.classList.remove('sectioned');
   }
-});
-
-// Handle "Add Section Break" button
-addSectionBreakBtn?.addEventListener('click', () => {
-  const sectionBreakRow = document.createElement('tr');
-  sectionBreakRow.draggable = reorderMode === 'drag';
-  sectionBreakRow.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
-  sectionBreakRow.dataset.sectionBreak = 'true';
-  sectionBreakRow.innerHTML = `
-    <td class="drag-handle px-2 py-3 cursor-move">
-      <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-      </svg>
-    </td>
-    <td colspan="4" class="px-6 py-3">
-      <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-align-left focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Type section name e.g. 'Part 1: Evidence'"/>
-    </td>
-    <td class="px-6 py-3 flex gap-2">
-      <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-      <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-      <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">
-        ❌
-      </button>
-    </td>
-  `;
-
-  // Add drag event listeners
-  sectionBreakRow.addEventListener('dragstart', handleDragStart);
-  sectionBreakRow.addEventListener('dragover', handleDragOver);
-  sectionBreakRow.addEventListener('drop', handleDrop);
-  sectionBreakRow.addEventListener('dragend', handleDragEnd);
-
-  // Add to end of table
-  fileTableBody.appendChild(sectionBreakRow);
-  markDirty();
 });
 
 // Handle "Upload Bundle" input
@@ -1004,119 +1262,69 @@ bundleInput?.addEventListener('change', async (e) => {
     const extractedFiles = await splitBundlePdf(bundleBytes, metadata, hasCoversheet);
 
     // Clear existing table
-    fileTableBody.innerHTML = '';
+    document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(el => el.remove());
+    const restoreSection0000 = getDefaultSection0000();
+    if (restoreSection0000) restoreSection0000.innerHTML = '';
     filesMap.clear();
     Object.keys(frontendInputData).forEach(key => delete frontendInputData[key]);
+    isSectioned = false;
+    nextSectionNum = 1;
+    document.getElementById('file-table')?.classList.remove('sectioned');
 
-    // Process each extracted document and section break in order
-    for (const entry of metadata) {
-      if (entry.section) {
-        // This is a section break - recreate it
-        const sectionBreakRow = document.createElement('tr');
-        sectionBreakRow.draggable = reorderMode === 'drag';
-        sectionBreakRow.classList.add('section-break-row', 'bg-blue-50', 'border-t-2', 'border-blue-300', 'hover:bg-blue-100', 'transition');
-        sectionBreakRow.dataset.sectionBreak = 'true';
-        sectionBreakRow.innerHTML = `
-          <td class="drag-handle px-2 py-3 cursor-move">
-            <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-            </svg>
-          </td>
-          <td colspan="4" class="px-6 py-3 text-center">
-            <input type="text" class="section-break-title w-full px-3 py-1 border border-blue-300 rounded bg-white text-blue-700 font-semibold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent" value="" placeholder="Section name..."/>
-          </td>
-          <td class="px-6 py-3 flex gap-2">
-            <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-            <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-            <button type="button" class="delete-section-break-btn text-red-600 hover:text-red-800 transition" title="Delete section break">
-              ❌
-            </button>
-          </td>
-        `;
-        sectionBreakRow.querySelector('.section-break-title').value = entry.title || '— SECTION BREAK —';
+    if (!countPdfPages) ({ countPdfPages } = await import('./buntoolPages.js'));
 
-        // Add drag event listeners
-        sectionBreakRow.addEventListener('dragstart', handleDragStart);
-        sectionBreakRow.addEventListener('dragover', handleDragOver);
-        sectionBreakRow.addEventListener('drop', handleDrop);
-        sectionBreakRow.addEventListener('dragend', handleDragEnd);
+    const table = document.querySelector('#file-table table');
 
-        fileTableBody.appendChild(sectionBreakRow);
-      } else {
-        // This is a document entry
-        const filename = entry.filename;
-        const pdfBytes = extractedFiles.get(filename);
+    // Detect metadata format: new (sections[]) vs old (flat array with .section markers)
+    const isNewFormat = Array.isArray(metadata) && metadata.length > 0 && 'sectionID' in metadata[0];
 
-        if (!pdfBytes) {
-          console.warn(`Could not find extracted PDF for: ${filename}`);
-          continue;
+    if (isNewFormat) {
+      // New IndexData section format
+      for (const section of metadata) {
+        let tbody;
+        if (section.sectionID === '0000') {
+          tbody = getDefaultSection0000();
+        } else {
+          tbody = createSectionTbody(section.sectionID, section.sectionLabel || '', section.sectionName || '');
+          table?.appendChild(tbody);
+          if (!isSectioned) {
+            isSectioned = true;
+            document.getElementById('file-table')?.classList.add('sectioned');
+          }
+          const num = parseInt(section.sectionID, 10);
+          if (!isNaN(num) && num >= nextSectionNum) nextSectionNum = num + 1;
         }
-
-        // Create File object from extracted bytes
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const extractedFile = new File([blob], filename, { type: 'application/pdf' });
-
-        const key = uniqueFilename(filename);
-
-        // Add to filesMap
-        filesMap.set(key, extractedFile);
-
-        // Count pages
-        if (!countPdfPages) {
-          ({ countPdfPages } = await import('./buntoolPages.js'));
+        for (const entry of (section.files || [])) {
+          const pdfBytes = extractedFiles.get(entry.filename);
+          if (!pdfBytes) { console.warn(`Missing PDF for: ${entry.filename}`); continue; }
+          const key = uniqueFilename(entry.filename);
+          filesMap.set(key, new File([pdfBytes], entry.filename, { type: 'application/pdf' }));
+          const pageCount = await countPdfPages(filesMap.get(key));
+          frontendInputData[key] = { title: entry.title, date: entry.date || '', pageCount };
+          tbody.appendChild(makeFileRow(key, frontendInputData[key]));
         }
-        const pageCount = await countPdfPages(extractedFile);
-
-        // Store in frontendInputData
-        frontendInputData[key] = {
-          title: entry.title,
-          date: entry.date || '',
-          pageCount: pageCount
-        };
-
-        // Create table row
-        const row = document.createElement('tr');
-        row.draggable = reorderMode === 'drag';
-        row.dataset.filename = key;
-        row.classList.add('hover:bg-gray-50', 'transition');
-        row.innerHTML = `
-          <td class="drag-handle px-2 py-3 cursor-move">
-            <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zM10 17a1 1 0 01-.707-.293l-3-3a1 1 0 011.414-1.414L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3A1 1 0 0110 17z"/>
-            </svg>
-          </td>
-          <td class="px-4 py-3 text-sm text-gray-500 filename-cell"></td>
-          <td class="px-4 py-3 title-cell">
-            <textarea class="title-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" rows="1"></textarea>
-          </td>
-          <td class="px-4 py-3 date-cell">
-            <input type="date" class="date-input w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" data-filename="" />
-          </td>
-          <td class="px-4 py-3 text-sm text-gray-700 text-center pages-cell"></td>
-          <td class="px-4 py-3 flex gap-2 actions-cell">
-            <button type="button" class="move-up-btn text-gray-500 hover:text-gray-700 transition" title="Move up">▲</button>
-            <button type="button" class="move-down-btn text-gray-500 hover:text-gray-700 transition" title="Move down">▼</button>
-            <button type="button" class="download-pdf-btn text-blue-600 hover:text-blue-800 transition" data-filename="" title="Download this PDF">
-              💾
-            </button>
-            <button type="button" class="delete-row-btn text-red-600 hover:text-red-800 transition" data-filename="" title="Delete row">
-              ❌
-            </button>
-          </td>
-        `;
-        row.querySelector('.filename-cell').textContent = key;
-        row.querySelector('.title-input').value = entry.title || '';
-        row.querySelector('.date-input').value = entry.date || '';
-        row.querySelector('.pages-cell').textContent = pageCount ?? '';
-        row.querySelectorAll('[data-filename]').forEach(el => el.dataset.filename = key);
-
-        // Add drag event listeners
-        row.addEventListener('dragstart', handleDragStart);
-        row.addEventListener('dragover', handleDragOver);
-        row.addEventListener('drop', handleDrop);
-        row.addEventListener('dragend', handleDragEnd);
-
-        fileTableBody.appendChild(row);
+      }
+    } else {
+      // Legacy flat format: [{section: true, title}, {filename, title, date}, …]
+      let currentTbody = getDefaultSection0000();
+      for (const entry of metadata) {
+        if (entry.section) {
+          const sectionID = String(nextSectionNum++).padStart(4, '0');
+          currentTbody = createSectionTbody(sectionID, '', entry.title || '');
+          table?.appendChild(currentTbody);
+          if (!isSectioned) {
+            isSectioned = true;
+            document.getElementById('file-table')?.classList.add('sectioned');
+          }
+        } else {
+          const pdfBytes = extractedFiles.get(entry.filename);
+          if (!pdfBytes) { console.warn(`Missing PDF for: ${entry.filename}`); continue; }
+          const key = uniqueFilename(entry.filename);
+          filesMap.set(key, new File([pdfBytes], entry.filename, { type: 'application/pdf' }));
+          const pageCount = await countPdfPages(filesMap.get(key));
+          frontendInputData[key] = { title: entry.title, date: entry.date || '', pageCount };
+          currentTbody.appendChild(makeFileRow(key, frontendInputData[key]));
+        }
       }
     }
 
@@ -1127,8 +1335,7 @@ bundleInput?.addEventListener('change', async (e) => {
       setCoversheetSelected('coversheet.pdf');
     }
 
-    const sectionCount = metadata.filter(e => e.section).length;
-    console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted, ${sectionCount} section breaks restored`);
+    console.log(`✓ Bundle unpacked: ${extractedFiles.size} documents extracted`);
     hideProcessingOverlay();
 
   } catch (error) {
@@ -1281,7 +1488,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   console.log('Form submit triggered!');
 
-  if (fileTableBody.querySelectorAll('tr').length === 0) {
+  if (getAllFileRows().length === 0) {
     pulseStep2();
     return;
   }
@@ -1341,38 +1548,15 @@ form.addEventListener('submit', async (e) => {
   config.updateOptions(configOptions);
   console.log('Config pushed:',JSON.stringify(config));
 
-  // Build indexData array in table order (including section breaks)
-  indexData.length = 0; // Clear any previous indexData for repeat uses in same ssn
-  const rows = fileTableBody.querySelectorAll('tr');
-  rows.forEach(row => {
-    // Check if this is a section break
-    if (row.dataset.sectionBreak === 'true') {
-      const sectionTitleInput = row.querySelector('.section-break-title');
-      const sectionTitle = sectionTitleInput ? sectionTitleInput.value : '—';
-      indexData.push({
-        sectionMarker: 1,  // Indicates section break
-        title: sectionTitle
-      });
-    } else {
-      // Regular document row - get filename from second column (first is drag handle)
-      const filenameTd = row.querySelectorAll('td')[1];
-      if (filenameTd) {
-        const filename = filenameTd.textContent.trim();
-        if (frontendInputData[filename]) {
-          indexData.push({
-            filename,
-            title: frontendInputData[filename].title,
-            date: frontendInputData[filename].date,
-            pageCount: frontendInputData[filename].pageCount,
-            sectionMarker: 0
-          });
-        }
-      }
-    }
-  });
-
-  if (indexData.length === 0) {
+  // Build IndexData from section tbodys
+  const bundleIndexData = buildIndexData();
+  if (bundleIndexData.totalFileCount === 0) {
     showErrorModal({ title: 'No documents added', message: 'Please add at least one document before creating a bundle.' });
+    return;
+  }
+  try { bundleIndexData.validateIndexStructure(); }
+  catch (err) {
+    showErrorModal({ title: 'Index data error', message: err.message });
     return;
   }
 
@@ -1395,7 +1579,7 @@ form.addEventListener('submit', async (e) => {
   document.getElementById('processing-cancel-btn')?.classList.remove('hidden');
   try {
     const pdfBytes = await Promise.race([
-      processTheBundle(filesMap, indexData, config, (label) => { if (!cancelled) showProcessingOverlay(label); }, coversheetFile),
+      processTheBundle(filesMap, bundleIndexData, config, (label) => { if (!cancelled) showProcessingOverlay(label); }, coversheetFile),
       new Promise((_, reject) => setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)),
       new Promise((_, reject) => { _cancelReject = reject; }),
     ]);
@@ -1424,7 +1608,7 @@ form.addEventListener('submit', async (e) => {
       event: 'complete',
       uuid: bundleUuid,
       duration_ms: Date.now() - bundleTsStart,
-      page_count: indexData.filter(e => !e.sectionMarker).reduce((sum, e) => sum + (e.pageCount || 0), 0),
+      page_count: bundleIndexData.totalPageCount,
     });
 
     showBundleReadyState(pdfBytes, bundleFilename);
@@ -1432,7 +1616,7 @@ form.addEventListener('submit', async (e) => {
   } catch (error) {
     _cancelReject = null;
     document.getElementById('processing-cancel-btn')?.classList.add('hidden');
-    const inputPageCount = indexData.filter(e => !e.sectionMarker).reduce((sum, e) => sum + (e.pageCount || 0), 0);
+    const inputPageCount = bundleIndexData.totalPageCount;
     if (error.message === '__cancelled__') {
       cancelled = true;
       logBundleEvent({
@@ -1484,7 +1668,7 @@ form.addEventListener('submit', async (e) => {
 });
 
 async function runPreviewIndex() {
-  if (fileTableBody.querySelectorAll('tr').length === 0) {
+  if (getAllFileRows().length === 0) {
     pulseStep2();
     return;
   }
@@ -1525,30 +1709,8 @@ async function runPreviewIndex() {
 
   config.updateOptions(configOptions);
 
-  indexData.length = 0;
-  const rows = fileTableBody.querySelectorAll('tr');
-  rows.forEach(row => {
-    if (row.dataset.sectionBreak === 'true') {
-      const sectionTitleInput = row.querySelector('.section-break-title');
-      indexData.push({ sectionMarker: 1, title: sectionTitleInput ? sectionTitleInput.value : '—' });
-    } else {
-      const filenameTd = row.querySelectorAll('td')[1];
-      if (filenameTd) {
-        const filename = filenameTd.textContent.trim();
-        if (frontendInputData[filename]) {
-          indexData.push({
-            filename,
-            title: frontendInputData[filename].title,
-            date: frontendInputData[filename].date,
-            pageCount: frontendInputData[filename].pageCount,
-            sectionMarker: 0
-          });
-        }
-      }
-    }
-  });
-
-  if (indexData.length === 0) {
+  const previewIndexData = buildIndexData();
+  if (previewIndexData.totalFileCount === 0) {
     showErrorModal({ title: 'No documents added', message: 'Please add at least one document before generating an index preview.' });
     return;
   }
@@ -1557,7 +1719,7 @@ async function runPreviewIndex() {
   showProcessingOverlay('Building index preview…');
   try {
     const pdfBytes = await Promise.race([
-      processTheBundle(filesMap, indexData, config, (label) => showProcessingOverlay(label), coversheetFile),
+      processTheBundle(filesMap, previewIndexData, config, (label) => showProcessingOverlay(label), coversheetFile),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('__timeout__')), BUNDLE_TIMEOUT_MS)
       ),
@@ -1596,7 +1758,7 @@ async function runPreviewIndex() {
 
 for (const id of ['preview-index-btn', 'preview-index-btn-advanced']) {
   document.getElementById(id)?.addEventListener('click', () => {
-    if (fileTableBody.querySelectorAll('tr').length === 0) { pulseStep2(); return; }
+    if (getAllFileRows().length === 0) { pulseStep2(); return; }
     if (showMissingInfoModal('preview')) return;
     runPreviewIndex();
   });
