@@ -8,7 +8,6 @@
  * Main logic pipeline module
  */
 import Config from './buntoolConfig.js';
-import IndexData from './buntoolIndexData.js';
 import {
   createTocEntries,
   makeTocPages,
@@ -79,7 +78,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     throw new Error('Error: No index data provided');
   }
   try {
-    indexData.validateIndexSTructure();
+    indexData.validateIndexStructure();
   } catch (error) {
     console.error(`[ERROR] Index data structure validation error: `, error.message);
     throw error;

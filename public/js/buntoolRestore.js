@@ -34,7 +34,7 @@ export function extractBundleMetadata(pdfBytes) {
 
     for (const annot of annotations) {
       const contents = annot.getContents();
-      if (typeof contents === 'string' && contents.includes("BundleIndexData:")) {
+      if (typeof contents === 'string' && contents.includes("BundleIndexData")) {
         // Extract JSON from "BundleIndexData: [...]" or "BundleIndexData: {...}" format
         // Look for either '[' or '{' as the start of JSON
         const bracketIdx = contents.indexOf('[');
