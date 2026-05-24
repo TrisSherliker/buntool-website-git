@@ -12,6 +12,7 @@
 console.log('[MetaWorker] script loading…');
 
 import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js';
+import { BUNTOOL_VERSION } from '../buntoolVersion.js';
 
 console.log('[MetaWorker] mupdf imported, ready =', typeof mupdf.ready);
 
@@ -130,8 +131,8 @@ function doAddOutlineItems(pdfBytes, tocEntries, cv) {
 function doSetMetadata(pdfBytes, tocEntries, cv) {
   const doc = mupdf.Document.openDocument(pdfBytes, 'application/pdf');
 
-  doc.setMetaData('Producer', 'BunTool (https://buntool.co.uk)');
-  doc.setMetaData('Creator',  'BunTool (https://buntool.co.uk)');
+  doc.setMetaData('Producer', `BunTool v${BUNTOOL_VERSION} (https://buntool.co.uk)`);
+  doc.setMetaData('Creator',  `BunTool v${BUNTOOL_VERSION} (https://buntool.co.uk)`);
   doc.setMetaData('Title',
     cv['heading.confidential']
       ? `CONFIDENTIAL ${cv['heading.bundleTitle']}`
@@ -169,6 +170,7 @@ function doSetMetadata(pdfBytes, tocEntries, cv) {
 
   doc.setMetaData('info:BundleIndex', JSON.stringify({
     version: 2,
+    softwareVersion: BUNTOOL_VERSION,
     config: {
       heading: {
         claimNumber:  cv['heading.claimNumber']  || '',
@@ -196,7 +198,7 @@ function doSetMetadata(pdfBytes, tocEntries, cv) {
 
   const firstPage = doc.loadPage(0);
   const metadataAnnotation = firstPage.createAnnotation('FreeText');
-  metadataAnnotation.setContents(`BundleIndexData: ${JSON.stringify(buntoolIndexMetadata)}`);
+  metadataAnnotation.setContents(`BundleIndexData v${BUNTOOL_VERSION}: ${JSON.stringify(buntoolIndexMetadata)}`);
   metadataAnnotation.setRect([0, 0, 0, 0]);
   metadataAnnotation.setOpacity(0);
   metadataAnnotation.setFlags(2);

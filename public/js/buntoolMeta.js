@@ -10,6 +10,7 @@
 
 import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
 import Config from './buntoolConfig.js';
+import { BUNTOOL_VERSION } from './buntoolVersion.js';
 
 
 
@@ -235,8 +236,8 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
 export function setMetadata(pdfBytes, tocEntries, config) {
   let doc = mupdf.Document.openDocument(pdfBytes, "application/pdf");
 
-  doc.setMetaData("Producer", "BunTool (https://buntool.co.uk)");
-  doc.setMetaData("Creator", "BunTool (https://buntool.co.uk)");
+  doc.setMetaData("Producer", `BunTool v${BUNTOOL_VERSION} (https://buntool.co.uk)`);
+  doc.setMetaData("Creator",  `BunTool v${BUNTOOL_VERSION} (https://buntool.co.uk)`);
   doc.setMetaData(
     "Title",
     config.getOption('heading.confidential')
@@ -287,6 +288,7 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   // mupdf getMetaData truncates at ~500 chars; config alone is ~290 chars and fits safely.
   doc.setMetaData("info:BundleIndex", JSON.stringify({
     version: 2,
+    softwareVersion: BUNTOOL_VERSION,
     config: {
       heading: {
         claimNumber: config.getOption('heading.claimNumber') || '',
@@ -315,7 +317,7 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   // add invisibile annotation to first page which stores buntoolIndex as metadata (the annot itself is empty):  
   const firstPage = doc.loadPage(0);
   const metadataAnnotation = firstPage.createAnnotation("FreeText")
-  metadataAnnotation.setContents(`BundleIndexData: ${JSON.stringify(buntoolIndexMetadata)}`);
+  metadataAnnotation.setContents(`BundleIndexData v${BUNTOOL_VERSION}: ${JSON.stringify(buntoolIndexMetadata)}`);
   metadataAnnotation.setRect([0, 0, 0, 0]); // set to zero size
   metadataAnnotation.setOpacity(0) // set to transparent
   metadataAnnotation.setFlags(2) // set to hidden
