@@ -12,20 +12,20 @@
       </div>
       <div class="p-3">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <button id="autosave-save-now-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition">
-            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <button id="autosave-save-now-btn" type="button" class="inline-flex items-center justify-center px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition shadow-sm">
+            <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
             Save progress
           </button>
-          <button id="autosave-restore-btn" type="button" class="inline-flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg transition">
-            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <button id="autosave-restore-btn" type="button" class="inline-flex items-center justify-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-lg transition shadow-sm">
+            <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Load saved progress
           </button>
-          <label for="bundle-input" class="inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg cursor-pointer transition">
-            <svg class="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <label for="bundle-input" class="inline-flex items-center justify-center px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm">
+            <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             Load from previous bundle
@@ -110,27 +110,47 @@
         </h3>
       </div>
 
-      <div class="p-3 flex items-center gap-3">
-        <p id="file-input-hint" class="text-xs text-gray-500 flex-1">Add files by clicking the button, or dragging and dropping. <b>Files stay on your device — nothing is uploaded</b>.</p>
-        <label for="file-input" class="inline-flex items-center px-5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
-          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Click to add documents
-        </label>
-        <input type="file" id="file-input" multiple accept="application/pdf" class="sr-only" />
-      </div>
-      <div id="coversheet-section" class="px-3 pb-3 flex items-center gap-3 border-t border-slate-100 pt-2">
-        <p class="text-xs text-gray-500 flex-1">Optional: add a pre-made coversheet as a first page before the index. If you select a PDF with more than one page, BunTool will use the first page only.</p>
-        <span id="coversheet-filename" class="text-xs text-gray-500 italic whitespace-nowrap hidden"></span>
-        <button id="coversheet-clear-btn" type="button" class="hidden text-xs text-red-400 hover:text-red-600 transition font-medium whitespace-nowrap">Remove</button>
-        <label for="coversheet-input" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg cursor-pointer transition shadow-sm whitespace-nowrap shrink-0">
-          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span id="coversheet-btn-text">Add coversheet</span>
-        </label>
-        <input type="file" id="coversheet-input" accept="application/pdf" class="sr-only" />
+      <div class="p-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Add Documents -->
+          <div class="flex flex-col items-center text-center gap-2">
+            <label for="file-input" class="inline-flex items-center justify-center w-full px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold rounded-lg cursor-pointer transition shadow-sm">
+              <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Documents
+            </label>
+            <input type="file" id="file-input" multiple accept="application/pdf" class="sr-only" />
+            <p id="file-input-hint" class="text-xs text-gray-500">Click to add PDFs, or drag and drop onto this area. <b>Files stay on your device — nothing is uploaded</b>.</p>
+          </div>
+          <!-- Add Section -->
+          <div class="flex flex-col items-center text-center gap-2">
+            <button type="button" class="add-section-btn inline-flex items-center justify-center w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition shadow-sm">
+              <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              Add Section
+              <span class="ml-1.5 text-xs font-normal opacity-75">(optional)</span>
+            </button>
+            <p class="text-xs text-gray-500">Group documents into named sections (e.g. "Section A: Statements").</p>
+          </div>
+          <!-- Coversheet -->
+          <div class="flex flex-col items-center text-center gap-2">
+            <label for="coversheet-input" class="inline-flex items-center justify-center w-full px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-lg cursor-pointer transition shadow-sm">
+              <svg class="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span id="coversheet-btn-text">Add Coversheet</span>
+              <span class="ml-1.5 text-xs font-normal opacity-70">(optional)</span>
+            </label>
+            <input type="file" id="coversheet-input" accept="application/pdf" class="sr-only" />
+            <div class="text-xs text-gray-500" id="coversheet-section">
+              <span id="coversheet-filename" class="italic hidden"></span>
+              <button id="coversheet-clear-btn" type="button" class="hidden text-red-400 hover:text-red-600 font-medium mr-1">Remove.</button>
+              <span class="coversheet-hint">Add a pre-made first page before the index. BunTool uses only the first page if multi-page.</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -156,9 +176,9 @@
           <p class="mt-1 text-xs text-slate-200">Click titles/dates to edit</p>
         </div>
         <div class="flex items-center gap-3 shrink-0 flex-wrap justify-end">
-          <button id="add-section-btn" type="button" class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
+          <button type="button" class="add-section-btn inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-sm">
             <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
             </svg>
             Add Section
           </button>
@@ -184,21 +204,21 @@
         <table class="min-w-full divide-y divide-gray-200">
           <colgroup>
             <col style="width: 40px;">
-            <col style="width: 25%;">
-            <col style="width: 50%;">
-            <col style="width: 180px;">
-            <col style="width: 60px;">
-            <col style="width: 80px;">
+            <col style="width: 22%;">
+            <col style="width: 45%;">
+            <col style="width: 160px;">
+            <col style="width: 70px;">
+            <col style="width: 130px;">
           </colgroup>
           <thead class="bg-slate-100">
             <tr>
               <th class="px-2 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                 <span class="sr-only">Drag</span>
               </th>
-              <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="filename">Filename <span class="sort-indicator ml-1"></span></th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="title">Title <span class="sort-indicator ml-1"></span></th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="date">Date <span class="sort-indicator ml-1"></span></th>
-              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="pages">Pages <span class="sort-indicator ml-1"></span></th>
+              <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="filename" title="Click to sort within sections · Shift+click to sort all globally">Filename <span class="sort-indicator ml-1"></span></th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="title" title="Click to sort within sections · Shift+click to sort all globally">Title <span class="sort-indicator ml-1"></span></th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="date" title="Click to sort within sections · Shift+click to sort all globally">Date <span class="sort-indicator ml-1"></span></th>
+              <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider cursor-pointer select-none hover:bg-slate-200 transition" data-sort-col="pages" title="Click to sort within sections · Shift+click to sort all globally">Pages <span class="sort-indicator ml-1"></span></th>
               <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -227,9 +247,6 @@
         <button id="section-picker-cancel" type="button" class="w-full text-xs text-gray-500 hover:text-gray-700 transition py-1">Cancel</button>
       </div>
     </div>
-
-    <!-- Hidden file input triggered by per-section add-files buttons -->
-    <input type="file" id="section-file-input" multiple accept="application/pdf" class="sr-only" />
 
     <!-- Step 4: Generate or Configure -->
     <div id="step-4-choice" class="bg-gradient-to-br from-slate-50 to-white rounded-xl shadow-sm border border-slate-200 no-docs">
@@ -559,6 +576,45 @@
             </div>
           </div>
         </div>
+
+        <!-- Section Options -->
+        <div class="bg-white rounded-lg border border-gray-200 p-3">
+          <h4 class="text-m font-semibold text-gray-700 mb-2">Section Options</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+            <!-- Section Prefix -->
+            <div>
+              <label for="config-sectionPrefix" class="flex items-center text-xs font-semibold text-gray-700 mb-1">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                Section Prefix
+              </label>
+              <select id="config-sectionPrefix" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                <option value="">None (default)</option>
+                <option value="Section">Section</option>
+                <option value="Part">Part</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Word prepended to section labels in the index (e.g. "Section A" or "Part 1").</p>
+            </div>
+
+            <!-- Restart page numbering per section -->
+            <div>
+              <p class="flex items-center text-xs font-semibold text-gray-700 mb-1">
+                <svg class="w-3 h-3 mr-1 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Restart Numbering per Section
+              </p>
+              <label class="relative inline-flex items-center cursor-pointer gap-2 mt-1">
+                <input type="checkbox" id="config-pageNumberPerSection" class="sr-only peer">
+                <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
+              </label>
+              <p class="text-xs text-gray-500 mt-1">Resets page numbers to 1 at the start of each section. Used for Family Court "Bates numbering" (e.g. C1, C2… D1, D2…).</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -714,6 +770,68 @@
   </div>
 </div>
 
+<!-- Delete-section modal -->
+<div id="delete-section-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">
+    <!-- Step 1: what to do with the files -->
+    <div id="delete-section-step1">
+      <h3 class="text-base font-bold text-gray-800 mb-2">Delete section</h3>
+      <p id="delete-section-msg" class="text-sm text-gray-700 mb-4">This section contains files. What would you like to do with them?</p>
+      <div class="flex flex-col gap-2">
+        <button id="delete-section-move-btn" type="button" class="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+          Move files to another section…
+        </button>
+        <button id="delete-section-remove-btn" type="button" class="w-full px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition">
+          Remove files
+        </button>
+        <button id="delete-section-cancel-btn" type="button" class="w-full px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+          Cancel (keep section)
+        </button>
+      </div>
+    </div>
+    <!-- Step 2: pick target section -->
+    <div id="delete-section-step2" class="hidden">
+      <h3 class="text-base font-bold text-gray-800 mb-2">Move files to which section?</h3>
+      <div id="delete-section-picker-list" class="flex flex-col gap-2 mb-3"></div>
+      <button id="delete-section-back-btn" type="button" class="w-full px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+        ← Back
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear-all confirmation modal -->
+<div id="clear-all-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">
+    <h3 class="text-base font-bold text-gray-800 mb-2">Clear all documents?</h3>
+    <p class="text-sm text-gray-700 mb-5">This will remove all documents and sections from the list. This cannot be undone.</p>
+    <div class="flex gap-3 justify-end">
+      <button id="clear-all-cancel-btn" type="button" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+        Cancel
+      </button>
+      <button id="clear-all-confirm-btn" type="button" class="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition">
+        Clear all
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Global sort confirmation modal -->
+<div id="global-sort-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-sm w-full mx-4">
+    <h3 class="text-base font-bold text-gray-800 mb-2">Sort all documents globally?</h3>
+    <p class="text-sm text-gray-700 mb-5">This will merge all sections into one and sort every document together. Section grouping will be lost.</p>
+    <div class="flex gap-3 justify-end">
+      <button id="global-sort-cancel-btn" type="button" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+        Cancel
+      </button>
+      <button id="global-sort-confirm-btn" type="button" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+        Sort globally
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Error modal -->
 <div id="error-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
   <div class="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 max-w-lg w-full mx-4">
@@ -761,15 +879,15 @@
     width: 40px;
   }
 
-  /* filename column (2nd) - 25% */
+  /* filename column (2nd) - 22% */
   #file-table tbody td:nth-child(2) {
-    width: 25%;
+    width: 22%;
     overflow: hidden;
   }
 
-  /* title column (3rd) - 50% */
+  /* title column (3rd) - 45% */
   #file-table tbody td:nth-child(3) {
-    width: 50%;
+    width: 45%;
   }
 
   /* Table cell styling for proper wrapping and prominence */
@@ -836,8 +954,8 @@
 
   /* Date cell - constrain width */
   .section-tbody .date-cell {
-    max-width: 180px;
-    width: 180px;
+    max-width: 160px;
+    width: 160px;
   }
 
   .section-tbody .date-cell input {
@@ -849,8 +967,8 @@
     font-size: 0.875rem;
     color: #64748b;
     text-align: center;
-    max-width: 80px;
-    width: 80px;
+    max-width: 70px;
+    width: 70px;
   }
 
   /* Row hover effect */
@@ -897,6 +1015,20 @@
     border-color: #3b82f6;
   }
 
+  /* Empty-section placeholder row */
+  .empty-section-placeholder td {
+    color: #9ca3af;
+    font-style: italic;
+    background: #f9fafb;
+    border-top: 1px dashed #e5e7eb;
+    border-bottom: 1px dashed #e5e7eb;
+  }
+
+  .empty-section-placeholder:hover td {
+    background: #eff6ff;
+    color: #93c5fd;
+  }
+
   /* Section tbody drag-over indicator */
   .section-tbody.drag-over-section {
     outline: 2px dashed #3b82f6;
@@ -931,6 +1063,29 @@
   #file-table.arrow-mode colgroup { display: none; }
   #file-table.arrow-mode thead { display: none; }
   #file-table.arrow-mode .section-tbody { display: block; }
+
+  /* Section header rows in arrow mode: full-width flex strip */
+  #file-table.arrow-mode .section-header-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem;
+  }
+  #file-table.arrow-mode .section-header-row td {
+    display: flex !important;
+    align-items: center;
+    padding: 0;
+  }
+  #file-table.arrow-mode .section-header-row td[colspan] {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  #file-table.arrow-mode .section-header-row .drag-handle {
+    display: none !important;
+  }
 
   #file-table.arrow-mode .section-tbody tr.file-row {
     display: flex !important;
@@ -1089,8 +1244,10 @@
 
   function updateDocState() {
     const hasFiles = document.querySelectorAll('.section-tbody tr.file-row').length > 0;
-    document.getElementById('file-table-empty')?.classList.toggle('hidden', hasFiles);
-    document.getElementById('file-table-content')?.classList.toggle('hidden', !hasFiles);
+    const hasSections = document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').length > 0;
+    const hasContent = hasFiles || hasSections;
+    document.getElementById('file-table-empty')?.classList.toggle('hidden', hasContent);
+    document.getElementById('file-table-content')?.classList.toggle('hidden', !hasContent);
     document.querySelectorAll('.btn-needs-docs').forEach(btn => {
       btn.classList.toggle('docs-inactive', !hasFiles);
     });
@@ -1127,6 +1284,49 @@
   // Upload warning modal
   document.getElementById('upload-warning-modal-close')?.addEventListener('click', () => {
     document.getElementById('upload-warning-modal')?.classList.add('hidden');
+  });
+
+  // Delete-section modal — step transitions handled in frontend.js via window globals
+  document.getElementById('delete-section-remove-btn')?.addEventListener('click', () => {
+    document.getElementById('delete-section-modal')?.classList.add('hidden');
+    document.getElementById('delete-section-step1')?.classList.remove('hidden');
+    document.getElementById('delete-section-step2')?.classList.add('hidden');
+    window._deleteSectionResolve?.({ action: 'remove' });
+  });
+  document.getElementById('delete-section-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('delete-section-modal')?.classList.add('hidden');
+    document.getElementById('delete-section-step1')?.classList.remove('hidden');
+    document.getElementById('delete-section-step2')?.classList.add('hidden');
+    window._deleteSectionResolve?.({ action: 'cancel' });
+  });
+  document.getElementById('delete-section-move-btn')?.addEventListener('click', () => {
+    // Switch to step 2 — picker list is populated by frontend.js before showing the modal
+    document.getElementById('delete-section-step1')?.classList.add('hidden');
+    document.getElementById('delete-section-step2')?.classList.remove('hidden');
+  });
+  document.getElementById('delete-section-back-btn')?.addEventListener('click', () => {
+    document.getElementById('delete-section-step2')?.classList.add('hidden');
+    document.getElementById('delete-section-step1')?.classList.remove('hidden');
+  });
+
+  // Clear-all modal wiring
+  document.getElementById('clear-all-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('clear-all-modal')?.classList.add('hidden');
+    window._clearAllResolve?.(false);
+  });
+  document.getElementById('clear-all-confirm-btn')?.addEventListener('click', () => {
+    document.getElementById('clear-all-modal')?.classList.add('hidden');
+    window._clearAllResolve?.(true);
+  });
+
+  // Global sort modal wiring
+  document.getElementById('global-sort-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('global-sort-modal')?.classList.add('hidden');
+    window._globalSortResolve?.(false);
+  });
+  document.getElementById('global-sort-confirm-btn')?.addEventListener('click', () => {
+    document.getElementById('global-sort-modal')?.classList.add('hidden');
+    window._globalSortResolve?.(true);
   });
 
   // Error modal
@@ -1192,8 +1392,10 @@
     resetGroup('footerFontSize', 'medium');
     resetGroup('alignment', 'right');
     resetGroup('pageNumberColour', 'black');
+    document.getElementById('config-sectionPrefix').value = '';
     document.getElementById('config-showTableBorders').checked = true;
     document.getElementById('config-printableBundle').checked = true;
+    document.getElementById('config-pageNumberPerSection').checked = false;
   });
 
   const DEFAULTS_KEY = 'buntool-default-config';
@@ -1211,8 +1413,10 @@
       headingFontSize: document.getElementById('config-headingFontSize').value,
       indexFontSize: document.getElementById('config-indexFontSize').value,
       footerFontSize: document.getElementById('config-footerFontSize').value,
+      sectionPrefix: document.getElementById('config-sectionPrefix').value,
       showTableBorders: document.getElementById('config-showTableBorders').checked,
       printableBundle: document.getElementById('config-printableBundle').checked,
+      pageNumberPerSection: document.getElementById('config-pageNumberPerSection').checked,
     };
     localStorage.setItem(DEFAULTS_KEY, JSON.stringify(d));
   }
@@ -1233,8 +1437,10 @@
       if (d.headingFontSize) resetGroup('headingFontSize', d.headingFontSize);
       if (d.indexFontSize) resetGroup('indexFontSize', d.indexFontSize);
       if (d.footerFontSize) resetGroup('footerFontSize', d.footerFontSize);
+      if (d.sectionPrefix !== undefined) document.getElementById('config-sectionPrefix').value = d.sectionPrefix;
       if (d.showTableBorders !== undefined) document.getElementById('config-showTableBorders').checked = d.showTableBorders;
       if (d.printableBundle !== undefined) document.getElementById('config-printableBundle').checked = d.printableBundle;
+      if (d.pageNumberPerSection !== undefined) document.getElementById('config-pageNumberPerSection').checked = d.pageNumberPerSection;
     } catch (_) {
       // Ignore corrupt/missing storage
     }

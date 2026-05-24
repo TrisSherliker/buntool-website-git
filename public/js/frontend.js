@@ -98,8 +98,9 @@ async function getAutosaveState() {
   getAllSectionTbodys().forEach(tbody => {
     const sectionID = tbody.dataset.sectionId;
     const headerRow = tbody.querySelector('.section-header-row');
-    const label = headerRow?.querySelector('.section-label-input')?.value ?? '';
-    const name  = headerRow?.querySelector('.section-name-input')?.value  ?? '';
+    const labelEl = headerRow?.querySelector('.section-label-input');
+    const label = labelEl?.value.trim() || labelEl?.placeholder || '';
+    const name  = headerRow?.querySelector('.section-name-input')?.value.trim() ?? '';
     const filenames = Array.from(tbody.querySelectorAll('tr.file-row')).map(r => r.dataset.filename).filter(Boolean);
     tableOrder.push({ type: 'section', sectionID, label, name, filenames });
   });
@@ -122,6 +123,8 @@ async function getAutosaveState() {
     indexFontSize:    document.getElementById('config-indexFontSize')?.value     || '',
     footerFontSize:   document.getElementById('config-footerFontSize')?.value    || '',
     showTableBorders: document.getElementById('config-showTableBorders')?.checked ?? false,
+    sectionPrefix:    document.getElementById('config-sectionPrefix')?.value        || '',
+    pageNumberPerSection: document.getElementById('config-pageNumberPerSection')?.checked ?? false,
   };
 
   let coversheet = null;
@@ -156,11 +159,14 @@ async function applySnapshot(snapshot) {
 
   // Rebuild section tbodys in saved order
   const table = document.querySelector('#file-table table');
+  let saved0000Label = '', saved0000Name = '';
   for (const item of snapshot.tableOrder) {
     if (item.type !== 'section') continue;
     let tbody;
     if (item.sectionID === '0000') {
       tbody = getDefaultSection0000();
+      saved0000Label = item.label || '';
+      saved0000Name  = item.name  || '';
     } else {
       tbody = createSectionTbody(item.sectionID, item.label || '', item.name || '');
       table?.appendChild(tbody);
@@ -176,6 +182,50 @@ async function applySnapshot(snapshot) {
       if (!data) continue;
       const row = makeFileRow(filename, data);
       tbody.appendChild(row);
+    }
+    if (isSectioned) ensureEmptyPlaceholder(tbody);
+  }
+
+  // If restoring a sectioned state, create the section-0000 editable header
+  if (isSectioned) {
+    const section0000 = getDefaultSection0000();
+    if (section0000 && !section0000.querySelector('.section-header-row')) {
+      const headerTr = document.createElement('tr');
+      headerTr.className = 'section-header-row';
+      headerTr.dataset.sectionId = '0000';
+      headerTr.innerHTML = `
+        <td class="drag-handle px-2 py-2 cursor-move">${DRAG_ICON_SVG}</td>
+        <td class="px-2 py-2">
+          <input type="text" class="section-label-input" value="${saved0000Label}" placeholder="A" title="Section label (e.g. A, 1)" />
+        </td>
+        <td colspan="3" class="px-2 py-2">
+          <input type="text" class="section-name-input" value="${saved0000Name}" placeholder="Type section name" />
+        </td>
+        <td class="px-2 py-2 whitespace-nowrap">
+          <label class="inline-flex items-center px-2 py-1 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
+            + Files
+            <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="0000" />
+          </label>
+          <button type="button" class="section-sort-btn text-xs text-gray-500 hover:text-gray-700 transition mr-1" data-section-id="0000" title="Sort files in this section">⇅</button>
+          <button type="button" class="section-delete-btn text-xs text-red-500 hover:text-red-700 transition" data-section-id="0000" title="Delete this section">✕</button>
+        </td>`;
+      headerTr.querySelector('.section-add-files-input')?.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        e.target.value = '';
+        if (files.length) await processFiles(files, section0000);
+      });
+      headerTr.querySelector('.section-sort-btn')?.addEventListener('click', () => sortSectionPopover(section0000));
+      headerTr.querySelector('.section-delete-btn')?.addEventListener('click', () => deleteSection(section0000));
+      // Drag handle
+      const handle0000 = headerTr.querySelector('.drag-handle');
+      handle0000?.addEventListener('mousedown', () => { if (reorderMode === 'drag') section0000.draggable = true; });
+      document.addEventListener('mouseup', () => { section0000.draggable = false; }, { capture: true });
+      section0000.draggable = false;
+      section0000.addEventListener('dragstart', handleSectionDragStart);
+      section0000.addEventListener('dragover', handleSectionDragOver);
+      section0000.addEventListener('drop', handleSectionDrop);
+      section0000.addEventListener('dragend', handleSectionDragEnd);
+      section0000.insertBefore(headerTr, section0000.firstChild);
     }
   }
 
@@ -213,6 +263,8 @@ async function applySnapshot(snapshot) {
   _set('config-indexFontSize',    c.indexFontSize);
   _set('config-footerFontSize',   c.footerFontSize);
   _chk('config-showTableBorders', c.showTableBorders);
+  _set('config-sectionPrefix',    c.sectionPrefix);
+  _chk('config-pageNumberPerSection', c.pageNumberPerSection);
 
   // Restore coversheet
   if (snapshot.coversheet) {
@@ -220,9 +272,6 @@ async function applySnapshot(snapshot) {
     setCoversheetSelected(snapshot.coversheet.filename);
   }
 
-  // Hide the step-2 hint since files are now loaded
-  const hint = document.getElementById('file-input-hint');
-  if (hint) hint.style.display = 'none';
 }
 
 
@@ -324,8 +373,37 @@ window.addEventListener('DOMContentLoaded', () => {
       h.querySelector('.sort-indicator').textContent = '';
     });
     th.querySelector('.sort-indicator').textContent = sortDir === 'asc' ? '▲' : '▼';
-    // Sort within each section independently
-    getAllSectionTbodys().forEach(tbody => sortSection(tbody, col, sortDir));
+
+    if (e.shiftKey && isSectioned) {
+      // Shift+click: global cross-section sort — merge all rows into section 0000
+      const hasSections = document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').length > 0;
+      if (hasSections) {
+        new Promise(resolve => {
+          window._globalSortResolve = resolve;
+          document.getElementById('global-sort-modal')?.classList.remove('hidden');
+        }).then(confirmed => {
+          if (!confirmed) return;
+          const allRows = getAllFileRows();
+          sortRowsBy(allRows, col, sortDir);
+          const section0000 = getDefaultSection0000();
+          const headerRow = section0000?.querySelector('.section-header-row');
+          allRows.forEach(row => section0000.appendChild(row));
+          document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(t => t.remove());
+          isSectioned = false;
+          document.getElementById('file-table')?.classList.remove('sectioned');
+          nextSectionNum = 1;
+          if (headerRow) headerRow.remove();
+        });
+        return;
+      }
+      const allRows = getAllFileRows();
+      sortRowsBy(allRows, col, sortDir);
+      const section0000 = getDefaultSection0000();
+      allRows.forEach(row => section0000.appendChild(row));
+    } else {
+      // Regular click: sort within each section independently
+      getAllSectionTbodys().forEach(tbody => sortSection(tbody, col, sortDir));
+    }
   });
 
   document.getElementById('reorder-toggle-btn')?.addEventListener('change', (e) => {
@@ -355,8 +433,9 @@ function buildIndexData() {
   getAllSectionTbodys().forEach(tbody => {
     const sectionID = tbody.dataset.sectionId;
     const headerRow = tbody.querySelector('.section-header-row');
-    const sectionLabel = headerRow?.querySelector('.section-label-input')?.value.trim() ?? '';
-    const sectionName  = headerRow?.querySelector('.section-name-input')?.value.trim()  ?? '';
+    const labelEl = headerRow?.querySelector('.section-label-input');
+    const sectionLabel = labelEl?.value.trim() || labelEl?.placeholder || '';
+    const sectionName  = headerRow?.querySelector('.section-name-input')?.value.trim() ?? '';
     const files = [];
     tbody.querySelectorAll('tr.file-row').forEach(row => {
       const fn = row.dataset.filename;
@@ -411,9 +490,35 @@ function makeFileRow(filename, data) {
 }
 
 // ─── Helper: build a section <tbody> ─────────────────────────────────────────
+// ─── Empty-section placeholder ────────────────────────────────────────────────
+function ensureEmptyPlaceholder(tbody) {
+  if (!tbody) return;
+  if (tbody.querySelector('tr.file-row')) return; // has real files — no placeholder
+  if (tbody.querySelector('.empty-section-placeholder')) return; // already present
+  const tr = document.createElement('tr');
+  tr.className = 'empty-section-placeholder';
+  tr.innerHTML = `<td colspan="6" class="px-4 py-4 text-center text-sm text-gray-400 italic select-none">[empty — drag documents here]</td>`;
+  // Make it a drop target for file rows
+  tr.addEventListener('dragover', (e) => { if (draggedRow) { e.preventDefault(); e.stopPropagation(); } });
+  tr.addEventListener('drop', (e) => {
+    if (!draggedRow) return;
+    e.preventDefault(); e.stopPropagation();
+    removeEmptyPlaceholder(tbody);
+    tbody.appendChild(draggedRow);
+    draggedRow = null;
+    markDirty();
+  });
+  tbody.appendChild(tr);
+}
+
+function removeEmptyPlaceholder(tbody) {
+  tbody?.querySelector('.empty-section-placeholder')?.remove();
+}
+
 function nextSectionLabel() {
-  const explicit = document.querySelectorAll('.section-tbody:not(#tbody-section-0000)');
-  const idx = explicit.length; // 0-based before the new one is added
+  // When sectioned, section-0000 is "A", so next label index = total sections
+  const total = document.querySelectorAll('.section-tbody').length;
+  const idx = isSectioned ? total : 0; // pre-add count
   return String.fromCharCode(65 + (idx % 26)); // A, B, C …
 }
 
@@ -422,7 +527,7 @@ function createSectionTbody(sectionID, label, name) {
   tbody.className = 'section-tbody bg-white divide-y divide-gray-200';
   tbody.id = `tbody-section-${sectionID}`;
   tbody.dataset.sectionId = sectionID;
-  tbody.draggable = true;
+  tbody.draggable = false; // enabled only via drag-handle mousedown
 
   tbody.innerHTML = `
     <tr class="section-header-row" data-section-id="${sectionID}">
@@ -431,10 +536,10 @@ function createSectionTbody(sectionID, label, name) {
         <input type="text" class="section-label-input" value="${label}" placeholder="${nextSectionLabel()}" title="Section label (e.g. A, B, 1)" />
       </td>
       <td colspan="3" class="px-2 py-2">
-        <input type="text" class="section-name-input" value="${name}" placeholder="Section name (optional)…" />
+        <input type="text" class="section-name-input" value="${name}" placeholder="Type section name" />
       </td>
       <td class="px-2 py-2 whitespace-nowrap">
-        <label class="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
+        <label class="inline-flex items-center px-2 py-1 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
           + Files
           <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="${sectionID}" />
         </label>
@@ -456,15 +561,23 @@ function createSectionTbody(sectionID, label, name) {
     if (files.length) await processFiles(files, tbody);
   });
 
+  // Clear error outline when user starts typing section name
+  tbody.querySelector('.section-name-input')?.addEventListener('input', (e) => {
+    if (e.target.value.trim()) e.target.style.outline = '';
+  });
+
   // Section sort button → show dropdown-ish inline sort
   tbody.querySelector('.section-sort-btn')?.addEventListener('click', () => sortSectionPopover(tbody));
 
   // Section delete button
   tbody.querySelector('.section-delete-btn')?.addEventListener('click', () => deleteSection(tbody));
 
-  // Section header drag-handle initiates section drag
+  // Section drag-handle: enable draggable only from the handle
   const headerDragHandle = tbody.querySelector('.section-header-row .drag-handle');
-  headerDragHandle?.addEventListener('mousedown', () => { tbody.draggable = true; });
+  headerDragHandle?.addEventListener('mousedown', () => {
+    if (reorderMode === 'drag') tbody.draggable = true;
+  });
+  document.addEventListener('mouseup', () => { tbody.draggable = false; }, { capture: true });
 
   markDirty();
   return tbody;
@@ -472,49 +585,121 @@ function createSectionTbody(sectionID, label, name) {
 
 // ─── Add Section ─────────────────────────────────────────────────────────────
 function addSection() {
-  const sectionID = String(nextSectionNum++).padStart(4, '0');
-  const tbody = createSectionTbody(sectionID, '', '');
-  const table = document.querySelector('#file-table table');
-  table?.appendChild(tbody);
+  // Show the table even if no file rows yet
+  document.getElementById('file-table-empty')?.classList.add('hidden');
+  document.getElementById('file-table-content')?.classList.remove('hidden');
 
   if (!isSectioned) {
+    // First click: convert section 0000 into a real labelled section — don't create a new one
     isSectioned = true;
     document.getElementById('file-table')?.classList.add('sectioned');
-    // Insert section-0000 header row now that we're sectioned
     const section0000 = getDefaultSection0000();
     if (section0000 && !section0000.querySelector('.section-header-row')) {
       const headerTr = document.createElement('tr');
       headerTr.className = 'section-header-row';
       headerTr.dataset.sectionId = '0000';
       headerTr.innerHTML = `
-        <td class="px-2 py-2 text-xs text-slate-400 italic" colspan="5">Default section — files added from main button</td>
+        <td class="drag-handle px-2 py-2 cursor-move">${DRAG_ICON_SVG}</td>
+        <td class="px-2 py-2">
+          <input type="text" class="section-label-input" value="A" placeholder="A" title="Section label (e.g. A, B, 1)" />
+        </td>
+        <td colspan="3" class="px-2 py-2">
+          <input type="text" class="section-name-input" value="" placeholder="Type section name" />
+        </td>
         <td class="px-2 py-2 whitespace-nowrap">
-          <label class="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded cursor-pointer transition" title="Add files to default section">
+          <label class="inline-flex items-center px-2 py-1 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
             + Files
             <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="0000" />
           </label>
+          <button type="button" class="section-sort-btn text-xs text-gray-500 hover:text-gray-700 transition mr-1" data-section-id="0000" title="Sort files in this section">⇅</button>
+          <button type="button" class="section-delete-btn text-xs text-red-500 hover:text-red-700 transition" data-section-id="0000" title="Delete this section">✕</button>
         </td>`;
       headerTr.querySelector('.section-add-files-input')?.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
         e.target.value = '';
         if (files.length) await processFiles(files, section0000);
       });
+      headerTr.querySelector('.section-sort-btn')?.addEventListener('click', () => sortSectionPopover(section0000));
+      headerTr.querySelector('.section-delete-btn')?.addEventListener('click', () => deleteSection(section0000));
+      // Enable dragging section-0000 via its drag handle when in drag mode
+      const handle = headerTr.querySelector('.drag-handle');
+      handle?.addEventListener('mousedown', () => {
+        if (reorderMode === 'drag') section0000.draggable = true;
+      });
+      document.addEventListener('mouseup', () => { section0000.draggable = false; }, { capture: true });
+      section0000.draggable = false;
+      section0000.addEventListener('dragstart', handleSectionDragStart);
+      section0000.addEventListener('dragover', handleSectionDragOver);
+      section0000.addEventListener('drop', handleSectionDrop);
+      section0000.addEventListener('dragend', handleSectionDragEnd);
       section0000.insertBefore(headerTr, section0000.firstChild);
     }
+    // Add empty placeholder to section 0000 if it has no files
+    ensureEmptyPlaceholder(section0000 ?? getDefaultSection0000());
+    markDirty();
+    return;
   }
+
+  // Subsequent clicks: create a new section
+  const sectionID = String(nextSectionNum++).padStart(4, '0');
+  const table = document.querySelector('#file-table table');
+  const tbody = createSectionTbody(sectionID, '', '');
+  table?.appendChild(tbody);
+  ensureEmptyPlaceholder(tbody);
   markDirty();
 }
 
-document.getElementById('add-section-btn')?.addEventListener('click', addSection);
+document.querySelectorAll('.add-section-btn').forEach(btn => btn.addEventListener('click', addSection));
 
 // ─── Delete Section ───────────────────────────────────────────────────────────
-function deleteSection(tbody) {
+function buildSectionPickerList(excludeTbody) {
+  // Returns list items for every section except the one being deleted
+  const list = document.getElementById('delete-section-picker-list');
+  if (!list) return;
+  list.innerHTML = '';
+  document.querySelectorAll('.section-tbody').forEach(t => {
+    if (t === excludeTbody) return;
+    const labelEl = t.querySelector('.section-label-input');
+    const label   = labelEl?.value.trim() || labelEl?.placeholder || '';
+    const name    = t.querySelector('.section-name-input')?.value.trim() || '';
+    const display = (label && name) ? `${label} — ${name}` : (name || label || '(unnamed)');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-sm';
+    btn.textContent = display;
+    btn.addEventListener('click', () => {
+      document.getElementById('delete-section-modal')?.classList.add('hidden');
+      document.getElementById('delete-section-step1')?.classList.remove('hidden');
+      document.getElementById('delete-section-step2')?.classList.add('hidden');
+      window._deleteSectionResolve?.({ action: 'move', targetTbody: t });
+    });
+    list.appendChild(btn);
+  });
+}
+
+function showDeleteSectionModal(tbody) {
+  buildSectionPickerList(tbody);
+  const fileCount = tbody.querySelectorAll('tr.file-row').length;
+  const msg = document.getElementById('delete-section-msg');
+  if (msg) msg.textContent = `This section contains ${fileCount} file${fileCount === 1 ? '' : 's'}. What would you like to do with them?`;
+  // Reset to step 1
+  document.getElementById('delete-section-step1')?.classList.remove('hidden');
+  document.getElementById('delete-section-step2')?.classList.add('hidden');
+  return new Promise(resolve => {
+    window._deleteSectionResolve = resolve;
+    document.getElementById('delete-section-modal')?.classList.remove('hidden');
+  });
+}
+
+async function deleteSection(tbody) {
   const fileRows = Array.from(tbody.querySelectorAll('tr.file-row'));
   if (fileRows.length > 0) {
-    const choice = confirm('This section has files. Move them to the Default section, or delete them?\n\nOK = Move to Default\nCancel = Delete files too');
-    if (choice) {
-      const section0000 = getDefaultSection0000();
-      fileRows.forEach(row => section0000.appendChild(row));
+    const result = await showDeleteSectionModal(tbody);
+    if (result.action === 'cancel') return;
+    if (result.action === 'move') {
+      const target = result.targetTbody;
+      removeEmptyPlaceholder(target);
+      fileRows.forEach(row => target.appendChild(row));
     } else {
       fileRows.forEach(row => {
         const fn = row.dataset.filename;
@@ -522,22 +707,28 @@ function deleteSection(tbody) {
       });
     }
   }
-  tbody.remove();
 
-  // If no explicit sections remain, revert to unsectioned
-  if (!document.querySelector('.section-tbody:not(#tbody-section-0000)')) {
+  // Section 0000 can't be removed from the DOM — just strip its header row
+  if (tbody.id === 'tbody-section-0000') {
+    tbody.querySelector('.section-header-row')?.remove();
+    removeEmptyPlaceholder(tbody);
+  } else {
+    tbody.remove();
+  }
+
+  // Revert to unsectioned if no sections with header rows remain
+  const hasAnySection =
+    document.querySelector('.section-tbody .section-header-row') !== null;
+  if (!hasAnySection) {
     isSectioned = false;
     document.getElementById('file-table')?.classList.remove('sectioned');
-    const section0000 = getDefaultSection0000();
-    section0000?.querySelector('.section-header-row')?.remove();
   }
   markDirty();
 }
 
-// ─── Sort section popover ─────────────────────────────────────────────────────
-function sortSection(tbody, col, dir) {
-  const fileRows = Array.from(tbody.querySelectorAll('tr.file-row'));
-  fileRows.sort((a, b) => {
+// ─── Sort helpers ─────────────────────────────────────────────────────────────
+function sortRowsBy(rows, col, dir) {
+  rows.sort((a, b) => {
     let aVal, bVal;
     if (col === 'filename') { aVal = a.dataset.filename || ''; bVal = b.dataset.filename || ''; }
     else if (col === 'title') { aVal = a.querySelector('.title-input')?.value || ''; bVal = b.querySelector('.title-input')?.value || ''; }
@@ -550,6 +741,11 @@ function sortSection(tbody, col, dir) {
     const cmp = (aVal || '').localeCompare(bVal || '', undefined, { sensitivity: 'base', numeric: true });
     return dir === 'asc' ? cmp : -cmp;
   });
+}
+
+function sortSection(tbody, col, dir) {
+  const fileRows = Array.from(tbody.querySelectorAll('tr.file-row'));
+  sortRowsBy(fileRows, col, dir);
   fileRows.forEach(row => tbody.appendChild(row));
   markDirty();
 }
@@ -587,41 +783,55 @@ function sortSectionPopover(tbody) {
 
 // ─── Section drag and drop ────────────────────────────────────────────────────
 function handleSectionDragStart(e) {
-  // Only drag from section header drag-handle
-  if (!e.target.closest('.section-header-row .drag-handle')) { e.preventDefault(); return; }
+  if (!this.draggable) { e.preventDefault(); return; }
   draggedSection = this;
+  draggedRow = null;
   e.dataTransfer.effectAllowed = 'move';
   e.stopPropagation();
   this.style.opacity = '0.5';
 }
 
 function handleSectionDragOver(e) {
-  if (!draggedSection || draggedSection === this) return;
-  if (this.id === 'tbody-section-0000') return; // section-0000 stays first
-  e.preventDefault();
-  e.stopPropagation();
-  this.classList.add('drag-over-section');
+  if (draggedSection && draggedSection !== this && this.id !== 'tbody-section-0000') {
+    // Section reorder drag
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.add('drag-over-section');
+  } else if (draggedRow && !draggedSection) {
+    // File drag over a section (header or empty area) — accept the drop
+    e.preventDefault();
+    e.stopPropagation();
+  }
 }
 
 function handleSectionDrop(e) {
-  if (!draggedSection || draggedSection === this) return;
-  if (this.id === 'tbody-section-0000') return;
-  e.preventDefault();
-  e.stopPropagation();
-  this.classList.remove('drag-over-section');
-  const table = this.parentNode;
-  const allTbodys = Array.from(table.querySelectorAll('.section-tbody'));
-  const fromIdx = allTbodys.indexOf(draggedSection);
-  const toIdx   = allTbodys.indexOf(this);
-  if (fromIdx < toIdx) {
-    table.insertBefore(draggedSection, this.nextSibling);
-  } else {
-    table.insertBefore(draggedSection, this);
+  if (draggedSection && draggedSection !== this && this.id !== 'tbody-section-0000') {
+    // Section reorder
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('drag-over-section');
+    const table = this.parentNode;
+    const allTbodys = Array.from(table.querySelectorAll('.section-tbody'));
+    const fromIdx = allTbodys.indexOf(draggedSection);
+    const toIdx   = allTbodys.indexOf(this);
+    if (fromIdx < toIdx) {
+      table.insertBefore(draggedSection, this.nextSibling);
+    } else {
+      table.insertBefore(draggedSection, this);
+    }
+    markDirty();
+  } else if (draggedRow && !draggedSection) {
+    // File row dropped onto a section tbody (header or empty area) — append to end
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('drag-over-section');
+    this.appendChild(draggedRow);
+    markDirty();
   }
-  markDirty();
 }
 
 function handleSectionDragEnd() {
+  this.draggable = false;
   this.style.opacity = '1';
   document.querySelectorAll('.section-tbody').forEach(t => t.classList.remove('drag-over-section'));
   draggedSection = null;
@@ -648,26 +858,31 @@ function handleFileDrop(e) {
   if (!draggedRow || draggedRow === this) return;
   e.preventDefault();
   e.stopPropagation();
+  const sourceTbody = draggedRow.closest('tbody');
   // If dropping on a section-header-row: append to that section
   if (this.classList.contains('section-header-row')) {
-    this.closest('tbody').appendChild(draggedRow);
+    const targetTbody = this.closest('tbody');
+    removeEmptyPlaceholder(targetTbody);
+    targetTbody.appendChild(draggedRow);
+    if (sourceTbody && sourceTbody !== targetTbody) ensureEmptyPlaceholder(sourceTbody);
     markDirty();
     return;
   }
   // Normal same/cross-section reorder
   const myTbody = this.closest('tbody');
-  const draggedTbody = draggedRow.closest('tbody');
-  if (myTbody === draggedTbody) {
+  if (myTbody === sourceTbody) {
     const allRows = Array.from(myTbody.querySelectorAll('tr.file-row'));
     const draggedIndex = allRows.indexOf(draggedRow);
     const targetIndex  = allRows.indexOf(this);
     if (draggedIndex < targetIndex) myTbody.insertBefore(draggedRow, this.nextSibling);
     else myTbody.insertBefore(draggedRow, this);
   } else {
+    removeEmptyPlaceholder(myTbody);
     const allRows = Array.from(myTbody.querySelectorAll('tr.file-row'));
     const targetIndex = allRows.indexOf(this);
     if (targetIndex < 0) myTbody.appendChild(draggedRow);
     else myTbody.insertBefore(draggedRow, this);
+    ensureEmptyPlaceholder(sourceTbody);
   }
   markDirty();
 }
@@ -692,11 +907,6 @@ async function processFiles(files, targetTbody) {
       message: `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle. This is too big to be handled reliably, and exceeds the permitted file size. Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`,
     });
     return;
-  }
-
-  if (files.length > 0) {
-    const hint = document.getElementById('file-input-hint');
-    if (hint) hint.style.display = 'none';
   }
 
   const validationProgress = document.getElementById('validation-progress');
@@ -742,6 +952,7 @@ async function processFiles(files, targetTbody) {
     frontendInputData[key] = { title: displayTitle, date: dateParseObj.date, pageCount };
 
     const row = makeFileRow(key, { title: displayTitle, date: dateParseObj.date, pageCount });
+    removeEmptyPlaceholder(targetTbody);
     targetTbody.appendChild(row);
     markDirty({ immediate: true });
 
@@ -793,17 +1004,16 @@ function showSectionPicker(files) {
   if (!popover || !list) return;
   list.innerHTML = '';
 
-  const tbodys = getAllSectionTbodys();
-  tbodys.forEach(tbody => {
-    const sectionID = tbody.dataset.sectionId;
-    const label = tbody.querySelector('.section-label-input')?.value.trim()
-      || tbody.querySelector('.section-header-row td')?.textContent?.trim()
-      || (sectionID === '0000' ? 'Default' : sectionID);
-    const name  = tbody.querySelector('.section-name-input')?.value.trim();
-    const btn   = document.createElement('button');
-    btn.type    = 'button';
-    btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-sm';
-    btn.innerHTML = `<span class="font-semibold text-blue-700">${label}</span>${name ? `<span class="text-gray-600 ml-2 text-xs">${name}</span>` : ''}`;
+  // All sections (0000 is now a first-class section when sectioned)
+  document.querySelectorAll('.section-tbody').forEach(tbody => {
+    const labelEl = tbody.querySelector('.section-label-input');
+    const label   = labelEl?.value.trim() || labelEl?.placeholder || '';
+    const name    = tbody.querySelector('.section-name-input')?.value.trim() || '';
+    const display = (label && name) ? `${label} — ${name}` : (name || label || '(unnamed)');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-sm font-medium text-blue-700';
+    btn.textContent = display;
     btn.addEventListener('click', async () => {
       popover.classList.add('hidden');
       try { await processFiles(files, tbody); }
@@ -887,10 +1097,16 @@ dropZone.addEventListener('dragleave', (e) => {
 dropZone.addEventListener('drop', async (e) => {
   e.preventDefault();
   dropZone.classList.remove('ring-2', 'ring-pink-400');
-  try {
-    await processFiles(Array.from(e.dataTransfer.files));
-  } catch (error) {
-    showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
+  const files = Array.from(e.dataTransfer.files);
+  if (!files.length) return;
+  if (isSectioned) {
+    showSectionPicker(files);
+  } else {
+    try {
+      await processFiles(files);
+    } catch (error) {
+      showErrorModal({ title: 'Error adding files', message: 'An unexpected error occurred while adding files.', error });
+    }
   }
 });
 
@@ -923,14 +1139,16 @@ document.getElementById('file-table')?.addEventListener('click', (e) => {
       return;
     }
     const prev = row.previousElementSibling;
-    if (prev && !prev.classList.contains('section-header-row')) {
+    if (prev && !prev.classList.contains('section-header-row') && !prev.classList.contains('empty-section-placeholder')) {
       row.parentNode.insertBefore(row, prev);
     } else {
       // Breach section boundary — move to end of previous section
       const tbody = row.closest('tbody');
       const prevTbody = tbody?.previousElementSibling;
       if (prevTbody?.classList.contains('section-tbody')) {
+        removeEmptyPlaceholder(prevTbody);
         prevTbody.appendChild(row);
+        ensureEmptyPlaceholder(tbody);
       }
     }
     markDirty();
@@ -952,15 +1170,17 @@ document.getElementById('file-table')?.addEventListener('click', (e) => {
       return;
     }
     const next = row.nextElementSibling;
-    if (next) {
+    if (next && !next.classList.contains('empty-section-placeholder')) {
       row.parentNode.insertBefore(next, row);
     } else {
       // Breach section boundary — move to start of next section (after header)
       const tbody = row.closest('tbody');
       const nextTbody = tbody?.nextElementSibling;
       if (nextTbody?.classList.contains('section-tbody')) {
+        removeEmptyPlaceholder(nextTbody);
         const afterHeader = nextTbody.querySelector('.section-header-row')?.nextSibling || nextTbody.firstChild;
         nextTbody.insertBefore(row, afterHeader);
+        ensureEmptyPlaceholder(tbody);
       }
     }
     markDirty();
@@ -988,7 +1208,10 @@ document.getElementById('file-table')?.addEventListener('click', (e) => {
     const filename = e.target.getAttribute('data-filename');
     filesMap.delete(filename);
     delete frontendInputData[filename];
-    e.target.closest('tr').remove();
+    const row = e.target.closest('tr');
+    const tbody = row?.closest('tbody');
+    row.remove();
+    if (tbody) ensureEmptyPlaceholder(tbody);
     markDirty();
     return;
   }
@@ -996,7 +1219,11 @@ document.getElementById('file-table')?.addEventListener('click', (e) => {
 
 // Handle "Clear All Rows" button
 clearAllRowsBtn?.addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all documents and sections?')) {
+  new Promise(resolve => {
+    window._clearAllResolve = resolve;
+    document.getElementById('clear-all-modal')?.classList.remove('hidden');
+  }).then(confirmed => {
+    if (!confirmed) return;
     filesMap.clear();
     Object.keys(frontendInputData).forEach(key => delete frontendInputData[key]);
     document.querySelectorAll('.section-tbody:not(#tbody-section-0000)').forEach(el => el.remove());
@@ -1005,7 +1232,7 @@ clearAllRowsBtn?.addEventListener('click', () => {
     isSectioned = false;
     nextSectionNum = 1;
     document.getElementById('file-table')?.classList.remove('sectioned');
-  }
+  });
 });
 
 // Handle "Upload Bundle" input
@@ -1091,10 +1318,11 @@ function showProcessingOverlay(msg) {
     if (!_trackInitialized) _buildTrack();
     document.getElementById('processing-track')?.classList.remove('hidden');
     _updateTrack(stepIndex);
-  } else {
-    // Import path — no track needed
+  } else if (!_trackInitialized) {
+    // Pre-track phase (e.g. lazy imports) — keep track hidden until bundle starts
     document.getElementById('processing-track')?.classList.add('hidden');
   }
+  // If _trackInitialized but message doesn't match a step, leave track as-is
 }
 
 function hideProcessingOverlay() {
@@ -1254,6 +1482,10 @@ bundleInput?.addEventListener('change', async (e) => {
     document.getElementById('config-pageNumberColour').value = pn.pageNumberColour || 'black';
     document.getElementById('config-printableBundle').checked =
       extractedConfig.pageOptions?.printableBundle === true;
+    if (extractedConfig.index?.sectionPrefix !== undefined)
+      document.getElementById('config-sectionPrefix').value = extractedConfig.index.sectionPrefix;
+    document.getElementById('config-pageNumberPerSection').checked =
+      extractedConfig.pageNumbering?.pageNumberPerSection === true;
 
     // Split bundle into individual PDFs
     console.log('Splitting bundle into individual documents...');
@@ -1531,6 +1763,7 @@ form.addEventListener('submit', async (e) => {
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
       pageNumberColour: document.getElementById('config-pageNumberColour').value,
+      pageNumberPerSection: document.getElementById('config-pageNumberPerSection').checked,
     },
     index: {
       fontFace: document.getElementById('config-fontFace').value,
@@ -1538,6 +1771,7 @@ form.addEventListener('submit', async (e) => {
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
       fontSize: document.getElementById('config-indexFontSize').value,
       showTableBorders: document.getElementById('config-showTableBorders').checked,
+      sectionPrefix: document.getElementById('config-sectionPrefix').value,
     },
     pageOptions: {
       printableBundle: document.getElementById('config-printableBundle').checked,
@@ -1547,6 +1781,22 @@ form.addEventListener('submit', async (e) => {
 
   config.updateOptions(configOptions);
   console.log('Config pushed:',JSON.stringify(config));
+
+  // Validate section names before building IndexData
+  {
+    const unnamedSections = Array.from(document.querySelectorAll('.section-tbody:not(#tbody-section-0000)'))
+      .filter(t => !t.querySelector('.section-name-input')?.value.trim());
+    if (unnamedSections.length > 0) {
+      unnamedSections.forEach(t => {
+        const inp = t.querySelector('.section-name-input');
+        if (inp) { inp.style.outline = '2px solid #ef4444'; inp.focus(); }
+      });
+      showErrorModal({ title: 'Section name required', message: 'Please give each section a name before creating the bundle.' });
+      return;
+    }
+    // Clear any previous error highlights
+    document.querySelectorAll('.section-name-input').forEach(inp => inp.style.outline = '');
+  }
 
   // Build IndexData from section tbodys
   const bundleIndexData = buildIndexData();
@@ -1692,6 +1942,7 @@ async function runPreviewIndex() {
       numberingStyle: document.getElementById('config-numberingStyle').value,
       footerPrefix: stripUnsuitableChars(document.getElementById('config-footerPrefix').value),
       pageNumberColour: document.getElementById('config-pageNumberColour').value,
+      pageNumberPerSection: document.getElementById('config-pageNumberPerSection').checked,
     },
     index: {
       fontFace: document.getElementById('config-fontFace').value,
@@ -1699,6 +1950,7 @@ async function runPreviewIndex() {
       outlineItemStyle: document.getElementById('config-outlineItemStyle').value,
       fontSize: document.getElementById('config-indexFontSize').value,
       showTableBorders: document.getElementById('config-showTableBorders').checked,
+      sectionPrefix: document.getElementById('config-sectionPrefix').value,
       justTheIndex: true,
     },
     pageOptions: {
