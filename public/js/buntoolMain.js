@@ -171,7 +171,6 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
     return justIndexPdf;
   }
-
   onProgress?.('Merging documents...');
 
 // PDF HANDLING:
