@@ -2,6 +2,7 @@
  * BunTool
  * Copyrght (c) 2025-2026 Tris Sheriker (tris@sherliker.net)
  * A tool for the creation  of legal bundles.
+ * 
  *  * Licensed under the Mozilla Public License Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://mozilla.org/MPL/2.0/.
  *
  * buntoolToc.js
@@ -85,7 +86,7 @@ function formatDate(entryDate, style) {
 /**
  * Creates table of contents entries from index data.
  * Processes input documents and section headings, calculating page numbers and tab numbers.
- * @param {Array<Object>} indexData - Array of index entry objects with filename, title, date, pageCount, and secti|| !e.sectionMarkeronMarker
+ * @param {Array<Object>} indexData - Array of index entry objects with filename, title, date, pageCount, and sectionMarker
  * @param {Config} config - Configuration object containing pageOptions.printableBundle flag
  * @returns {Promise<Array<Object>>} Array of TOC entry objects with tab numbers, titles, dates, page references, and blankPageAfter flag
  */

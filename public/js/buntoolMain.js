@@ -14,20 +14,16 @@ import {
   makeDummyTocPages,
   } from './buntoolToc.js';
 import {
-  // addPageNumberingToPdf,
-  // mergeTwoPdfs,           // replaced by buntoolMerge.js
-  // mergePdfsByTOC,         // replaced by buntoolMerge.js
   addPageNumberingViaWorker,
   validateCoverPage,
   } from './buntoolPages.js';
-// import { mergeTwoPdfs, mergePdfsByTOC } from './buntoolMerge.js'; // direct (no worker)
-import { mergeTwoPdfsViaWorker as mergeTwoPdfs, mergePdfsByTOCViaWorker as mergePdfsByTOC } from './buntoolMerge.js';
+import { 
+  mergeTwoPdfsViaWorker as mergeTwoPdfs, 
+  mergePdfsByTOCViaWorker as mergePdfsByTOC 
+  } from './buntoolMerge.js';
 import {
-  // addHyperlinks,    // replaced by meta worker
-  // addOutlineItems,  // replaced by meta worker
-  // setMetadata,      // replaced by meta worker
   runMetaViaWorker,
-} from './buntoolMeta.js';
+  } from './buntoolMeta.js';
 
 /**
  * Function to process the bundle of PDFs according to the provided configuration.

@@ -4,7 +4,7 @@
 
 Features with an obvious cost-benefit updside
 
-- [ ] Memory cleanliness. Face up to the mupdf memory copies.
+- [x] Memory cleanliness. Face up to the mupdf memory copies.
 - [ ] Save local filesystem view of old bundles, restore
 - [x] Handle scanned files with rotation tags
 - [x] Tutorial function
@@ -14,7 +14,7 @@ Features with an obvious cost-benefit updside
   - [x] font colour (red, blue)
   - [x] page numbering size
   - [x] consider: auto-detect content overlap?
-- [ ] Log error messages
+- [x] Log error messages
 - [x] Times and Arial free alternatives
 - [x] User help for common error messages
 - [x] Split logic into modules by dependency 
@@ -30,6 +30,9 @@ Good ideas which are complicated to implement
   - [ ] specific rules
   - [ ] include claim number check for different tribunals
 - [ ] Section-based page numbering for compatibility with Family court non-financial bundles
+  - [ ] this needed quite a big architectural change
+  - [ ] and therefore
+  - [ ] deserves more footprint here
 - [ ] sort files within sections in frontend (qol but requires custom sort behaviour)
 - [ ] Witness statement coversheet maker
 
