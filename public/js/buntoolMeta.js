@@ -32,11 +32,13 @@ function groupRowsByPage(rows) {
  * @param {Config} config - Configuration object containing outline item style preference
  * @returns {string} Formatted outline item text
  */
-function formatOutlineItem(entry, config) {
+function formatOutlineItem(entry, section, config) {
   const style = config.getOption('index.outlineItemStyle');
   const title = entry.title;
   const date = entry.date;
-  const page = entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage;
+  const page = config.getOption('pageNumbering.pageNumberPerSection')
+    ? `${section?.sectionLabel || ''}${entry.beginsOnPageOfSection}`
+    : (entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage);
 
   switch (style) {
     case 'withPage':
@@ -204,7 +206,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
       });
     }
     for (const entry of section.entries) {
-      const formattedTitle = formatOutlineItem(entry, config);
+      const formattedTitle = formatOutlineItem(entry, section, config);
       const outlinePage = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
       outlineIterator.insert({
         title: `[${entry.tabNumber.toString().padStart(maxTabNumberLength, '0')}] ${formattedTitle}`,
@@ -359,10 +361,11 @@ export function runMetaViaWorker(pdfBytes, tocTableRowCoordinates, tocEntries, c
     'heading.bundleTitle':           config.getOption('heading.bundleTitle'),
     'heading.projectName':           config.getOption('heading.projectName'),
     'heading.claimNumber':           config.getOption('heading.claimNumber'),
-    'pageNumbering.footerFont':      config.getOption('pageNumbering.footerFont'),
-    'pageNumbering.alignment':       config.getOption('pageNumbering.alignment'),
-    'pageNumbering.numberingStyle':  config.getOption('pageNumbering.numberingStyle'),
-    'pageNumbering.footerPrefix':    config.getOption('pageNumbering.footerPrefix'),
+    'pageNumbering.footerFont':           config.getOption('pageNumbering.footerFont'),
+    'pageNumbering.alignment':            config.getOption('pageNumbering.alignment'),
+    'pageNumbering.numberingStyle':       config.getOption('pageNumbering.numberingStyle'),
+    'pageNumbering.footerPrefix':         config.getOption('pageNumbering.footerPrefix'),
+    'pageNumbering.pageNumberPerSection': config.getOption('pageNumbering.pageNumberPerSection'),
   };
 
   const buf = pdfBytes.buffer.byteLength === pdfBytes.byteLength

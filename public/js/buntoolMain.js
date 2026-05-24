@@ -167,7 +167,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     }
     onProgress?.('Adding page numbering...');
     // justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config);
-    justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config);
+    justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config, tocEntries);
     console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
     return justIndexPdf;
   }
@@ -211,7 +211,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
   console.log('[10/13] Adding page numbering...');
   try {
     // payloadPdf = await addPageNumberingToPdf(payloadPdf, config);
-    payloadPdf = await addPageNumberingViaWorker(payloadPdf, config);
+    payloadPdf = await addPageNumberingViaWorker(payloadPdf, config, tocEntries);
     console.log(`[10/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add page numbering: `, error.message);

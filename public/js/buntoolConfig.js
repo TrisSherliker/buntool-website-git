@@ -109,6 +109,17 @@ export const validCoversheet = [
     false,
   ];
 
+export const validSectionPrefixes = [
+  "",
+  "Section",
+  "Part",
+];
+
+export const validPageNumberPerSection = [
+  true,
+  false,
+];
+
 class Config {
   /* 
   * Initialise with default configuration
@@ -129,6 +140,7 @@ class Config {
         numberingStyle: "PageX", // Default: Page [X]
         footerPrefix: "", // Default: blank
         pageNumberColour: "black", // Default: black
+        pageNumberPerSection: false, // Default: false
       },
       index: {
         fontFace: "serif", // Default: serif (Noto Serif)
@@ -137,6 +149,7 @@ class Config {
         outlineItemStyle: "withPage", // Default: with page
         showTableBorders: true, // Default: true
         justTheIndex: false, // Default: false
+        sectionPrefix: "Section", // Default: "Section"
       },
       pageOptions: {
         printableBundle: false, // Default: false
@@ -206,6 +219,12 @@ class Config {
     if (!justTheIndex.includes(this.options.index.justTheIndex)) {
       throw new Error(`Invalid justTheIndex option: ${this.options.index.justTheIndex}`);
     }
+    if (!validSectionPrefixes.includes(this.options.index.sectionPrefix)) {
+      throw new Error(`Invalid section prefix: ${this.options.index.sectionPrefix}`);
+    }
+    if (!validPageNumberPerSection.includes(this.options.pageNumbering.pageNumberPerSection)) {
+      throw new Error(`Invalid pageNumberPerSection option: ${this.options.pageNumbering.pageNumberPerSection}`);
+    }
   }
       
   /**
@@ -216,8 +235,8 @@ class Config {
  validateStructure() {
     const requiredPaths = {
       heading: ["claimNumber", "bundleTitle", "projectName", "confidential", "fontSize"],
-      pageNumbering: ["footerFont", "footerFontSize", "alignment", "numberingStyle", "footerPrefix", "pageNumberColour"],
-      index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex"],
+      pageNumbering: ["footerFont", "footerFontSize", "alignment", "numberingStyle", "footerPrefix", "pageNumberColour", "pageNumberPerSection"],
+      index: ["fontFace", "fontSize", "dateStyle", "outlineItemStyle", "showTableBorders", "justTheIndex", "sectionPrefix"],
       pageOptions: ["printableBundle", "coversheet"],
     };
     

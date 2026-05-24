@@ -26,10 +26,12 @@ function groupRowsByPage(rows) {
   }, {});
 }
 
-function formatOutlineItem(entry, cv) {
+function formatOutlineItem(entry, section, cv) {
   const style = cv['index.outlineItemStyle'];
   const { title, date } = entry;
-  const page = entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage;
+  const page = cv['pageNumbering.pageNumberPerSection']
+    ? `${section?.sectionLabel || ''}${entry.beginsOnPageOfSection}`
+    : (entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage);
   switch (style) {
     case 'withPage':        return `${title} - pg. ${page}`;
     case 'withDate':        return date ? `${title} (${date})` : title;
@@ -106,7 +108,7 @@ function doAddOutlineItems(pdfBytes, tocEntries, cv) {
       });
     }
     for (const entry of section.entries) {
-      const formattedTitle = formatOutlineItem(entry, cv);
+      const formattedTitle = formatOutlineItem(entry, section, cv);
       const outlinePage = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
       outlineIterator.insert({
         title: `[${entry.tabNumber.toString().padStart(maxTabNumberLength, '0')}] ${formattedTitle}`,

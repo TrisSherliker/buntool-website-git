@@ -134,6 +134,7 @@ export async function createTocEntries(indexData, config) {
         tabNumber:             tabNumberTracker,
         title:                 file.title,
         date:                  file.date,
+        pageCount:             file.pageCount,
         beginsOnPdfPage:       pdfPageCountTracker + 1 + coversheetOffset,
         beginsOnPageOfSection: sectionPageCountTracker + 1,
         filename:              file.filename,
@@ -549,33 +550,40 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     
     // Prepare table data
     const showDate = config.getOption('index.dateStyle') !== 'None';  // move up, needed here
+    const pageNumberPerSection = config.getOption('pageNumbering.pageNumberPerSection');
     const body = [];
     for (const section of tocEntries) {
       if (section.sectionID !== '0000') {
-        // Set actualPdfStartPageWithToc on  tocEntries itself, so 
-        // addHyperlinks/addOutlineItems can use them -- this accounts 
+        // Set actualPdfStartPageWithToc on  tocEntries itself, so
+        // addHyperlinks/addOutlineItems can use them -- this accounts
         // for the toc adding additional pages after pre-calc
         section.actualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
         // People might have views about how to structure section names so make config'ble
         const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
+        const sectionPageDisplay = pageNumberPerSection
+          ? `${section.sectionLabel || ''}1`
+          : section.actualPdfStartPageWithToc;
         // now push values for the table:
         body.push({
           tabNumber:    '',
           title: [left, section.sectionTitle].filter(Boolean).join(': ') || '',
           ...(showDate && { formattedDate: '' }),
-          actualPdfStartPageWithToc: section.entries.length > 0 ? section.actualPdfStartPageWithToc : '',
+          actualPdfStartPageWithToc: section.entries.length > 0 ? sectionPageDisplay : '',
           isSectionHeading: true
         });
       }
       for (const entry of section.entries) {
         // as above, set new actual start page property for tocEntries entry:
         entry.actualPdfStartPageWithToc = entry.beginsOnPdfPage + expectedTocLength;
+        const entryPageDisplay = pageNumberPerSection
+          ? `${section.sectionLabel || ''}${entry.beginsOnPageOfSection}`
+          : entry.actualPdfStartPageWithToc;
         // now push values for the table:
         body.push({
           tabNumber:   entry.tabNumber,
           title:       entry.title,
           ...(showDate && { formattedDate: entry.formattedDate || '' }),
-          actualPdfStartPageWithToc: entry.actualPdfStartPageWithToc,
+          actualPdfStartPageWithToc: entryPageDisplay,
           isSectionHeading: false
         });
       }

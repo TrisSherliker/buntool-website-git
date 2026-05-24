@@ -38,13 +38,16 @@ async function loadFont(pdfDoc, fontName) {
 /**
  * @param {ArrayBuffer} buffer - transferred PDF bytes
  * @param {Object} cv - flat configValues dict keyed by config path strings
+ * @param {Array<string>} pageLabels - sparse array of per-page display labels (section-relative); only populated when pageNumberPerSection is true
  * @returns {Promise<Uint8Array>}
  */
-async function doAddPageNumbering(buffer, cv) {
-  const pageNumberingStyle = cv['pageNumbering.numberingStyle'];
-  const footerLabelText    = cv['pageNumbering.footerPrefix'] ?? '';
-  const footerAlignment    = cv['pageNumbering.alignment'];
-  const footerFont         = cv['pageNumbering.footerFont'];
+async function doAddPageNumbering(buffer, cv, pageLabels = []) {
+  const pageNumberingStyle    = cv['pageNumbering.numberingStyle'];
+  const footerLabelText       = cv['pageNumbering.footerPrefix'] ?? '';
+  const footerAlignment       = cv['pageNumbering.alignment'];
+  const footerFont            = cv['pageNumbering.footerFont'];
+  const pageNumberPerSection  = cv['pageNumbering.pageNumberPerSection'];
+  const widestPageLabel       = cv['pageNumbering.widestPageLabel'] || '';
 
   const pdfDoc = await pdflib.PDFDocument.load(new Uint8Array(buffer));
   const pages  = pdfDoc.getPages();
@@ -55,13 +58,14 @@ async function doAddPageNumbering(buffer, cv) {
 
   const totalPageCount    = pages.length;
   const widestDummyNumber = '8'.repeat(totalPageCount.toString().length);
+  const widestDisplayStr  = pageNumberPerSection && widestPageLabel ? widestPageLabel : widestDummyNumber;
 
   const labelFormats = {
-    PageX:    `Page ${widestDummyNumber}`,
-    PageXofY: `Page ${widestDummyNumber} of ${widestDummyNumber}`,
-    X:        `${widestDummyNumber}`,
-    XofY:     `${widestDummyNumber} of ${widestDummyNumber}`,
-    XslashY:  `${widestDummyNumber}/${widestDummyNumber}`,
+    PageX:    `Page ${widestDisplayStr}`,
+    PageXofY: pageNumberPerSection ? `Page ${widestDisplayStr}` : `Page ${widestDummyNumber} of ${widestDummyNumber}`,
+    X:        `${widestDisplayStr}`,
+    XofY:     pageNumberPerSection ? `${widestDisplayStr}` : `${widestDummyNumber} of ${widestDummyNumber}`,
+    XslashY:  pageNumberPerSection ? `${widestDisplayStr}` : `${widestDummyNumber}/${widestDummyNumber}`,
   };
   const longestLabel = `${footerLabelText} ${labelFormats[pageNumberingStyle] || labelFormats.PageX}`;
   let maxLabelWidth  = textLabelFont.widthOfTextAtSize(longestLabel, textLabelSize);
@@ -82,12 +86,15 @@ async function doAddPageNumbering(buffer, cv) {
   const footerColour = colourMap[cv['pageNumbering.pageNumberColour']] ?? colourMap.black;
 
   for (const [pageIdx, thisPage] of pages.entries()) {
+    const displayNum = pageNumberPerSection && pageLabels[pageIdx] != null
+      ? pageLabels[pageIdx]
+      : pageIdx + 1;
     const footerTextFormats = {
-      PageX:    `Page ${pageIdx + 1}`,
-      PageXofY: `Page ${pageIdx + 1} of ${totalPageCount}`,
-      X:        `${pageIdx + 1}`,
-      XofY:     `${pageIdx + 1} of ${totalPageCount}`,
-      XslashY:  `${pageIdx + 1}/${totalPageCount}`,
+      PageX:    `Page ${displayNum}`,
+      PageXofY: pageNumberPerSection ? `Page ${displayNum}` : `Page ${pageIdx + 1} of ${totalPageCount}`,
+      X:        `${displayNum}`,
+      XofY:     pageNumberPerSection ? `${displayNum}` : `${pageIdx + 1} of ${totalPageCount}`,
+      XslashY:  pageNumberPerSection ? `${displayNum}` : `${pageIdx + 1}/${totalPageCount}`,
     };
     const baseFooterText = footerTextFormats[pageNumberingStyle] || footerTextFormats.PageX;
     const footerText = `​​${footerLabelText ? `${footerLabelText} ` : ''}${baseFooterText}`;
@@ -130,7 +137,7 @@ self.postMessage({ ready: true });
 
 self.addEventListener('message', async (e) => {
   console.log('[FooterWorker] onmessage received');
-  const { buffer, configValues } = e.data;
+  const { buffer, configValues, pageLabels = [] } = e.data;
 
   let workerPeakBytes = performance?.memory?.usedJSHeapSize ?? null;
   const peakPoll = setInterval(() => {
@@ -139,7 +146,7 @@ self.addEventListener('message', async (e) => {
   }, 50);
 
   try {
-    const result = await doAddPageNumbering(buffer, configValues);
+    const result = await doAddPageNumbering(buffer, configValues, pageLabels);
     clearInterval(peakPoll);
     const finalSample = performance?.memory?.usedJSHeapSize ?? null;
     if (finalSample != null && finalSample > (workerPeakBytes ?? 0)) workerPeakBytes = finalSample;
