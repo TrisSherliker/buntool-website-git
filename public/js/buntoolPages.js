@@ -114,6 +114,9 @@ export async function validateCoverPage(file) {
 }
 
 /**
+ * REPLACED IN CURRENT IMPLEMENTATION BY mergePdfsByTOC in buntoolMerge.js, USING MUPDF
+ * PRESERVE THIS CODE FOR ROLLBACK AND POTENTIAL BETTER MEMORY MANAGEMENT
+ * ALSO THIS MIGHT BE EASIER TO BATCH OUT
  * Merges multiple PDF files according to the order specified in the TOC entries.
  * @param {Array<Object>} indexData - Array of TOC entry objects containing filename and metadata (and section headers)
  * @param {Map<string, File>} filesMap - Map of filenames to File objects
