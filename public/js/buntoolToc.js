@@ -548,26 +548,17 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding - 4;
     
     // Prepare table data
-    // Set actualPdfStartPageWithToc on original tocEntries so addHyperlinks/addOutlineItems can use 
-    // them -- this accounts for the toc adding additional pages after pre-calculation
-    for (const entry of tocEntries) {
-      entry.actualPdfStartPageWithToc = Number(entry.thisPage) + expectedTocLength;
-    }
-
-    // const body = tocEntries.map(({ filename, ...rest }) => rest); // Remove the filename field from the tocEntries
-    // for (const entry of body) { // Clear page number for section breaks in table display
-    //   if (entry.sectionBreak) {
-    //     entry.thisPage = '';
-    //     entry.actualPdfStartPageWithToc = '';
-    //   }
-    // }
-    const sectionPrefix = ;
     const showDate = config.getOption('index.dateStyle') !== 'None';  // move up, needed here
     const body = [];
     for (const section of tocEntries) {
       if (section.sectionNumber !== null) {
+        // Set actualPdfStartPageWithToc on  tocEntries itself, so 
+        // addHyperlinks/addOutlineItems can use them -- this accounts 
+        // for the toc adding additional pages after pre-calc
         const snActualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
+        // People might have views about how to structure section names so make config'ble
         const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
+        // now push values for the table:
         body.push({
           tabNumber:    '',
           title: [left, section.sectionTitle].filter(Boolean).join(': ') || '',
@@ -577,12 +568,14 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         });
       }
       for (const entry of section.entries) {
-        entry.entryActualPdfStartPageWithToc = entry.beginsOnPdfPage + expectedTocLength; // set on entry for downstream consumers
+        // as above, set new actual start page property for tocEntries entry:
+        entry.actualPdfStartPageWithToc = entry.beginsOnPdfPage + expectedTocLength;
+        // now push values for the table:
         body.push({
-          tabNumber:    entry.tabNumber,
-          title:        entry.title,
+          tabNumber:   entry.tabNumber,
+          title:       entry.title,
           ...(showDate && { formattedDate: entry.formattedDate || '' }),
-          actualPdfStartPageWithToc: entry.entryActualPdfStartPageWithToc,
+          actualPdfStartPageWithToc: entry.actualPdfStartPageWithToc,
           isSectionHeading: false
         });
       }
@@ -639,7 +632,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       
       //Shading for section breaks
       didParseCell: (data) => {
-        if (data.section === "body" && data.row.raw.sectionBreak) {
+        if (data.section === "body" && data.row.raw.isSectionHeading) {
           data.cell.styles.fillColor = [225, 225, 225];
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.font = fontForTitle;
@@ -666,7 +659,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
             width: tableWidthSetting,  // Width of the row (=entire table width)
             height: data.row.height, // Height of the row
             pageNumber: data.pageNumber, // Page number where the row is located
-            sectionMarker: data.row.raw.sectionBreak ? true : false // Whether this row is a section break
+            sectionMarker: data.row.raw.isSectionHeading // Whether this row is a section break
           };
           rowCoordinates.push(rowInfo);
         }
