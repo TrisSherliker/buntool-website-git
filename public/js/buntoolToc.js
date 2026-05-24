@@ -551,11 +551,11 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const showDate = config.getOption('index.dateStyle') !== 'None';  // move up, needed here
     const body = [];
     for (const section of tocEntries) {
-      if (section.sectionNumber !== null) {
+      if (section.sectionID !== '0000') {
         // Set actualPdfStartPageWithToc on  tocEntries itself, so 
         // addHyperlinks/addOutlineItems can use them -- this accounts 
         // for the toc adding additional pages after pre-calc
-        const snActualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
+        section.actualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
         // People might have views about how to structure section names so make config'ble
         const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
         // now push values for the table:
@@ -563,7 +563,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
           tabNumber:    '',
           title: [left, section.sectionTitle].filter(Boolean).join(': ') || '',
           ...(showDate && { formattedDate: '' }),
-          actualPdfStartPageWithToc: section.entries.length > 0 ? snActualPdfStartPageWithToc : '',
+          actualPdfStartPageWithToc: section.entries.length > 0 ? section.actualPdfStartPageWithToc : '',
           isSectionHeading: true
         });
       }

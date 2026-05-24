@@ -29,7 +29,7 @@ function groupRowsByPage(rows) {
 function formatOutlineItem(entry, cv) {
   const style = cv['index.outlineItemStyle'];
   const { title, date } = entry;
-  const page = entry.actualPdfStartPageWithToc ?? entry.thisPage;
+  const page = entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage;
   switch (style) {
     case 'withPage':        return `${title} - pg. ${page}`;
     case 'withDate':        return date ? `${title} (${date})` : title;
@@ -47,15 +47,19 @@ function doAddHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, cv) {
   const rowsByPage = groupRowsByPage(tocTableRowCoordinates);
   const coversheetOffset = cv['pageOptions.coversheet'] ? 1 : 0;
 
+  const entryByTabNumber = new Map();
+  for (const section of tocEntries) {
+    for (const entry of section.entries) entryByTabNumber.set(entry.tabNumber, entry);
+  }
+
   const doc = mupdf.Document.openDocument(pdfBytes, 'application/pdf');
   for (const [pageNumber, rows] of Object.entries(rowsByPage)) {
     const page = doc.loadPage(Number(pageNumber) - 1 + coversheetOffset);
     for (const row of rows) {
       const { x, y, width, height, tabNumber } = row;
-      const tocEntry = tabNumber
-        ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null;
+      const tocEntry = tabNumber ? entryByTabNumber.get(tabNumber) : null;
       if (!tocEntry) continue;
-      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.thisPage) - 1;
+      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.beginsOnPdfPage) - 1;
       page.createLink(
         [x * pts, y * pts, x * pts + width * pts, y * pts + height * pts],
         doc.formatLinkURI({ type: 'XYZ', page: destinationPageNumber, x: 0, y: 0, zoom: 100 })
@@ -77,9 +81,13 @@ function doAddOutlineItems(pdfBytes, tocEntries, cv) {
   const outlineIterator = doc.outlineIterator();
   const coversheetOffset = cv['pageOptions.coversheet'] ? 1 : 0;
 
-  const validTabNumbers = tocEntries.map(e => e.tabNumber).filter(n => typeof n === 'number');
-  const maxTabNumber = validTabNumbers.length > 0 ? Math.max(...validTabNumbers) : 1;
-  const maxTabNumberLength = maxTabNumber.toString().length;
+  let maxTabNumber = 0;
+  for (const section of tocEntries) {
+    for (const entry of section.entries) {
+      if (entry.tabNumber > maxTabNumber) maxTabNumber = entry.tabNumber;
+    }
+  }
+  const maxTabNumberLength = maxTabNumber > 0 ? maxTabNumber.toString().length : 1;
 
   outlineIterator.insert({
     title: `[${'0'.padStart(maxTabNumberLength, '0')}] Index`,
@@ -87,23 +95,26 @@ function doAddOutlineItems(pdfBytes, tocEntries, cv) {
     uri: doc.formatLinkURI({ page: coversheetOffset, type: 'XYZ', zoom: 100 }),
   });
 
-  tocEntries.forEach(entry => {
-    const formattedTitle = formatOutlineItem(entry, cv);
-    const outlinePage = (entry.actualPdfStartPageWithToc || entry.thisPage) - 1;
-    if (entry.sectionBreak) {
+  for (const section of tocEntries) {
+    if (section.sectionID !== '0000') {
+      const sectionTitle = [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || `Section ${section.sectionNumber}`;
+      const outlinePage = (section.actualPdfStartPageWithToc || section.beginsOnPdfPage) - 1;
       outlineIterator.insert({
-        title: `${formattedTitle}`,
+        title: sectionTitle,
         open: true,
         uri: doc.formatLinkURI({ page: outlinePage, type: 'XYZ', x: 0, y: 0, zoom: 100 }),
       });
-    } else {
+    }
+    for (const entry of section.entries) {
+      const formattedTitle = formatOutlineItem(entry, cv);
+      const outlinePage = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
       outlineIterator.insert({
         title: `[${entry.tabNumber.toString().padStart(maxTabNumberLength, '0')}] ${formattedTitle}`,
         open: true,
         uri: doc.formatLinkURI({ page: outlinePage, type: 'XYZ', x: 0, y: 0, zoom: 100 }),
       });
     }
-  });
+  }
 
   outlineIterator.destroy();
   console.log('[MetaWorker] outline items added');
@@ -127,15 +138,32 @@ function doSetMetadata(pdfBytes, tocEntries, cv) {
   doc.setMetaData('Subject',  cv['heading.projectName']  || '');
   doc.setMetaData('Keywords', cv['heading.claimNumber']  || '');
 
-  const buntoolIndexMetadata = tocEntries.map((entry, index) => ({
-    index,
-    tab:      entry.sectionBreak ? null : entry.tabNumber,
-    title:    entry.title,
-    date:     entry.sectionBreak ? null : entry.date,
-    section:  entry.sectionBreak ? true : false,
-    page:     entry.sectionBreak ? null : (entry.actualPdfStartPageWithToc || entry.thisPage),
-    filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
-  }));
+  const buntoolIndexMetadata = [];
+  let metaIndex = 0;
+  for (const section of tocEntries) {
+    if (section.sectionID !== '0000') {
+      buntoolIndexMetadata.push({
+        index:    metaIndex++,
+        tab:      null,
+        title:    [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || '',
+        date:     null,
+        section:  true,
+        page:     section.actualPdfStartPageWithToc || section.beginsOnPdfPage,
+        filename: null,
+      });
+    }
+    for (const entry of section.entries) {
+      buntoolIndexMetadata.push({
+        index:    metaIndex++,
+        tab:      entry.tabNumber,
+        title:    entry.title,
+        date:     entry.date,
+        section:  false,
+        page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
+        filename: `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
+      });
+    }
+  }
 
   doc.setMetaData('info:BundleIndex', JSON.stringify({
     version: 2,

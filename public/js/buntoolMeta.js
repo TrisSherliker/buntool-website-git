@@ -36,7 +36,7 @@ function formatOutlineItem(entry, config) {
   const style = config.getOption('index.outlineItemStyle');
   const title = entry.title;
   const date = entry.date;
-  const page = entry.actualPdfStartPageWithToc ? entry.actualPdfStartPageWithToc : entry.thisPage; // fallback to thisPage if actualPdfStartPageWithToc is not set (e.g. for section breaks)
+  const page = entry.actualPdfStartPageWithToc ?? entry.beginsOnPdfPage;
 
   switch (style) {
     case 'withPage':
@@ -125,14 +125,18 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
 
   let doc = mupdf.Document.openDocument(pdfBytes, "application/pdf");
 
+  const entryByTabNumber = new Map();
+  for (const section of tocEntries) {
+    for (const entry of section.entries) entryByTabNumber.set(entry.tabNumber, entry);
+  }
+
   for (const [pageNumber, rows] of Object.entries(rowsByPage)) {
     const page = doc.loadPage(pageNumber - 1 + coversheetOffset);
     for (const row of rows) {
       const { x, y, width, height, tabNumber} = row;
-      const tocEntry = tabNumber
-        ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null //blank for section beaks, no hyperlink needed
-      if (!tocEntry) continue; // skip if no matching TOC entry is found
-      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.thisPage) - 1; // mupdf pages are 0-indexed
+      const tocEntry = tabNumber ? entryByTabNumber.get(tabNumber) : null;
+      if (!tocEntry) continue;
+      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.beginsOnPdfPage) - 1;
 
       page.createLink(
         [x * pts, y * pts, x * pts + width * pts, y * pts + height * pts],
@@ -175,53 +179,40 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
   const outlineIterator = doc.outlineIterator();
   const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
   // find how many digits in the largest tab number for padding
-  const validTabNumbers = tocEntries.map(e => e.tabNumber).filter(n => typeof n === 'number');
-  const maxTabNumber = validTabNumbers.length > 0 ? Math.max(...validTabNumbers) : 1;
-  const maxTabNumberLength = maxTabNumber.toString().length;
+  let maxTabNumber = 0;
+  for (const section of tocEntries) {
+    for (const entry of section.entries) {
+      if (entry.tabNumber > maxTabNumber) maxTabNumber = entry.tabNumber;
+    }
+  }
+  const maxTabNumberLength = maxTabNumber > 0 ? maxTabNumber.toString().length : 1;
 
-  // outline item for index
   outlineIterator.insert({
     title: `[${"0".toString().padStart(maxTabNumberLength, '0')}] Index`,
     open: true,
-    uri: doc.formatLinkURI({
-      page: coversheetOffset,
-      type: "XYZ",
-      zoom: 100
-    })
+    uri: doc.formatLinkURI({ page: coversheetOffset, type: "XYZ", zoom: 100 })
   });
 
-  // outline item for each document
-
-  
-  tocEntries.forEach(entry => {
-    const formattedTitle = formatOutlineItem(entry, config);
-    const outlinePage = (entry.actualPdfStartPageWithToc || entry.thisPage) - 1; // mupdf pages are 0-indexed
-    if (entry.sectionBreak) {
-        outlineIterator.insert({
-        title: `${formattedTitle}`,
+  for (const section of tocEntries) {
+    if (section.sectionID !== '0000') {
+      const sectionTitle = [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || `Section ${section.sectionNumber}`;
+      const outlinePage = (section.actualPdfStartPageWithToc || section.beginsOnPdfPage) - 1;
+      outlineIterator.insert({
+        title: sectionTitle,
         open: true,
-        uri: doc.formatLinkURI({
-          page: outlinePage,
-          type: "XYZ",
-          x: 0,
-          y: 0,
-          zoom: 100
-        })
+        uri: doc.formatLinkURI({ page: outlinePage, type: "XYZ", x: 0, y: 0, zoom: 100 })
       });
-    } else {
+    }
+    for (const entry of section.entries) {
+      const formattedTitle = formatOutlineItem(entry, config);
+      const outlinePage = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
       outlineIterator.insert({
         title: `[${entry.tabNumber.toString().padStart(maxTabNumberLength, '0')}] ${formattedTitle}`,
         open: true,
-        uri: doc.formatLinkURI({
-          page: outlinePage,
-          type: "XYZ",
-          x: 0,
-          y: 0,
-          zoom: 100
-        })
+        uri: doc.formatLinkURI({ page: outlinePage, type: "XYZ", x: 0, y: 0, zoom: 100 })
       });
     }
-  });
+  }
 
   outlineIterator.destroy();
   console.log(`Outline items added`);
@@ -264,18 +255,32 @@ export function setMetadata(pdfBytes, tocEntries, config) {
   );
 
   // add custom document metadata field "Bundle Index" which stores tocEntries object:
-  const buntoolIndexMetadata = tocEntries.map(entry => ({
-    // new index property for ordering (based on position within tocEntries):
-    index:  tocEntries.indexOf(entry),
-    tab: entry.sectionBreak ? null : entry.tabNumber,
-    title: entry.title,
-    date: entry.sectionBreak ? null : entry.date,
-    section: entry.sectionBreak ? true : false,
-    // Use actualPdfStartPageWithToc (includes TOC offset) instead of thisPage
-    page: entry.sectionBreak ? null : (entry.actualPdfStartPageWithToc || entry.thisPage),
-    // make new filename to avoid betraying data:
-    filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`
-  }));
+  const buntoolIndexMetadata = [];
+  let metaIndex = 0;
+  for (const section of tocEntries) {
+    if (section.sectionID !== '0000') {
+      buntoolIndexMetadata.push({
+        index:    metaIndex++,
+        tab:      null,
+        title:    [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || '',
+        date:     null,
+        section:  true,
+        page:     section.actualPdfStartPageWithToc || section.beginsOnPdfPage,
+        filename: null,
+      });
+    }
+    for (const entry of section.entries) {
+      buntoolIndexMetadata.push({
+        index:    metaIndex++,
+        tab:      entry.tabNumber,
+        title:    entry.title,
+        date:     entry.date,
+        section:  false,
+        page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
+        filename: `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
+      });
+    }
+  }
   // Store only config in info:BundleIndex (entries are in the annotation below).
   // mupdf getMetaData truncates at ~500 chars; config alone is ~290 chars and fits safely.
   doc.setMetaData("info:BundleIndex", JSON.stringify({
