@@ -36,7 +36,7 @@ function formatOutlineItem(entry, config) {
   const style = config.getOption('index.outlineItemStyle');
   const title = entry.title;
   const date = entry.date;
-  const page = entry.actualStartPage ? entry.actualStartPage : entry.thisPage; // fallback to thisPage if actualStartPage is not set (e.g. for section breaks)
+  const page = entry.actualPdfStartPageWithToc ? entry.actualPdfStartPageWithToc : entry.thisPage; // fallback to thisPage if actualPdfStartPageWithToc is not set (e.g. for section breaks)
 
   switch (style) {
     case 'withPage':
@@ -132,7 +132,7 @@ export function addHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, conf
       const tocEntry = tabNumber
         ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null //blank for section beaks, no hyperlink needed
       if (!tocEntry) continue; // skip if no matching TOC entry is found
-      const destinationPageNumber = (tocEntry.actualStartPage || tocEntry.thisPage) - 1; // mupdf pages are 0-indexed
+      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.thisPage) - 1; // mupdf pages are 0-indexed
 
       page.createLink(
         [x * pts, y * pts, x * pts + width * pts, y * pts + height * pts],
@@ -195,7 +195,7 @@ export function addOutlineItems(pdfBytes, tocEntries, config) {
   
   tocEntries.forEach(entry => {
     const formattedTitle = formatOutlineItem(entry, config);
-    const outlinePage = (entry.actualStartPage || entry.thisPage) - 1; // mupdf pages are 0-indexed
+    const outlinePage = (entry.actualPdfStartPageWithToc || entry.thisPage) - 1; // mupdf pages are 0-indexed
     if (entry.sectionBreak) {
         outlineIterator.insert({
         title: `${formattedTitle}`,
@@ -271,8 +271,8 @@ export function setMetadata(pdfBytes, tocEntries, config) {
     title: entry.title,
     date: entry.sectionBreak ? null : entry.date,
     section: entry.sectionBreak ? true : false,
-    // Use actualStartPage (includes TOC offset) instead of thisPage
-    page: entry.sectionBreak ? null : (entry.actualStartPage || entry.thisPage),
+    // Use actualPdfStartPageWithToc (includes TOC offset) instead of thisPage
+    page: entry.sectionBreak ? null : (entry.actualPdfStartPageWithToc || entry.thisPage),
     // make new filename to avoid betraying data:
     filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`
   }));

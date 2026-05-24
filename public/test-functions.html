@@ -709,8 +709,8 @@
     ];
   }
 
-  async function test_actualStartPage_setByMakeTocPages() {
-    // actualStartPage is only set once makeTocPages is called with the real tocLength.
+  async function test_actualPdfStartPageWithToc_setByMakeTocPages() {
+    // actualPdfStartPageWithToc is only set once makeTocPages is called with the real tocLength.
     // It is NOT set by createTocEntries alone.
     const config    = makeConfig();
     const indexData = [
@@ -722,10 +722,10 @@
     await makeTocPages(entries, {}, config, tocLength);
 
     return [
-      truthy('actualStartPage: set after makeTocPages',                  entries[0].actualStartPage !== undefined, `${entries[0].actualStartPage}`),
-      ok('actualStartPage: first doc = thisPage + tocLength',            entries[0].actualStartPage, entries[0].thisPage + tocLength),
-      ok('actualStartPage: second doc = thisPage + tocLength',           entries[1].actualStartPage, entries[1].thisPage + tocLength),
-      truthy('actualStartPage: tocLength ≥ 1',                          tocLength >= 1, `tocLength: ${tocLength}`),
+      truthy('actualPdfStartPageWithToc: set after makeTocPages',                  entries[0].actualPdfStartPageWithToc !== undefined, `${entries[0].actualPdfStartPageWithToc}`),
+      ok('actualPdfStartPageWithToc: first doc = thisPage + tocLength',            entries[0].actualPdfStartPageWithToc, entries[0].thisPage + tocLength),
+      ok('actualPdfStartPageWithToc: second doc = thisPage + tocLength',           entries[1].actualPdfStartPageWithToc, entries[1].thisPage + tocLength),
+      truthy('actualPdfStartPageWithToc: tocLength ≥ 1',                          tocLength >= 1, `tocLength: ${tocLength}`),
     ];
   }
 
@@ -875,8 +875,8 @@
     const config     = makeConfig();
     const pdf        = await makePdf(10, 'outline');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 7, actualStartPage: 7, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualPdfStartPageWithToc: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 7, actualPdfStartPageWithToc: 7, sectionBreak: null },
     ];
     const result = addOutlineItems(pdf, tocEntries, config);
 
@@ -896,7 +896,7 @@
     const config     = makeConfig();
     const pdf        = await makePdf(5, 'meta');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualPdfStartPageWithToc: 2, sectionBreak: null },
     ];
     const result = setMetadata(pdf, tocEntries, config);
     const meta   = getMeta(result);
@@ -924,8 +924,8 @@
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65,  width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', thisPage: 3, actualPdfStartPageWithToc: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualPdfStartPageWithToc: 5, sectionBreak: null },
     ];
 
     const result = addHyperlinks(merged, rowCoords, tocEntries);
@@ -947,8 +947,8 @@
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', thisPage: 2, actualStartPage: 2, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', thisPage: 2, actualPdfStartPageWithToc: 2, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualPdfStartPageWithToc: 5, sectionBreak: null },
     ];
 
     const result = addHyperlinks(merged, rowCoords, tocEntries);
@@ -973,7 +973,7 @@
       { rowNumber: 1, tabNumber: 1, x: 25, y: 50, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Doc', thisPage: 3, actualStartPage: 3, sectionBreak: null },
+      { tabNumber: 1, title: 'Doc', thisPage: 3, actualPdfStartPageWithToc: 3, sectionBreak: null },
     ];
 
     const withCover    = addHyperlinks(merged, rowCoords, tocEntries, makeConfig({ 'pageOptions.coversheet': true }));
@@ -991,7 +991,7 @@
     const config     = makeConfig();
     const pdf        = await makePdf(5, 'metaWorker');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualPdfStartPageWithToc: 2, sectionBreak: null },
     ];
     const result = await runMetaViaWorker(pdf, [], tocEntries, config);
     const meta   = getMeta(result);
@@ -1013,8 +1013,8 @@
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualPdfStartPageWithToc: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualPdfStartPageWithToc: 5, sectionBreak: null },
     ];
     const result = await runMetaViaWorker(merged, rowCoords, tocEntries, config);
     const links  = getLinks(result, 0);
@@ -1049,8 +1049,8 @@
     const config     = makeConfig();
     const pdf        = await makePdf(5, 'meta');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualPdfStartPageWithToc: 3, sectionBreak: null },
+      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualPdfStartPageWithToc: 5, sectionBreak: null },
     ];
     const withMeta  = setMetadata(pdf, tocEntries, config);
     const extracted = extractBundleMetadata(withMeta);
@@ -1067,7 +1067,7 @@
     const config     = makeConfig();
     const pdf        = await makePdf(3, 'cfg');
     const tocEntries = [
-      { tabNumber: 1, title: 'Doc', date: '2024-01-01', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      { tabNumber: 1, title: 'Doc', date: '2024-01-01', thisPage: 2, actualPdfStartPageWithToc: 2, sectionBreak: null },
     ];
     const withMeta = setMetadata(pdf, tocEntries, config);
     const restored = parseConfigFromMetadata(withMeta);
@@ -1276,7 +1276,7 @@
         test_createTocEntries_structure,
         test_createTocEntries_printable,
         test_createTocEntries_coversheet,
-        test_actualStartPage_setByMakeTocPages,
+        test_actualPdfStartPageWithToc_setByMakeTocPages,
         test_makeTocPages,
         test_makeDummyTocPages,
         test_makeTocPages_eachFont,

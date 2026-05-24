@@ -86,7 +86,7 @@ function formatDate(entryDate, style) {
 /**
  * Creates table of contents entries from index data.
  * Processes input documents and section headings, calculating page numbers and tab numbers.
- * @param {Array<Object>} indexData - Array of index entry objects with filename, title, date, pageCount, and sectionMarker
+ * @param {Array<Object>} indexData - indexData object (buntoolIndexData.js class)
  * @param {Config} config - Configuration object containing pageOptions.printableBundle flag
  * @returns {Promise<Array<Object>>} Array of TOC entry objects with tab numbers, titles, dates, page references, and blankPageAfter flag
  */
@@ -99,7 +99,8 @@ function formatDate(entryDate, style) {
  *   tab number or section number
  *   title,
  *   date,
- *   first page number
+ *   first page number of the pdf
+ *  first page number of the section
  *   filename
 **/
 export async function createTocEntries(indexData, config) {
@@ -107,45 +108,57 @@ export async function createTocEntries(indexData, config) {
   let pdfPageCountTracker = 0;
   let tabNumberTracker = 0;
   let sectionNumberTracker = 0;
-  let sectionBeginPage= 0;
   const coversheetOffset = config.getOption('pageOptions.coversheet') ? 1 : 0;
 
-  for (const [index, entry] of indexData.entries()) {
-    if (entry.sectionMarker === 1) { // section marker test
-      sectionNumberTracker++;
+  for (let si = 0; si < indexData.sections.length; si++) {
+    const section = indexData.sections[si];
+    let sectionPageCountTracker = 0;
+    const isZerothSection = section.sectionID === '0000'; // special case for zeroth section, 
+    // which is really the null section
 
-      // Check if there are any file entries (sectionMarker === 0) after this point
-      const hasFilesAfter = indexData.slice(index + 1).some(e => e.sectionMarker === 0  || !e.sectionMarker);
-      sectionBeginPage = hasFilesAfter ? pdfPageCountTracker + 1 + coversheetOffset : pdfPageCountTracker + coversheetOffset;
-      tocEntries.push({
-        tabNumber: ``,
-        sectionBreak:`Section ${sectionNumberTracker}`,
-        title: entry.title,
-        date: null,
-        thisPage: `${sectionBeginPage}`,
-        filename: null
-      });
-    } else { // for files
+    if (!isZerothSection) sectionNumberTracker++;
+
+    const remainingSections = indexData.sections.slice(si + 1);
+    const hasFilesAfter = section.files.length > 0 || remainingSections.some(s => s.files.length > 0);
+    const sectionBeginPage = hasFilesAfter
+      ? pdfPageCountTracker + 1 + coversheetOffset
+      : pdfPageCountTracker + coversheetOffset;
+
+    const entries = [];
+
+    for (const file of section.files) {
       tabNumberTracker++;
-      const willAddBlankPage = config.getOption('pageOptions.printableBundle') && (entry.pageCount % 2 === 1);
+      const willAddBlankPage = config.getOption('pageOptions.printableBundle') && (file.pageCount % 2 === 1);
 
-      tocEntries.push({
-        tabNumber: tabNumberTracker,
-        sectionBreak: null,
-        title: entry.title,
-        date: entry.date,
-        thisPage: pdfPageCountTracker + 1 + coversheetOffset,
-        filename: entry.filename,
-        blankPageAfter: willAddBlankPage
+      entries.push({
+        tabNumber:             tabNumberTracker,
+        title:                 file.title,
+        date:                  file.date,
+        beginsOnPdfPage:       pdfPageCountTracker + 1 + coversheetOffset,
+        beginsOnPageOfSection: sectionPageCountTracker + 1,
+        filename:              file.filename,
+        blankPageAfter:        willAddBlankPage
       });
-      
-      pdfPageCountTracker += entry.pageCount;
+
+      pdfPageCountTracker += file.pageCount;
+      sectionPageCountTracker += file.pageCount;
       if (willAddBlankPage) {
-        pdfPageCountTracker += 1; // Account for blank page
+        pdfPageCountTracker += 1;
+        sectionPageCountTracker += 1;
       }
     }
+
+    tocEntries.push({
+      sectionID:       section.sectionID,
+      sectionNumber:   isZerothSection ? null : sectionNumberTracker,
+      sectionLabel:    isZerothSection ? null : section.sectionLabel || '', 
+      sectionTitle:    isZerothSection ? null : section.sectionName || '',
+      beginsOnPdfPage: sectionBeginPage,
+      entries
+    });
   }
-  console.log(`TOC entries created: `, tocEntries);
+
+  console.log('TOC entries created: ', tocEntries);
   return tocEntries;
 }
 
@@ -185,17 +198,19 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
   const showBorders = config.getOption('index.showTableBorders');
   const lineHeight = {large: 1.2, medium: 1.1, small: 1}[indexFontSize] || 1.2;
 
-  // First, add formattedDate property
-  tocEntries.forEach(entry => {
-    if (entry.date && !entry.formattedDate) {
+  // First, add formattedDate property to each entry
+  for (const section of tocEntries) {
+    for (const entry of section.entries) {
+      if (entry.date && !entry.formattedDate) {
       entry.formattedDate = formatDate(entry.date, dateStyle);
-    }
-  });
+      }
+    } 
+  };
   
 
     // For now, toc fine tuning is via an internal config 
     // intended for future development
-    // TODO
+    // TODO: finetuning options (or too complex?)
     const tocInternalConfig = {
       font: {
         family: options.font?.family || 'helvetica',
@@ -533,26 +548,52 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding - 4;
     
     // Prepare table data
-    // Set actualStartPage on original tocEntries so addHyperlinks/addOutlineItems can use them
+    // Set actualPdfStartPageWithToc on original tocEntries so addHyperlinks/addOutlineItems can use 
+    // them -- this accounts for the toc adding additional pages after pre-calculation
     for (const entry of tocEntries) {
-      entry.actualStartPage = Number(entry.thisPage) + expectedTocLength;
+      entry.actualPdfStartPageWithToc = Number(entry.thisPage) + expectedTocLength;
     }
 
-    const body = tocEntries.map(({ filename, ...rest }) => rest); // Remove the filename field from the tocEntries
-    for (const entry of body) { // Clear page number for section breaks in table display
-      if (entry.sectionBreak) {
-        entry.thisPage = '';
-        entry.actualStartPage = '';
+    // const body = tocEntries.map(({ filename, ...rest }) => rest); // Remove the filename field from the tocEntries
+    // for (const entry of body) { // Clear page number for section breaks in table display
+    //   if (entry.sectionBreak) {
+    //     entry.thisPage = '';
+    //     entry.actualPdfStartPageWithToc = '';
+    //   }
+    // }
+    const sectionPrefix = ;
+    const showDate = config.getOption('index.dateStyle') !== 'None';  // move up, needed here
+    const body = [];
+    for (const section of tocEntries) {
+      if (section.sectionNumber !== null) {
+        const snActualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
+        const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
+        body.push({
+          tabNumber:    '',
+          title: [left, section.sectionTitle].filter(Boolean).join(': ') || '',
+          ...(showDate && { formattedDate: '' }),
+          actualPdfStartPageWithToc: section.entries.length > 0 ? snActualPdfStartPageWithToc : '',
+          isSectionHeading: true
+        });
+      }
+      for (const entry of section.entries) {
+        entry.entryActualPdfStartPageWithToc = entry.beginsOnPdfPage + expectedTocLength; // set on entry for downstream consumers
+        body.push({
+          tabNumber:    entry.tabNumber,
+          title:        entry.title,
+          ...(showDate && { formattedDate: entry.formattedDate || '' }),
+          actualPdfStartPageWithToc: entry.entryActualPdfStartPageWithToc,
+          isSectionHeading: false
+        });
       }
     }
 
     //define autotable content by reference to headers
-    const showDate = config.getOption('index.dateStyle') !== 'None';
     const headers = {
       tabNumber: 'Tab',
       title: 'Title',
       ...(showDate && {formattedDate: 'Date'}),
-      actualStartPage: 'Page'
+      actualPdfStartPageWithToc: 'Page'
     }
 
     const tableWidthSetting = pageWidth - tocInternalConfig.margins.left - tocInternalConfig.margins.right;

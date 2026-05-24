@@ -29,7 +29,7 @@ function groupRowsByPage(rows) {
 function formatOutlineItem(entry, cv) {
   const style = cv['index.outlineItemStyle'];
   const { title, date } = entry;
-  const page = entry.actualStartPage ?? entry.thisPage;
+  const page = entry.actualPdfStartPageWithToc ?? entry.thisPage;
   switch (style) {
     case 'withPage':        return `${title} - pg. ${page}`;
     case 'withDate':        return date ? `${title} (${date})` : title;
@@ -55,7 +55,7 @@ function doAddHyperlinks(pdfBytes, tocTableRowCoordinates, tocEntries, cv) {
       const tocEntry = tabNumber
         ? tocEntries.find(entry => entry.tabNumber === tabNumber) : null;
       if (!tocEntry) continue;
-      const destinationPageNumber = (tocEntry.actualStartPage || tocEntry.thisPage) - 1;
+      const destinationPageNumber = (tocEntry.actualPdfStartPageWithToc || tocEntry.thisPage) - 1;
       page.createLink(
         [x * pts, y * pts, x * pts + width * pts, y * pts + height * pts],
         doc.formatLinkURI({ type: 'XYZ', page: destinationPageNumber, x: 0, y: 0, zoom: 100 })
@@ -89,7 +89,7 @@ function doAddOutlineItems(pdfBytes, tocEntries, cv) {
 
   tocEntries.forEach(entry => {
     const formattedTitle = formatOutlineItem(entry, cv);
-    const outlinePage = (entry.actualStartPage || entry.thisPage) - 1;
+    const outlinePage = (entry.actualPdfStartPageWithToc || entry.thisPage) - 1;
     if (entry.sectionBreak) {
       outlineIterator.insert({
         title: `${formattedTitle}`,
@@ -133,7 +133,7 @@ function doSetMetadata(pdfBytes, tocEntries, cv) {
     title:    entry.title,
     date:     entry.sectionBreak ? null : entry.date,
     section:  entry.sectionBreak ? true : false,
-    page:     entry.sectionBreak ? null : (entry.actualStartPage || entry.thisPage),
+    page:     entry.sectionBreak ? null : (entry.actualPdfStartPageWithToc || entry.thisPage),
     filename: entry.sectionBreak ? null : `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
   }));
 

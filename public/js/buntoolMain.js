@@ -8,6 +8,7 @@
  * Main logic pipeline module
  */
 import Config from './buntoolConfig.js';
+import IndexData from './buntoolIndexData.js';
 import {
   createTocEntries,
   makeTocPages,
@@ -36,23 +37,7 @@ import {
  */
 export async function processTheBundle(filesMap, indexData, config, onProgress, coversheetFile = null){
 
-  if (!filesMap || filesMap.size === 0) {
-    throw new Error('Error: No files provided');
-  }
-
-  if (!indexData || indexData.length === 0) {
-    throw new Error('Error: No index data provided');
-  }
-
-  if (!config) {
-    throw new Error('Error: No configuration provided');
-  }
-
-  if (config.getOption('pageOptions.coversheet') && !coversheetFile) {
-    throw new Error('Error: Coversheet is enabled but no coversheet file was provided');
-  }
-
-  let payloadPdf = new Uint8Array();
+    let payloadPdf = new Uint8Array();
 
   // TODO: 
   // This internal toc Options config is sketched out but - 
@@ -83,8 +68,33 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     }
   };
 
+  console.log('[0/13] Validating files and indexData structure...');
+  console.log(`Processing bundle: ${indexData.totalFileCount} files across ${indexData.sections.length} section(s), ${indexData.totalPageCount} total pages`);
 
-  console.log('[1/13] Validating configuration structure...');
+  if (!filesMap || filesMap.size === 0) {
+    throw new Error('Error: No files provided');
+  }
+
+  if (!indexData) {
+    throw new Error('Error: No index data provided');
+  }
+  try {
+    indexData.validateIndexSTructure();
+  } catch (error) {
+    console.error(`[ERROR] Index data structure validation error: `, error.message);
+    throw error;
+  }
+  console.log('[0/13]...done')
+  onProgress?.('Validating files and index data...');
+
+  console.log('[1/13] Validating configuration...');
+  if (!config) {
+    throw new Error('Error: No configuration provided');
+  }
+
+  if (config.getOption('pageOptions.coversheet') && !coversheetFile) {
+    throw new Error('Error: Coversheet is enabled but no coversheet file was provided');
+  }
   try //validate structure with method from buntoolConfig
   {
     config.validateStructure();
@@ -93,7 +103,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
       throw error;
   }
   console.log('[1/13]...done')
-  onProgress?.('Validating configuration…');
+  onProgress?.('Validating configuration...');
 
   console.log('[2/13] Validating configuration options...');
   try { //validate options with method from buntoolConfig
@@ -115,8 +125,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
       throw error;
     }
   }
-
-  onProgress?.('Creating table of contents…');
+  onProgress?.('Creating table of contents...');
 
   console.log('[4/13] Creating TOC entries...');
   let tocEntries;
@@ -127,7 +136,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     console.error(`[ERROR] Failed to create TOC entries: `, error.message);
     throw error;
   }
-  onProgress?.('Generating index pages…');
+  onProgress?.('Generating index pages...');
 
   console.log('[5/13] Generating dummy TOC pages...');
   let expectedLengthOfToc = 0;
@@ -156,14 +165,14 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
       justIndexPdf = await mergeTwoPdfs(validatedCoversheet, justIndexPdf);
       console.log(`...prepended coversheet - PDF size: ${justIndexPdf?.length || 0} bytes`);
     }
-    onProgress?.('Adding page numbering…');
+    onProgress?.('Adding page numbering...');
     // justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config);
     justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config);
     console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
     return justIndexPdf;
   }
 
-  onProgress?.('Merging documents…');
+  onProgress?.('Merging documents...');
 
 // PDF HANDLING:
   console.log('[7/13] Merging input PDFs...');
@@ -176,7 +185,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
   }
 
   // Note: filesMap is owned by the frontend — do not clear it here
-  onProgress?.('Merging index with documents…');
+  onProgress?.('Merging index with documents...');
 
   console.log('[8/13] Merging TOC with content PDF...');
   try {
@@ -198,7 +207,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     }
   }
 
-  onProgress?.('Adding page numbering…');
+  onProgress?.('Adding page numbering...');
 
   console.log('[10/13] Adding page numbering...');
   try {
@@ -209,7 +218,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     console.error(`[ERROR] Failed to add page numbering: `, error.message);
     throw error;
   }
-  onProgress?.('Adding hyperlinks…');
+  onProgress?.('Adding hyperlinks...');
 
   console.log('[11-13/13] Running meta worker (hyperlinks → bookmarks → metadata)...');
   try {
