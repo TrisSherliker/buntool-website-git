@@ -149,7 +149,7 @@ class Config {
         outlineItemStyle: "withPage", // Default: with page
         showTableBorders: true, // Default: true
         justTheIndex: false, // Default: false
-        sectionPrefix: "Section", // Default: "Section"
+        sectionPrefix: "", // Default: "Section"
       },
       pageOptions: {
         printableBundle: false, // Default: false
