@@ -257,33 +257,20 @@ export function setMetadata(pdfBytes, tocEntries, config) {
       : ""
   );
 
-  // add custom document metadata field "Bundle Index" which stores tocEntries object:
-  const buntoolIndexMetadata = [];
-  let metaIndex = 0;
-  for (const section of tocEntries) {
-    if (section.sectionID !== '0000') {
-      buntoolIndexMetadata.push({
-        index:    metaIndex++,
-        tab:      null,
-        title:    [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || '',
-        date:     null,
-        section:  true,
-        page:     section.actualPdfStartPageWithToc || section.beginsOnPdfPage,
-        filename: null,
-      });
-    }
-    for (const entry of section.entries) {
-      buntoolIndexMetadata.push({
-        index:    metaIndex++,
-        tab:      entry.tabNumber,
-        title:    entry.title,
-        date:     entry.date,
-        section:  false,
-        page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
-        filename: `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
-      });
-    }
-  }
+  // Build the bundle index metadata in the sections format used by IndexData.
+  // Each section object carries its own files array so restore can reconstruct
+  // the exact section structure without needing the old flat-array heuristics.
+  const buntoolIndexMetadata = tocEntries.map(section => ({
+    sectionID:    section.sectionID,
+    sectionLabel: section.sectionLabel || '',
+    sectionName:  section.sectionTitle || '',
+    files: section.entries.map(entry => ({
+      filename: entry.filename,
+      title:    entry.title,
+      date:     entry.date,
+      page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
+    })),
+  }));
   // Store only config in info:BundleIndex (entries are in the annotation below).
   // mupdf getMetaData truncates at ~500 chars; config alone is ~290 chars and fits safely.
   doc.setMetaData("info:BundleIndex", JSON.stringify({
@@ -301,11 +288,13 @@ export function setMetadata(pdfBytes, tocEntries, config) {
         alignment: config.getOption('pageNumbering.alignment') || 'centre',
         numberingStyle: config.getOption('pageNumbering.numberingStyle') || 'PageX',
         footerPrefix: config.getOption('pageNumbering.footerPrefix') || '',
+        pageNumberPerSection: config.getOption('pageNumbering.pageNumberPerSection') ?? false,
       },
       index: {
         fontFace: config.getOption('index.fontFace') || 'serif',
         dateStyle: config.getOption('index.dateStyle') || 'DD Mon. YYYY',
         outlineItemStyle: config.getOption('index.outlineItemStyle') || 'plain',
+        sectionPrefix: config.getOption('index.sectionPrefix') || '',
       },
       pageOptions: {
         printableBundle: config.getOption('pageOptions.printableBundle') ?? false,

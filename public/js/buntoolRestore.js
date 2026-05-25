@@ -13,6 +13,61 @@ import * as mupdf from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
 import { PDFDocument } from 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/+esm';
 
 /**
+ * FOR LEGACY COMPATIBILITY.
+ * Normalises bundle index metadata into the canonical sections format used by IndexData.
+ *
+ * Handles two input formats:
+ *   - New (sections) format — already canonical; returned unchanged.
+ *   - Legacy (flat) format — array of {section: bool, filename, title, date, page};
+ *     converted to sections format with auto-assigned sectionIDs starting at "0001".
+ *     Legacy section titles like "A: Background Documents" are split into label ("A")
+ *     and name ("Background Documents") by detecting a short colon-separated prefix.
+ *     Documents before the first section marker go into section "0000".
+ *
+ * @param {Array} metadata - Raw metadata array from extractBundleMetadata
+ * @returns {Array} Array of section objects: {sectionID, sectionLabel, sectionName, files[]}
+ */
+export function normaliseBundleMetadata(metadata) {
+  if (!Array.isArray(metadata) || metadata.length === 0) return metadata;
+
+  // Already sections format — sectionID present on top-level entries.
+  if ('sectionID' in metadata[0]) return metadata;
+
+  // Legacy flat format → sections format.
+  const sections = [];
+  let currentSection = { sectionID: '0000', sectionLabel: '', sectionName: '', files: [] };
+  sections.push(currentSection);
+  let nextID = 1;
+
+  for (const entry of metadata) {
+    if (entry.section === true) {
+      // Attempt to split a combined "LABEL: Name" title (e.g. "A: Background Documents").
+      // Only treat a short prefix (≤3 chars) before a colon as a label; longer prefixes
+      // are likely part of the section name itself.
+      const raw = (entry.title || '').trim();
+      const colonIdx = raw.indexOf(':');
+      let label = '', name = raw;
+      if (colonIdx > 0 && colonIdx <= 3) {
+        label = raw.slice(0, colonIdx).trim();
+        name  = raw.slice(colonIdx + 1).trim();
+      }
+      const sectionID = String(nextID++).padStart(4, '0');
+      currentSection = { sectionID, sectionLabel: label, sectionName: name, files: [] };
+      sections.push(currentSection);
+    } else if (entry.filename) {
+      currentSection.files.push({
+        filename: entry.filename,
+        title:    entry.title || '',
+        date:     entry.date  || '',
+        page:     entry.page,
+      });
+    }
+  }
+
+  return sections;
+}
+
+/**
  * Extracts BunTool metadata from a bundle PDF's hidden annotation.
  * Searches for a FreeText annotation containing "BundleIndexData" on the first page.
  *
@@ -96,8 +151,13 @@ export function extractBundleMetadata(pdfBytes) {
  * Splits a bundle PDF into individual documents based on metadata.
  * Uses pdf-lib to extract page ranges for each document.
  *
+ * Handles two metadata formats:
+ *   - New (sections) format: array of {sectionID, sectionLabel, sectionName, files[{filename, title, date, page}]}
+ *   - Legacy (flat) format:  array of {section: bool, filename, title, date, page}
+ *
  * @param {Uint8Array} bundleBytes - The bundle PDF as a Uint8Array
  * @param {Array} metadata - The bundle index metadata array
+ * @param {boolean} [hasCoversheet]
  * @returns {Promise<Map<string, Uint8Array>>} Map of filename → PDF bytes for each extracted document
  */
 export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = false) {
@@ -112,16 +172,31 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
     const bundlePdf = await PDFDocument.load(bundleBytes);
     const totalPages = bundlePdf.getPageCount();
 
-    console.log(`Splitting bundle PDF (${totalPages} pages) into ${metadata.length} items...`);
+    console.log(`Splitting bundle PDF (${totalPages} pages)...`);
     console.log('Metadata entries:', metadata);
 
-    // Filter out section breaks - we only split actual documents
-    // Section breaks have section: true (and filename: null)
-    // Regular documents have section: false and a valid filename
-    const documentEntries = metadata.filter(entry => {
-      // Only exclude entries that are explicitly marked as sections
-      return entry.section !== true;
-    });
+    // Detect format: new sections format has sectionID on each top-level entry.
+    const isNewFormat = metadata.length > 0 && 'sectionID' in metadata[0];
+
+    // Flatten metadata into an ordered list of {filename, page} document entries.
+    let documentEntries;
+    if (isNewFormat) {
+      // New sections format: flatten files from all sections, preserving order.
+      documentEntries = [];
+      for (const section of metadata) {
+        for (const file of (section.files || [])) {
+          if (file.filename && file.page != null) {
+            documentEntries.push({ filename: file.filename, page: file.page });
+          }
+        }
+      }
+      // Sort by page number to ensure bundle order (sections are already ordered,
+      // but guard against any future reordering).
+      documentEntries.sort((a, b) => a.page - b.page);
+    } else {
+      // Legacy flat format: filter out section-break markers.
+      documentEntries = metadata.filter(entry => entry.section !== true && entry.filename && entry.page != null);
+    }
 
     if (documentEntries.length === 0) {
       console.warn('No document entries found in metadata');
@@ -275,8 +350,8 @@ export async function removePageNumbering(pdfBytes) {
  */
 const DEFAULT_CONFIG = {
   heading: { claimNumber: "", bundleTitle: "", projectName: "", confidential: false },
-  pageNumbering: { footerFont: "sansSerif", alignment: "centre", numberingStyle: "PageX", footerPrefix: "" },
-  index: { fontFace: "sansSerif", dateStyle: "DD Mon. YYYY", outlineItemStyle: "plain" },
+  pageNumbering: { footerFont: "sansSerif", alignment: "centre", numberingStyle: "PageX", footerPrefix: "", pageNumberPerSection: false },
+  index: { fontFace: "sansSerif", dateStyle: "DD Mon. YYYY", outlineItemStyle: "plain", sectionPrefix: "" },
   pageOptions: { printableBundle: false, coversheet: false },
 };
 

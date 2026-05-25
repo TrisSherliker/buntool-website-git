@@ -1443,7 +1443,7 @@ bundleInput?.addEventListener('change', async (e) => {
     const bundleBytes = new Uint8Array(arrayBuffer);
 
     // Import unpacking functions from buntoolRestore.js
-    const { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata } =
+    const { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata, normaliseBundleMetadata } =
       await import('./buntoolRestore.js');
 
     // Extract metadata
@@ -1507,56 +1507,77 @@ bundleInput?.addEventListener('change', async (e) => {
 
     const table = document.querySelector('#file-table table');
 
-    // Detect metadata format: new (sections[]) vs old (flat array with .section markers)
-    const isNewFormat = Array.isArray(metadata) && metadata.length > 0 && 'sectionID' in metadata[0];
+    // Normalise legacy flat format to sections format before processing.
+    const sections = normaliseBundleMetadata(metadata);
 
-    if (isNewFormat) {
-      // New IndexData section format
-      for (const section of metadata) {
-        let tbody;
-        if (section.sectionID === '0000') {
-          tbody = getDefaultSection0000();
-        } else {
-          tbody = createSectionTbody(section.sectionID, section.sectionLabel || '', section.sectionName || '');
-          table?.appendChild(tbody);
-          if (!isSectioned) {
-            isSectioned = true;
-            document.getElementById('file-table')?.classList.add('sectioned');
-          }
-          const num = parseInt(section.sectionID, 10);
-          if (!isNaN(num) && num >= nextSectionNum) nextSectionNum = num + 1;
+    let restoreLabel0000 = '', restoreName0000 = '';
+    for (const section of sections) {
+      let tbody;
+      if (section.sectionID === '0000') {
+        tbody = getDefaultSection0000();
+        restoreLabel0000 = section.sectionLabel || '';
+        restoreName0000  = section.sectionName  || '';
+      } else {
+        tbody = createSectionTbody(section.sectionID, section.sectionLabel || '', section.sectionName || '');
+        table?.appendChild(tbody);
+        if (!isSectioned) {
+          isSectioned = true;
+          document.getElementById('file-table')?.classList.add('sectioned');
         }
-        for (const entry of (section.files || [])) {
-          const pdfBytes = extractedFiles.get(entry.filename);
-          if (!pdfBytes) { console.warn(`Missing PDF for: ${entry.filename}`); continue; }
-          const key = uniqueFilename(entry.filename);
-          filesMap.set(key, new File([pdfBytes], entry.filename, { type: 'application/pdf' }));
-          const pageCount = await countPdfPages(filesMap.get(key));
-          frontendInputData[key] = { title: entry.title, date: entry.date || '', pageCount };
-          tbody.appendChild(makeFileRow(key, frontendInputData[key]));
-        }
+        const num = parseInt(section.sectionID, 10);
+        if (!isNaN(num) && num >= nextSectionNum) nextSectionNum = num + 1;
       }
-    } else {
-      // Legacy flat format: [{section: true, title}, {filename, title, date}, …]
-      let currentTbody = getDefaultSection0000();
-      for (const entry of metadata) {
-        if (entry.section) {
-          const sectionID = String(nextSectionNum++).padStart(4, '0');
-          currentTbody = createSectionTbody(sectionID, '', entry.title || '');
-          table?.appendChild(currentTbody);
-          if (!isSectioned) {
-            isSectioned = true;
-            document.getElementById('file-table')?.classList.add('sectioned');
-          }
-        } else {
-          const pdfBytes = extractedFiles.get(entry.filename);
-          if (!pdfBytes) { console.warn(`Missing PDF for: ${entry.filename}`); continue; }
-          const key = uniqueFilename(entry.filename);
-          filesMap.set(key, new File([pdfBytes], entry.filename, { type: 'application/pdf' }));
-          const pageCount = await countPdfPages(filesMap.get(key));
-          frontendInputData[key] = { title: entry.title, date: entry.date || '', pageCount };
-          currentTbody.appendChild(makeFileRow(key, frontendInputData[key]));
-        }
+      for (const entry of (section.files || [])) {
+        const pdfBytes = extractedFiles.get(entry.filename);
+        if (!pdfBytes) { console.warn(`Missing PDF for: ${entry.filename}`); continue; }
+        const key = uniqueFilename(entry.filename);
+        filesMap.set(key, new File([pdfBytes], entry.filename, { type: 'application/pdf' }));
+        const pageCount = await countPdfPages(filesMap.get(key));
+        frontendInputData[key] = { title: entry.title, date: entry.date || '', pageCount };
+        tbody.appendChild(makeFileRow(key, frontendInputData[key]));
+      }
+      if (isSectioned) ensureEmptyPlaceholder(tbody);
+    }
+
+    // If restoring a sectioned bundle, add the editable header row to section 0000.
+    if (isSectioned) {
+      const section0000 = getDefaultSection0000();
+      if (section0000 && !section0000.querySelector('.section-header-row')) {
+        const headerTr = document.createElement('tr');
+        headerTr.className = 'section-header-row';
+        headerTr.dataset.sectionId = '0000';
+        headerTr.innerHTML = `
+          <td class="drag-handle px-2 py-2 cursor-move">${DRAG_ICON_SVG}</td>
+          <td class="px-2 py-2">
+            <input type="text" class="section-label-input" value="${restoreLabel0000}" placeholder="A" title="Section label (e.g. A, 1)" />
+          </td>
+          <td colspan="3" class="px-2 py-2">
+            <input type="text" class="section-name-input" value="${restoreName0000}" placeholder="Type section name" />
+          </td>
+          <td class="px-2 py-2 whitespace-nowrap">
+            <label class="inline-flex items-center px-2 py-1 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded cursor-pointer transition mr-1" title="Add files to this section">
+              + Files
+              <input type="file" class="section-add-files-input sr-only" multiple accept="application/pdf" data-section-id="0000" />
+            </label>
+            <button type="button" class="section-sort-btn text-xs text-gray-500 hover:text-gray-700 transition mr-1" data-section-id="0000" title="Sort files in this section">⇅</button>
+            <button type="button" class="section-delete-btn text-xs text-red-500 hover:text-red-700 transition" data-section-id="0000" title="Delete this section">✕</button>
+          </td>`;
+        headerTr.querySelector('.section-add-files-input')?.addEventListener('change', async (e) => {
+          const files = Array.from(e.target.files);
+          e.target.value = '';
+          if (files.length) await processFiles(files, section0000);
+        });
+        headerTr.querySelector('.section-sort-btn')?.addEventListener('click', () => sortSectionPopover(section0000));
+        headerTr.querySelector('.section-delete-btn')?.addEventListener('click', () => deleteSection(section0000));
+        const handle0000 = headerTr.querySelector('.drag-handle');
+        handle0000?.addEventListener('mousedown', () => { if (reorderMode === 'drag') section0000.draggable = true; });
+        document.addEventListener('mouseup', () => { section0000.draggable = false; }, { capture: true });
+        section0000.draggable = false;
+        section0000.addEventListener('dragstart', handleSectionDragStart);
+        section0000.addEventListener('dragover', handleSectionDragOver);
+        section0000.addEventListener('drop', handleSectionDrop);
+        section0000.addEventListener('dragend', handleSectionDragEnd);
+        section0000.insertBefore(headerTr, section0000.firstChild);
       }
     }
 
