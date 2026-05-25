@@ -89,6 +89,11 @@ export function buildIndexData() {
     });
     sections.push({ sectionID, sectionLabel, sectionName, files });
   });
+  // In sectioned mode, redesignate 0000 → 0001 so downstream sectionID === '0000' guards
+  // treat it as a real section (not the null placeholder).
+  if (state.isSectioned) {
+    sections.forEach((s, i) => { s.sectionID = String(i + 1).padStart(4, '0'); });
+  }
   return new IndexData(sections);
 }
 

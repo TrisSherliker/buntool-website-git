@@ -86,10 +86,10 @@ export async function handleFormSubmit(e, form) {
   state.config.updateOptions(configOptions);
   console.log('Config pushed:', JSON.stringify(state.config));
 
-  // Validate section names
+  // Validate section names — include section 0000 when it is in sectioned mode (has a header row)
   {
-    const unnamedSections = Array.from(document.querySelectorAll('.section-tbody:not(#tbody-section-0000)'))
-      .filter(t => !t.querySelector('.section-name-input')?.value.trim());
+    const unnamedSections = Array.from(document.querySelectorAll('.section-tbody'))
+      .filter(t => t.querySelector('.section-header-row') && !t.querySelector('.section-name-input')?.value.trim());
     if (unnamedSections.length > 0) {
       unnamedSections.forEach(t => {
         const inp = t.querySelector('.section-name-input');
@@ -295,9 +295,13 @@ export async function handleBundleRestore(file) {
     const sections = normaliseBundleMetadata(metadata);
 
     let restoreLabel0000 = '', restoreName0000 = '';
-    for (const section of sections) {
+    for (let si = 0; si < sections.length; si++) {
+      const section = sections[si];
       let tbody;
-      if (section.sectionID === '0000') {
+      // The first section always maps to the DOM's default section-0000 element,
+      // regardless of its stored sectionID (old bundles store '0000'; new sectioned
+      // bundles store '0001' because 0000 is redesignated at build time).
+      if (si === 0) {
         tbody = getDefaultSection0000();
         restoreLabel0000 = section.sectionLabel || '';
         restoreName0000  = section.sectionName  || '';
