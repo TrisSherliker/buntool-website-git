@@ -168,8 +168,10 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
       throw new Error(`Invalid metadata: expected array, got ${typeof metadata}`);
     }
 
-    // Load the bundle PDF with pdf-lib
-    const bundlePdf = await PDFDocument.load(bundleBytes);
+    // Load the bundle PDF with pdf-lib.
+    // throwOnInvalidObject: false makes pdf-lib tolerant of malformed cross-references
+    // or dangling object references that can appear in older BunTool bundles.
+    const bundlePdf = await PDFDocument.load(bundleBytes, { throwOnInvalidObject: false });
     const totalPages = bundlePdf.getPageCount();
 
     console.log(`Splitting bundle PDF (${totalPages} pages)...`);
@@ -215,38 +217,48 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
       const nextEntry = documentEntries[i + 1];
 
       // Skip entries with invalid filename or page
-      if (!entry.filename || entry.page === null || entry.page === undefined) {
+      if (!entry.filename || entry.page == null) {
         console.warn(`Skipping entry with invalid filename or page:`, entry);
         continue;
       }
 
-      // Calculate page range in bundle (0-indexed)
-      // entry.page is 1-indexed bundle page number
-      const bundleStartPage = entry.page - 1;
-      const bundleEndPage = nextEntry ? nextEntry.page - 1 : totalPages;
+      // Calculate page range in bundle (0-indexed); clamp to valid bounds.
+      // entry.page is 1-indexed bundle page number.
+      const bundleStartPage = Math.max(0, entry.page - 1);
+      const bundleEndPage   = Math.min(nextEntry ? nextEntry.page - 1 : totalPages, totalPages);
 
-      // Create a new PDF for this document
-      const docPdf = await PDFDocument.create();
-
-      // Copy pages from bundle to new document
-      const pageIndices = [];
-      for (let p = bundleStartPage; p < bundleEndPage; p++) {
-        pageIndices.push(p);
+      if (bundleStartPage >= bundleEndPage) {
+        console.warn(`  ⚠ Skipping "${entry.filename}": empty page range [${bundleStartPage}, ${bundleEndPage})`);
+        continue;
       }
 
-      const copiedPages = await docPdf.copyPages(bundlePdf, pageIndices);
-      copiedPages.forEach(page => docPdf.addPage(page));
+      const pageIndices = [];
+      for (let p = bundleStartPage; p < bundleEndPage; p++) pageIndices.push(p);
 
-      // Save as Uint8Array
-      let pdfBytes = await docPdf.save();
-
-      // Remove page numbering (async operation)
-      pdfBytes = await removePageNumbering(pdfBytes);
-
-      // Store with filename from metadata
-      extractedFiles.set(entry.filename, pdfBytes);
-
-      console.log(`  ✓ Extracted: ${entry.filename} (bundle pages ${bundleStartPage + 1}-${bundleEndPage}, ${bundleEndPage - bundleStartPage} pages)`);
+      try {
+        const docPdf = await PDFDocument.create();
+        const copiedPages = await docPdf.copyPages(bundlePdf, pageIndices);
+        copiedPages.forEach(page => docPdf.addPage(page));
+        let pdfBytes = await docPdf.save();
+        pdfBytes = await removePageNumbering(pdfBytes);
+        extractedFiles.set(entry.filename, pdfBytes);
+        console.log(`  ✓ Extracted: ${entry.filename} (bundle pages ${bundleStartPage + 1}–${bundleEndPage}, ${pageIndices.length} pages)`);
+      } catch (entryError) {
+        console.error(`  ✗ Failed to extract "${entry.filename}" (pages ${bundleStartPage + 1}–${bundleEndPage}):`, entryError);
+        // Store the raw page range as a fallback so the file appears in the table
+        // even if page-numbering removal didn't work. The user can re-add the
+        // original file if the extracted copy is unusable.
+        try {
+          const fallbackDoc = await PDFDocument.create();
+          const fallbackPages = await fallbackDoc.copyPages(bundlePdf, pageIndices);
+          fallbackPages.forEach(page => fallbackDoc.addPage(page));
+          const fallbackBytes = await fallbackDoc.save();
+          extractedFiles.set(entry.filename, fallbackBytes);
+          console.warn(`  ↩ Stored raw fallback for "${entry.filename}"`);
+        } catch (fallbackError) {
+          console.error(`  ✗ Fallback also failed for "${entry.filename}":`, fallbackError);
+        }
+      }
     }
 
     if (hasCoversheet) {

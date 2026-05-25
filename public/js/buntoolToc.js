@@ -190,7 +190,7 @@ export async function createTocEntries(indexData, config) {
  */
 export async function makeTocPages(tocEntries, options = {}, config, expectedTocLength = 1) {
 
-  const title = config.getOption('heading.bundleTitle');
+  const title = config.getOption('heading.bundleTitle') || 'Bundle Index';
   const project = config.getOption('heading.projectName');
   const claimNumber = config.getOption('heading.claimNumber');
   const dateStyle = config.getOption('index.dateStyle');
@@ -473,7 +473,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     doc.setFont(fontForTitle, 'bold'); //setfotstyle deprecated
     let titleDimensions = {};
     if (config.getOption('heading.confidential')) { //if confidential, some measuring is needed since the red text must be separately rendered. Solution: write all in black, then overwrite the confidential part in red:
-      const confiPlusTitle = `CONFIDENTIAL ${config.getOption('heading.bundleTitle')}`;
+      const confiPlusTitle = `CONFIDENTIAL ${config.getOption('heading.bundleTitle')}`.trim();
       const confiPlusTitleDimensions = doc.getTextDimensions(confiPlusTitle, {
         maxWidth: pageWidth * 0.7,
         align: 'center'

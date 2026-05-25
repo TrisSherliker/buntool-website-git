@@ -19,7 +19,7 @@ const STEPS = [
   {
     element: 'file-drop-zone',
     title: 'Step 2: Add Your Documents',
-    body: 'Add PDF documents by clicking the button, or dragging and dropping them here. They stay on your device — nothing is uploaded.',
+    body: 'Add PDF documents by clicking "Add Documents", or dragging and dropping them here. Use "Add Section" to group documents into named parts. They stay on your device — nothing is uploaded.',
   },
   {
     element: 'coversheet-section',
@@ -30,15 +30,15 @@ const STEPS = [
     element: 'file-table',
     title: 'Step 3: Review & Reorder',
     body: [
-      'Here you can check document names and dates, and drag rows to reorder them. BunTool extracts dates from filenames automatically — click any title or date to edit it.',
+      'Check document names and dates here, and drag rows to reorder them within a section. BunTool extracts dates from filenames automatically — click any title or date to edit it.',
       'It\'s best to save documents in a single folder and give them useful names including dates — like "Claim Form 2 June 2024.pdf" or "Witness Statement of A Smith 2026-03-22.pdf".',
     ],
     showPlaceholderRows: true,
   },
   {
-    element: 'add-section-break-btn',
-    title: 'Section Breaks',
-    body: 'Add section breaks to divide your bundle into named parts — like "Part 1: Evidence". Drag them into the right position in the table.',
+    element: 'add-section-btn',
+    title: 'Sections',
+    body: 'Click "Add Section" to divide your bundle into named parts — for example "A: Correspondence" or "B: Witness Statements". Each section gets its own labelled container. You can drag documents between sections, and drag whole sections to reorder them.',
   },
   {
     element: 'step-4-choice',
@@ -188,7 +188,7 @@ function updateSpotlight(el) {
 }
 
 function injectPlaceholderRows() {
-  const tbody = document.getElementById('file-table-body');
+  const tbody = document.getElementById('tbody-section-0000');
   if (!tbody) return;
   const rows = [
     { filename: 'claim-form-N1.pdf',           title: 'Claim Form (N1)',           date: '15 Jan 2024', pages: 4 },
