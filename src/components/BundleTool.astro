@@ -602,11 +602,11 @@
                 Section Prefix
               </label>
               <select id="config-sectionPrefix" class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-                <option value="">None (default)</option>
-                <option value="Section">Section</option>
+                <option value="">None</option>
+                <option value="Section">Section (default)</option>
                 <option value="Part">Part</option>
               </select>
-              <p class="text-xs text-gray-500 mt-1">Word prepended to section labels in the index (e.g. "Section A" or "Part 1").</p>
+              <p class="text-xs text-gray-500 mt-1">Add text before section labels in the index (e.g. "A" becomes "Section A" or "Part A").</p>
             </div>
 
             <!-- Restart page numbering per section -->
@@ -1409,7 +1409,7 @@
     resetGroup('footerFontSize', 'medium');
     resetGroup('alignment', 'right');
     resetGroup('pageNumberColour', 'black');
-    document.getElementById('config-sectionPrefix').value = '';
+    document.getElementById('config-sectionPrefix').value = 'Section';
     document.getElementById('config-showTableBorders').checked = true;
     document.getElementById('config-printableBundle').checked = true;
     document.getElementById('config-pageNumberPerSection').checked = false;

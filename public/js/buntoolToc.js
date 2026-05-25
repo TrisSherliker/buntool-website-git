@@ -561,11 +561,15 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         let pagesInThisSection = 1 + (section.entries || []).reduce((sum, entry) =>
           sum + (Number(entry.pageCount) || 0) + (entry.blankPageAfter ? 1 : 0)
         , 0);
-        // People might have views about how to structure section names so make config'ble
+        // People might have views about how to structure section names so make config'ble for future:
         const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
         const sectionPageDisplay = pageNumberPerSection
           ? `${section.sectionLabel || ''}1 - ${section.sectionLabel || ''}${pagesInThisSection}`
-          : section.actualPdfStartPageWithToc;
+          : (() => {
+              const start = Number(section.actualPdfStartPageWithToc) || 0;
+              const end = start - 1 + Number(pagesInThisSection) - 1;
+              return `${start} - ${end}`;
+            })();
         // now push values for the table:
         body.push({
           tabNumber:    '',
