@@ -132,7 +132,7 @@ async function getAutosaveState() {
     coversheet = { filename: coversheetFile.name, bytes: await coversheetFile.arrayBuffer() };
   }
 
-  return { files, inputData: { ...frontendInputData }, tableOrder, config, coversheet };
+  return { files, inputData: { ...frontendInputData }, tableOrder, config, coversheet, isSectioned };
 }
 
 async function applySnapshot(snapshot) {
@@ -157,6 +157,19 @@ async function applySnapshot(snapshot) {
   // Restore inputData
   Object.assign(frontendInputData, snapshot.inputData);
 
+  // Determine sectioned state before the loop — necessary because section 0000
+  // may have been converted without any 0001+ sections existing yet.
+  // Prefer the explicit saved flag; fall back to inference from tableOrder for older snapshots.
+  const snapshotSectioned = snapshot.isSectioned ??
+    snapshot.tableOrder.some(item =>
+      item.type === 'section' &&
+      (item.sectionID !== '0000' || item.label || item.name)
+    );
+  if (snapshotSectioned) {
+    isSectioned = true;
+    document.getElementById('file-table')?.classList.add('sectioned');
+  }
+
   // Rebuild section tbodys in saved order
   const table = document.querySelector('#file-table table');
   let saved0000Label = '', saved0000Name = '';
@@ -170,10 +183,6 @@ async function applySnapshot(snapshot) {
     } else {
       tbody = createSectionTbody(item.sectionID, item.label || '', item.name || '');
       table?.appendChild(tbody);
-      if (!isSectioned) {
-        isSectioned = true;
-        document.getElementById('file-table')?.classList.add('sectioned');
-      }
       const num = parseInt(item.sectionID, 10);
       if (!isNaN(num) && num >= nextSectionNum) nextSectionNum = num + 1;
     }
@@ -636,6 +645,8 @@ function addSection() {
     }
     // Add empty placeholder to section 0000 if it has no files
     ensureEmptyPlaceholder(section0000 ?? getDefaultSection0000());
+    // Scroll to the review table so the user can see the conversion
+    document.getElementById('file-table')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     markDirty();
     return;
   }
