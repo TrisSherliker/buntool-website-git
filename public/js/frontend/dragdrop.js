@@ -75,11 +75,14 @@ export function handleFileDrop(e) {
   e.stopPropagation();
   const sourceTbody = state.draggedRow.closest('tbody');
 
+  // Capture before async — handleDragEnd fires synchronously after drop and nulls state.draggedRow
+  const draggedRow = state.draggedRow;
+
   if (this.classList.contains('section-header-row')) {
     const targetTbody = this.closest('tbody');
     import('./fileRows.js').then(({ removeEmptyPlaceholder, ensureEmptyPlaceholder }) => {
       removeEmptyPlaceholder(targetTbody);
-      targetTbody.appendChild(state.draggedRow);
+      targetTbody.appendChild(draggedRow);
       if (sourceTbody && sourceTbody !== targetTbody) ensureEmptyPlaceholder(sourceTbody);
       markDirty();
     });
@@ -89,17 +92,17 @@ export function handleFileDrop(e) {
   const myTbody = this.closest('tbody');
   if (myTbody === sourceTbody) {
     const allRows     = Array.from(myTbody.querySelectorAll('tr.file-row'));
-    const draggedIndex = allRows.indexOf(state.draggedRow);
+    const draggedIndex = allRows.indexOf(draggedRow);
     const targetIndex  = allRows.indexOf(this);
-    if (draggedIndex < targetIndex) myTbody.insertBefore(state.draggedRow, this.nextSibling);
-    else                            myTbody.insertBefore(state.draggedRow, this);
+    if (draggedIndex < targetIndex) myTbody.insertBefore(draggedRow, this.nextSibling);
+    else                            myTbody.insertBefore(draggedRow, this);
   } else {
     import('./fileRows.js').then(({ removeEmptyPlaceholder, ensureEmptyPlaceholder }) => {
       removeEmptyPlaceholder(myTbody);
-      const allRows    = Array.from(myTbody.querySelectorAll('tr.file-row'));
+      const allRows     = Array.from(myTbody.querySelectorAll('tr.file-row'));
       const targetIndex = allRows.indexOf(this);
-      if (targetIndex < 0) myTbody.appendChild(state.draggedRow);
-      else                 myTbody.insertBefore(state.draggedRow, this);
+      if (targetIndex < 0) myTbody.appendChild(draggedRow);
+      else                 myTbody.insertBefore(draggedRow, this);
       ensureEmptyPlaceholder(sourceTbody);
     });
   }

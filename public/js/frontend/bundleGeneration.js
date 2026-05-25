@@ -7,7 +7,7 @@ import { showProcessingOverlay, hideProcessingOverlay, showBundleReadyState } fr
 import { showErrorModal, showMissingInfoModal, isMemoryError } from './modals.js';
 import { createSectionTbody, createSection0000HeaderRow } from './sections.js';
 import { setCoversheetSelected } from './coversheet.js';
-import { markDirty } from '../buntoolAutosave.js';
+import { saveNow } from '../buntoolAutosave.js';
 import { getDefaultSection0000, getAllFileRows, pulseStep2 } from './helpers.js';
 
 async function logBundleEvent(payload) {
@@ -59,6 +59,8 @@ export async function handleFormSubmit(e, form) {
   console.log('Form submit triggered!');
 
   if (getAllFileRows().length === 0) { pulseStep2(); return; }
+
+  saveNow();
 
   if (!state.bundleConfirmed) {
     if (showMissingInfoModal('bundle')) return;

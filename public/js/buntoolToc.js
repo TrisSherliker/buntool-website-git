@@ -549,7 +549,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
     const indexTableYOffset = titleYOffset + titleDimensions.h + tocInternalConfig.margins.parPadding - 4;
     
     // Prepare table data
-    const showDate = config.getOption('index.dateStyle') !== 'None';  // move up, needed here
+    const showDate = config.getOption('index.dateStyle') !== 'None'; 
     const pageNumberPerSection = config.getOption('pageNumbering.pageNumberPerSection');
     const body = [];
     for (const section of tocEntries) {
@@ -558,10 +558,13 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         // addHyperlinks/addOutlineItems can use them -- this accounts
         // for the toc adding additional pages after pre-calc
         section.actualPdfStartPageWithToc = section.beginsOnPdfPage + expectedTocLength;
+        let pagesInThisSection = 1 + (section.entries || []).reduce((sum, entry) =>
+          sum + (Number(entry.pageCount) || 0) + (entry.blankPageAfter ? 1 : 0)
+        , 0);
         // People might have views about how to structure section names so make config'ble
         const left = [config.getOption('index.sectionPrefix') || '', section.sectionLabel].filter(Boolean).join(' ');
         const sectionPageDisplay = pageNumberPerSection
-          ? `${section.sectionLabel || ''}1`
+          ? `${section.sectionLabel || ''}1 - ${section.sectionLabel || ''}${pagesInThisSection}`
           : section.actualPdfStartPageWithToc;
         // now push values for the table:
         body.push({
