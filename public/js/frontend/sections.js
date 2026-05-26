@@ -190,6 +190,7 @@ export async function deleteSection(tbody) {
       fileRows.forEach(row => {
         const fn = row.dataset.filename;
         if (fn) { state.filesMap.delete(fn); delete state.frontendInputData[fn]; }
+        row.remove();
       });
     }
   }
