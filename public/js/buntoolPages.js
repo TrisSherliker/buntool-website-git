@@ -232,6 +232,11 @@ export async function addPageNumberingToPdf(pdfDocBytes, config, tocEntries = nu
           pageLabels[startIdx + p] = lbl;
           if (lbl.length > widestPageLabel.length) widestPageLabel = lbl;
         }
+        if (entry.blankPageAfter) {
+          const blankLbl = `${label}${entry.beginsOnPageOfSection + entry.pageCount}`;
+          pageLabels[startIdx + entry.pageCount] = blankLbl;
+          if (blankLbl.length > widestPageLabel.length) widestPageLabel = blankLbl;
+        }
       }
     }
   }
@@ -362,6 +367,11 @@ export function addPageNumberingViaWorker(pdfBytes, config, tocEntries = null) {
           const lbl = `${label}${entry.beginsOnPageOfSection + p}`;
           pageLabels[startIdx + p] = lbl;
           if (lbl.length > widestPageLabel.length) widestPageLabel = lbl;
+        }
+        if (entry.blankPageAfter) {
+          const blankLbl = `${label}${entry.beginsOnPageOfSection + entry.pageCount}`;
+          pageLabels[startIdx + entry.pageCount] = blankLbl;
+          if (blankLbl.length > widestPageLabel.length) widestPageLabel = blankLbl;
         }
       }
     }
