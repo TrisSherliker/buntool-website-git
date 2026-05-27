@@ -14,7 +14,7 @@ export async function processFiles(files, targetTbody) {
   for (const file of files) totalSize += file.size;
 
   const totalSizeMB = totalSize / (1024 * 1024);
-  if (totalSizeMB > 500) {
+  if (totalSizeMB > 450) {
     showErrorModal({
       title: 'Total file size too large',
       message: `You have chosen ${totalSizeMB.toFixed(1)}MB worth of documents which would create a very large bundle. This is too big to be handled reliably, and exceeds the permitted file size. Please split the documents into multiple volumes (often labelled 'A', 'B' etc) and create separate bundles.`,
