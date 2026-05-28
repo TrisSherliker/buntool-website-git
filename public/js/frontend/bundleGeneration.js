@@ -112,7 +112,7 @@ export async function handleFormSubmit(e, form) {
   catch (err) { showErrorModal({ title: 'Index data error', message: err.message }); return; }
 
   const inputSizeMb = Array.from(state.filesMap.values()).reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
-  await logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: state.filesMap.size, total_size_mb: Math.round(inputSizeMb * 10) / 10 });
+  logBundleEvent({ event: 'start', uuid: bundleUuid, file_count: state.filesMap.size, total_size_mb: Math.round(inputSizeMb * 10) / 10 });
 
   const _abandonHandler = (ev) => {
     navigator.sendBeacon(BUNDLE_LOG_URL, JSON.stringify({
