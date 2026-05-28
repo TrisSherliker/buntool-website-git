@@ -14,20 +14,16 @@ import {
   makeDummyTocPages,
   } from './buntoolToc.js';
 import {
-  // addPageNumberingToPdf,
-  // mergeTwoPdfs,           // replaced by buntoolMerge.js
-  // mergePdfsByTOC,         // replaced by buntoolMerge.js
   addPageNumberingViaWorker,
   validateCoverPage,
   } from './buntoolPages.js';
-// import { mergeTwoPdfs, mergePdfsByTOC } from './buntoolMerge.js'; // direct (no worker)
-import { mergeTwoPdfsViaWorker as mergeTwoPdfs, mergePdfsByTOCViaWorker as mergePdfsByTOC } from './buntoolMerge.js';
+import { 
+  mergeTwoPdfsViaWorker as mergeTwoPdfs, 
+  mergePdfsByTOCViaWorker as mergePdfsByTOC 
+  } from './buntoolMerge.js';
 import {
-  // addHyperlinks,    // replaced by meta worker
-  // addOutlineItems,  // replaced by meta worker
-  // setMetadata,      // replaced by meta worker
   runMetaViaWorker,
-} from './buntoolMeta.js';
+  } from './buntoolMeta.js';
 
 /**
  * Function to process the bundle of PDFs according to the provided configuration.
@@ -40,23 +36,7 @@ import {
  */
 export async function processTheBundle(filesMap, indexData, config, onProgress, coversheetFile = null){
 
-  if (!filesMap || filesMap.size === 0) {
-    throw new Error('Error: No files provided');
-  }
-
-  if (!indexData || indexData.length === 0) {
-    throw new Error('Error: No index data provided');
-  }
-
-  if (!config) {
-    throw new Error('Error: No configuration provided');
-  }
-
-  if (config.getOption('pageOptions.coversheet') && !coversheetFile) {
-    throw new Error('Error: Coversheet is enabled but no coversheet file was provided');
-  }
-
-  let payloadPdf = new Uint8Array();
+    let payloadPdf = new Uint8Array();
 
   // TODO: 
   // This internal toc Options config is sketched out but - 
@@ -87,8 +67,33 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     }
   };
 
+  console.log('[0/13] Validating files and indexData structure...');
+  console.log(`Processing bundle: ${indexData.totalFileCount} files across ${indexData.sections.length} section(s), ${indexData.totalPageCount} total pages`);
 
-  console.log('[1/13] Validating configuration structure...');
+  if (!filesMap || filesMap.size === 0) {
+    throw new Error('Error: No files provided');
+  }
+
+  if (!indexData) {
+    throw new Error('Error: No index data provided');
+  }
+  try {
+    indexData.validateIndexStructure();
+  } catch (error) {
+    console.error(`[ERROR] Index data structure validation error: `, error.message);
+    throw error;
+  }
+  console.log('[0/13]...done')
+  onProgress?.('Validating files and index data…');
+
+  console.log('[1/13] Validating configuration...');
+  if (!config) {
+    throw new Error('Error: No configuration provided');
+  }
+
+  if (config.getOption('pageOptions.coversheet') && !coversheetFile) {
+    throw new Error('Error: Coversheet is enabled but no coversheet file was provided');
+  }
   try //validate structure with method from buntoolConfig
   {
     config.validateStructure();
@@ -119,7 +124,6 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
       throw error;
     }
   }
-
   onProgress?.('Creating table of contents…');
 
   console.log('[4/13] Creating TOC entries...');
@@ -162,11 +166,10 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     }
     onProgress?.('Adding page numbering…');
     // justIndexPdf = await addPageNumberingToPdf(justIndexPdf, config);
-    justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config);
+    justIndexPdf = await addPageNumberingViaWorker(justIndexPdf, config, tocEntries);
     console.log(`...added page numbering - TOC PDF size: ${justIndexPdf?.length || 0} bytes`);
     return justIndexPdf;
   }
-
   onProgress?.('Merging documents…');
 
 // PDF HANDLING:
@@ -207,7 +210,7 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
   console.log('[10/13] Adding page numbering...');
   try {
     // payloadPdf = await addPageNumberingToPdf(payloadPdf, config);
-    payloadPdf = await addPageNumberingViaWorker(payloadPdf, config);
+    payloadPdf = await addPageNumberingViaWorker(payloadPdf, config, tocEntries);
     console.log(`[10/13]...done - PDF size: ${payloadPdf?.length || 0} bytes`)
   } catch (error) {
     console.error(`[ERROR] Failed to add page numbering: `, error.message);

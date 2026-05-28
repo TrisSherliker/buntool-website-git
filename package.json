@@ -1,12 +1,13 @@
 {
   "name": "astro-site",
   "type": "module",
-  "version": "0.0.1",
+  "version": "2.10.0",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "version": "node scripts/updateVersion.js && git add public/js/buntoolVersion.js"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",

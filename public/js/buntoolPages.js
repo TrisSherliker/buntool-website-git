@@ -114,6 +114,9 @@ export async function validateCoverPage(file) {
 }
 
 /**
+ * REPLACED IN CURRENT IMPLEMENTATION BY mergePdfsByTOC in buntoolMerge.js, USING MUPDF
+ * PRESERVE THIS CODE FOR ROLLBACK AND POTENTIAL BETTER MEMORY MANAGEMENT
+ * ALSO THIS MIGHT BE EASIER TO BATCH OUT
  * Merges multiple PDF files according to the order specified in the TOC entries.
  * @param {Array<Object>} indexData - Array of TOC entry objects containing filename and metadata (and section headers)
  * @param {Map<string, File>} filesMap - Map of filenames to File objects
@@ -198,7 +201,7 @@ export async function mergeTwoPdfs(pdfAbytes, pdfBbytes) {
  * @param {Config} config - Configuration object containing page numbering options
  * @returns {Promise<Uint8Array>} The PDF with page numbers added as a Uint8Array
  */
-export async function addPageNumberingToPdf(pdfDocBytes, config) {
+export async function addPageNumberingToPdf(pdfDocBytes, config, tocEntries = null) {
   /* This adds a footer to each pdf page, containing the
   * page number with marking (in a configured style), preceded by
   * a prefix if specified.
@@ -208,12 +211,36 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   const footerAlignment = config.getOption('pageNumbering.alignment') || 'right';
   const pageNumberingStyle = config.getOption('pageNumbering.numberingStyle') || 'PageX';
   const footerFont = config.getOption('pageNumbering.footerFont') || 'helvetica';
-  
+  const pageNumberPerSection = config.getOption('pageNumbering.pageNumberPerSection');
+
   if (pageNumberingStyle === "None") {
     console.log(`No page numbering applied`);
     return pdfDocBytes;
   }
-  
+
+  // Pre-compute per-page display labels when pageNumberPerSection is on.
+  // pageLabels[pdfPageIdx] = section-relative label (e.g. "A1"); unset for TOC/coversheet pages.
+  const pageLabels = [];
+  let widestPageLabel = '';
+  if (pageNumberPerSection && tocEntries) {
+    for (const section of tocEntries) {
+      for (const entry of section.entries) {
+        const startIdx = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
+        const label = section.sectionLabel || '';
+        for (let p = 0; p < entry.pageCount; p++) {
+          const lbl = `${label}${entry.beginsOnPageOfSection + p}`;
+          pageLabels[startIdx + p] = lbl;
+          if (lbl.length > widestPageLabel.length) widestPageLabel = lbl;
+        }
+        if (entry.blankPageAfter) {
+          const blankLbl = `${label}${entry.beginsOnPageOfSection + entry.pageCount}`;
+          pageLabels[startIdx + entry.pageCount] = blankLbl;
+          if (blankLbl.length > widestPageLabel.length) widestPageLabel = blankLbl;
+        }
+      }
+    }
+  }
+
   //setup the gubbins
   const pdfDoc = await pdflib.PDFDocument.load(pdfDocBytes);
   const pages = pdfDoc.getPages();
@@ -223,16 +250,17 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
 
   //Measurements and sizes
   let textLabelSize = { large: 25, medium: 18, small: 14 }[config.getOption('pageNumbering.footerFontSize')] || 18;
-  let totalPageCount = pages.length
+  let totalPageCount = pages.length;
   const widestDummyNumber = '8'.repeat(totalPageCount.toString().length); // how wide could the page numbers go? 8 is a big glyph
+  const widestDisplayStr = pageNumberPerSection && widestPageLabel ? widestPageLabel : widestDummyNumber;
 
-  // The longest theoreical label is footerLabelText + a big number:
+  // The longest theoretical label is footerLabelText + a big number:
   const labelFormats = {
-    'PageX': `Page ${widestDummyNumber}`,
-    'PageXofY': `Page ${widestDummyNumber} of ${widestDummyNumber}`,
-    'X': `${widestDummyNumber}`,
-    'XofY': `${widestDummyNumber} of ${widestDummyNumber}`,
-    'XslashY': `${widestDummyNumber}/${widestDummyNumber}`
+    'PageX':    `Page ${widestDisplayStr}`,
+    'PageXofY': pageNumberPerSection ? `Page ${widestDisplayStr}` : `Page ${widestDummyNumber} of ${widestDummyNumber}`,
+    'X':        `${widestDisplayStr}`,
+    'XofY':     pageNumberPerSection ? `${widestDisplayStr}` : `${widestDummyNumber} of ${widestDummyNumber}`,
+    'XslashY':  pageNumberPerSection ? `${widestDisplayStr}` : `${widestDummyNumber}/${widestDummyNumber}`,
   };
   const longestLabel = `${footerLabelText} ${labelFormats[pageNumberingStyle] || labelFormats['PageX']}`;
   let maxLabelWidth = textLabelFont.widthOfTextAtSize(longestLabel, textLabelSize)
@@ -256,13 +284,16 @@ export async function addPageNumberingToPdf(pdfDocBytes, config) {
   const footerColour = colourMap[config.getOption('pageNumbering.pageNumberColour')] ?? colourMap.black;
 
   for (const [pageIdx, thisPage] of pages.entries()) {
-    // Construct footer tgext
+    const displayNum = pageNumberPerSection && pageLabels[pageIdx] != null
+      ? pageLabels[pageIdx]
+      : pageIdx + 1;
+    // Construct footer text
     const footerTextFormats = {
-      'PageX': `Page ${pageIdx + 1}`,
-      'PageXofY': `Page ${pageIdx + 1} of ${totalPageCount}`,
-      'X': `${pageIdx + 1}`,
-      'XofY': `${pageIdx + 1} of ${totalPageCount}`,
-      'XslashY': `${pageIdx + 1}/${totalPageCount}`
+      'PageX':    `Page ${displayNum}`,
+      'PageXofY': pageNumberPerSection ? `Page ${displayNum}` : `Page ${pageIdx + 1} of ${totalPageCount}`,
+      'X':        `${displayNum}`,
+      'XofY':     pageNumberPerSection ? `${displayNum}` : `${pageIdx + 1} of ${totalPageCount}`,
+      'XslashY':  pageNumberPerSection ? `${displayNum}` : `${pageIdx + 1}/${totalPageCount}`,
     };
     const baseFooterText = footerTextFormats[pageNumberingStyle] || footerTextFormats['PageX'];
     //add zero-width spaces for later searchability, plus any footerLabelText prefix
@@ -316,18 +347,45 @@ export const footerWorkerPeaks = {};
  * @param {Object} config - BunTool Config instance
  * @returns {Promise<Uint8Array>}
  */
-export function addPageNumberingViaWorker(pdfBytes, config) {
+export function addPageNumberingViaWorker(pdfBytes, config, tocEntries = null) {
   if (config.getOption('pageNumbering.numberingStyle') === 'None') {
     return Promise.resolve(pdfBytes);
   }
 
+  const pageNumberPerSection = config.getOption('pageNumbering.pageNumberPerSection');
+
+  // Pre-compute per-page display labels on main thread so the worker receives a flat array
+  // rather than the full tocEntries tree.
+  const pageLabels = [];
+  let widestPageLabel = '';
+  if (pageNumberPerSection && tocEntries) {
+    for (const section of tocEntries) {
+      for (const entry of section.entries) {
+        const startIdx = (entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage) - 1;
+        const label = section.sectionLabel || '';
+        for (let p = 0; p < entry.pageCount; p++) {
+          const lbl = `${label}${entry.beginsOnPageOfSection + p}`;
+          pageLabels[startIdx + p] = lbl;
+          if (lbl.length > widestPageLabel.length) widestPageLabel = lbl;
+        }
+        if (entry.blankPageAfter) {
+          const blankLbl = `${label}${entry.beginsOnPageOfSection + entry.pageCount}`;
+          pageLabels[startIdx + entry.pageCount] = blankLbl;
+          if (blankLbl.length > widestPageLabel.length) widestPageLabel = blankLbl;
+        }
+      }
+    }
+  }
+
   const configValues = {
-    'pageNumbering.footerPrefix':     config.getOption('pageNumbering.footerPrefix'),
-    'pageNumbering.alignment':        config.getOption('pageNumbering.alignment'),
-    'pageNumbering.numberingStyle':   config.getOption('pageNumbering.numberingStyle'),
-    'pageNumbering.footerFont':       config.getOption('pageNumbering.footerFont'),
-    'pageNumbering.footerFontSize':   config.getOption('pageNumbering.footerFontSize'),
-    'pageNumbering.pageNumberColour': config.getOption('pageNumbering.pageNumberColour'),
+    'pageNumbering.footerPrefix':         config.getOption('pageNumbering.footerPrefix'),
+    'pageNumbering.alignment':            config.getOption('pageNumbering.alignment'),
+    'pageNumbering.numberingStyle':       config.getOption('pageNumbering.numberingStyle'),
+    'pageNumbering.footerFont':           config.getOption('pageNumbering.footerFont'),
+    'pageNumbering.footerFontSize':       config.getOption('pageNumbering.footerFontSize'),
+    'pageNumbering.pageNumberColour':     config.getOption('pageNumbering.pageNumberColour'),
+    'pageNumbering.pageNumberPerSection': pageNumberPerSection,
+    'pageNumbering.widestPageLabel':      widestPageLabel,
   };
 
   const buf = pdfBytes.buffer.byteLength === pdfBytes.byteLength
@@ -338,7 +396,7 @@ export function addPageNumberingViaWorker(pdfBytes, config) {
 
     worker.onmessage = (e) => {
       if (e.data?.ready) {
-        worker.postMessage({ buffer: buf, configValues }, [buf]);
+        worker.postMessage({ buffer: buf, configValues, pageLabels }, [buf]);
         return;
       }
       worker.terminate();

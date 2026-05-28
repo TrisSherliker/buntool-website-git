@@ -24,11 +24,13 @@
     .detail   { color: #666; font-size: 0.85em; white-space: pre-wrap; max-width: 320px; overflow-wrap: break-word; }
     .group-header td { background: #f7f7f7; font-weight: bold; color: #444; border-top: 2px solid #ccc; }
 
+    /* TODO(keep): memtest styles — do not remove
     #memResults { margin-top: 2em; }
     #memResults h2 { font-size: 1em; border-bottom: 1px solid #ccc; padding-bottom: 3px; margin: 1.8em 0 0.4em; color: #333; }
     #memResults p  { color: #555; margin: 4px 0; font-size: 0.9em; }
     .mem-note { font-style: italic; color: #888; }
     .mem-peak { font-weight: bold; }
+    */
   </style>
 </head>
 <body>
@@ -36,21 +38,21 @@
 <h1>BunTool Function Tests</h1>
 <div id="wasmStatus">Loading mupdf WASM…</div>
 <div><button id="runAll" disabled>Run All Tests</button> <button id="copyAll" disabled>Copy All</button> <button id="copyFailures" disabled>Copy Failures</button></div>
+<!-- TODO(keep): memtest buttons — do not remove
 <div style="margin-top:6px"><button id="memLight" disabled>Memtest Light</button> <button id="memHeavy" disabled>Memtest Heavy</button> <button id="memMassive" disabled>Memtest Massive</button> <button id="downloadMem" disabled>Download Results (.txt)</button></div>
-<div id="saveOptBtnsRow" style="margin-top:6px"><em>Save Options (loading…)</em></div>
-<div id="graftBtnsRow" style="margin-top:6px"><em>Graft Map Tests (loading…)</em></div>
+-->
 <div id="status"></div>
 <div id="summary"></div>
 <div id="results"></div>
+<!-- TODO(keep): memtest results div — do not remove
 <div id="memResults"></div>
-<div id="saveOptResults"></div>
-<div id="graftResults"></div>
+-->
 
 <script type="module">
   import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js'
   import * as pdflib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
 
-  import { countPdfPages, mergeTwoPdfs, mergePdfsByTOC, addPageNumberingToPdf, validateCoverPage,
+  import { countPdfPages, mergeTwoPdfs, addPageNumberingToPdf, validateCoverPage,
            addPageNumberingViaWorker, footerWorkerPeaks }
     from './js/buntoolPages.js'
   import { addHyperlinks, addOutlineItems, setMetadata,
@@ -62,66 +64,49 @@
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
-  import { workerPeaks, mergeTwoPdfsViaWorker, mergePdfsByTOCViaWorker }
+  import { mergePdfsByTOC, workerPeaks, mergeTwoPdfsViaWorker, mergePdfsByTOCViaWorker }
     from './js/buntoolMerge.js'
   import Config, { validFonts, validPageNumberColours }
     from './js/buntoolConfig.js'
+  import { IndexData }
+    from './js/buntoolIndexData.js'
 
   // ── WASM init ────────────────────────────────────────────────────────────────
   const wasmEl = document.getElementById('wasmStatus');
-  // Must be declared before the top-level await so initSaveOptButtons() can reference them.
-  const SAVE_OPTS_VARIANTS = [
-    { opts: 'pdf',                              label: 'pdf (baseline)',  note: 'baseline — no optimisation' },
-    { opts: 'pdf,garbage',                      label: 'garbage',         note: 'basic GC: removes unreferenced objects' },
-    { opts: 'pdf,garbage=compact',              label: 'compact',         note: 'GC + compact xref table' },
-    { opts: 'pdf,garbage=deduplicate',          label: 'deduplicate',     note: 'GC + deduplicate shared objects (fonts, images)' },
-    { opts: 'pdf,compress',                     label: 'compress',        note: 'compress all streams' },
-    { opts: 'pdf,compress-fonts',               label: 'cmp-fonts',       note: 'compress embedded font data only' },
-    { opts: 'pdf,compress-images',              label: 'cmp-images',      note: 'compress image streams only' },
-    { opts: 'pdf,garbage=deduplicate,compress', label: 'dedup+compress',  note: 'deduplicate + compress — recommended for OOM' },
-    { opts: 'pdf,objstms',                      label: 'objstms',         note: 'PDF 1.5 object streams' },
-    { opts: 'pdf,incremental',                  label: 'incremental',     note: 'incremental update — appends; not a full rewrite' },
-  ];
-  const SAVE_OPTS_KEY   = 'buntool_saveOpts_results';
-  const heapMbStr = (b) => b != null ? (b / 1024 / 1024).toFixed(1) + ' MB' : 'n/a';
-
-  const GRAFT_VARIANTS = [
-    { id: 'per-page',  label: 'per-page (current)',  note: 'dst.graftPage() per call — new temporary graft map each time' },
-    { id: 'per-doc',   label: 'per-doc map',          note: 'dst.newGraftMap() once per source doc — deduplicates within-doc resources' },
-  ];
-  const GRAFT_RESULTS_KEY = 'buntool_graft_results';
 
   try { if (mupdf.ready) await mupdf.ready; } catch {}
   wasmEl.textContent = 'mupdf WASM ready.';
-  document.getElementById('runAll').disabled     = false;
-  document.getElementById('memLight').disabled   = false;
-  document.getElementById('memHeavy').disabled   = false;
-  document.getElementById('memMassive').disabled = false;
-  initSaveOptButtons();
-  initGraftButtons();
+  document.getElementById('runAll').disabled = false;
+  // TODO(keep): memtest button enable — do not remove
+  // document.getElementById('memLight').disabled   = false;
+  // document.getElementById('memHeavy').disabled   = false;
+  // document.getElementById('memMassive').disabled = false;
 
 
   // ── Mock Config ──────────────────────────────────────────────────────────────
   function makeConfig(overrides = {}) {
     const defaults = {
-      'pageOptions.printableBundle':    false,
-      'pageOptions.coversheet':         false,
-      'pageNumbering.footerPrefix':     '',
-      'pageNumbering.alignment':        'centre',
-      'pageNumbering.numberingStyle':   'PageX',
-      'pageNumbering.footerFont':       'sansSerif',
-      'pageNumbering.pageNumberColour': 'black',
-      'heading.bundleTitle':            'Test Bundle',
-      'heading.projectName':            'Test Project',
-      'heading.claimNumber':            'CL-2024-001',
-      'heading.confidential':           false,
-      'heading.fontSize':               'medium',
-      'index.fontFace':                 'sansSerif',
-      'index.dateStyle':                'DD Mon. YYYY',
-      'index.outlineItemStyle':         'plain',
-      'index.fontSize':                 'medium',
-      'index.showTableBorders':         false,
-      'index.justTheIndex':             false,
+      'pageOptions.printableBundle':        false,
+      'pageOptions.coversheet':             false,
+      'pageNumbering.footerPrefix':         '',
+      'pageNumbering.alignment':            'centre',
+      'pageNumbering.numberingStyle':       'PageX',
+      'pageNumbering.footerFont':           'sansSerif',
+      'pageNumbering.footerFontSize':       'medium',
+      'pageNumbering.pageNumberColour':     'black',
+      'pageNumbering.pageNumberPerSection': false,
+      'heading.bundleTitle':                'Test Bundle',
+      'heading.projectName':                'Test Project',
+      'heading.claimNumber':                'CL-2024-001',
+      'heading.confidential':               false,
+      'heading.fontSize':                   'medium',
+      'index.fontFace':                     'sansSerif',
+      'index.dateStyle':                    'DD Mon. YYYY',
+      'index.outlineItemStyle':             'plain',
+      'index.fontSize':                     'medium',
+      'index.showTableBorders':             false,
+      'index.justTheIndex':                 false,
+      'index.sectionPrefix':                'Section',
     };
     return {
       getOption:         (key) => key in overrides ? overrides[key] : defaults[key],
@@ -129,6 +114,34 @@
       validateStructure: () => {},
       validateOptions:   () => {},
     };
+  }
+
+  // ── IndexData / tocEntries builders ─────────────────────────────────────────
+  // Builds an IndexData with all files in the invisible zeroth section.
+  function makeIndexData(files) {
+    return new IndexData([{ sectionID: '0000', sectionLabel: '', sectionName: '', files }]);
+  }
+
+  // Builds an IndexData from an explicit sections array.
+  function makeIndexDataSections(sections) {
+    return new IndexData(sections);
+  }
+
+  // Builds a tocEntries section object. actualPdfStartPageWithToc is optional
+  // (set by makeTocPages; supply it when testing meta functions directly).
+  function makeTocSection({ sectionID = '0000', sectionNumber = null, sectionLabel = null,
+      sectionTitle = null, beginsOnPdfPage = 1, actualPdfStartPageWithToc = null, entries = [] } = {}) {
+    return { sectionID, sectionNumber, sectionLabel, sectionTitle, beginsOnPdfPage,
+      ...(actualPdfStartPageWithToc !== null ? { actualPdfStartPageWithToc } : {}), entries };
+  }
+
+  // Builds a tocEntries entry object.
+  function makeTocEntry({ tabNumber, title, date = null, pageCount = 1, beginsOnPdfPage = 1,
+      beginsOnPageOfSection = 1, filename = null, blankPageAfter = false,
+      actualPdfStartPageWithToc = null } = {}) {
+    return { tabNumber, title, date, pageCount, beginsOnPdfPage, beginsOnPageOfSection,
+      filename, blankPageAfter,
+      ...(actualPdfStartPageWithToc !== null ? { actualPdfStartPageWithToc } : {}) };
   }
 
 
@@ -328,27 +341,32 @@
   async function test_mergePdfsByTOC() {
     const config = makeConfig();
     const [p3, p5, p2] = await Promise.all([makePdf(3,'D1'), makePdf(5,'D2'), makePdf(2,'D3')]);
-    const filesMap  = filesMapOf([['d1.pdf',p3],['d2.pdf',p5],['d3.pdf',p2]]);
+    const filesMap = filesMapOf([['d1.pdf',p3],['d2.pdf',p5],['d3.pdf',p2]]);
     const tocEntries = [
-      { tabNumber: 1, title: 'D1', filename: 'd1.pdf', sectionBreak: null },
-      { tabNumber: '', title: 'Sec', filename: null, sectionBreak: 'Section 1' }, // skipped
-      { tabNumber: 2, title: 'D2', filename: 'd2.pdf', sectionBreak: null },
-      { tabNumber: 3, title: 'D3', filename: 'd3.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'D1', filename: 'd1.pdf', pageCount: 3, beginsOnPdfPage: 1 }),
+      ]}),
+      makeTocSection({ sectionID: '0001', sectionNumber: 1, sectionLabel: 'A', entries: [
+        makeTocEntry({ tabNumber: 2, title: 'D2', filename: 'd2.pdf', pageCount: 5, beginsOnPdfPage: 4 }),
+        makeTocEntry({ tabNumber: 3, title: 'D3', filename: 'd3.pdf', pageCount: 2, beginsOnPdfPage: 9 }),
+      ]}),
     ];
     const merged = await mergePdfsByTOC(tocEntries, filesMap, config);
-    return ok('mergePdfsByTOC: 3+5+2=10 (section header skipped)', getPageCount(merged), 10);
+    return ok('mergePdfsByTOC: 3+5+2=10', getPageCount(merged), 10);
   }
 
   async function test_mergePdfsByTOC_printable() {
     const config = makeConfig({ 'pageOptions.printableBundle': true });
     const [odd, even] = await Promise.all([makePdf(3,'Odd'), makePdf(4,'Even')]);
-    const filesMap   = filesMapOf([['odd.pdf',odd],['even.pdf',even]]);
+    const filesMap = filesMapOf([['odd.pdf',odd],['even.pdf',even]]);
     const tocEntries = [
-      { tabNumber: 1, title: 'Odd',  filename: 'odd.pdf',  sectionBreak: null },
-      { tabNumber: 2, title: 'Even', filename: 'even.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Odd',  filename: 'odd.pdf',  pageCount: 3, beginsOnPdfPage: 1, blankPageAfter: true }),
+        makeTocEntry({ tabNumber: 2, title: 'Even', filename: 'even.pdf', pageCount: 4, beginsOnPdfPage: 5 }),
+      ]}),
     ];
     const merged = await mergePdfsByTOC(tocEntries, filesMap, config);
-    // 3 (odd) +1 blank +4 (even) = 8
+    // 3 (odd) + 1 blank + 4 (even) = 8
     return ok('mergePdfsByTOC printable: odd-page doc gets blank page (3+1+4=8)', getPageCount(merged), 8);
   }
 
@@ -363,24 +381,29 @@
   async function test_mergePdfsByTOCViaWorker() {
     const config = makeConfig();
     const [p3, p5, p2] = await Promise.all([makePdf(3,'wD1'), makePdf(5,'wD2'), makePdf(2,'wD3')]);
-    const filesMap   = filesMapOf([['d1.pdf',p3],['d2.pdf',p5],['d3.pdf',p2]]);
+    const filesMap = filesMapOf([['d1.pdf',p3],['d2.pdf',p5],['d3.pdf',p2]]);
     const tocEntries = [
-      { tabNumber: 1, title: 'D1',  filename: 'd1.pdf', sectionBreak: null },
-      { tabNumber: '', title: 'Sec', filename: null,    sectionBreak: 'Section 1' }, // skipped
-      { tabNumber: 2, title: 'D2',  filename: 'd2.pdf', sectionBreak: null },
-      { tabNumber: 3, title: 'D3',  filename: 'd3.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'D1', filename: 'd1.pdf', pageCount: 3, beginsOnPdfPage: 1 }),
+      ]}),
+      makeTocSection({ sectionID: '0001', sectionNumber: 1, sectionLabel: 'A', entries: [
+        makeTocEntry({ tabNumber: 2, title: 'D2', filename: 'd2.pdf', pageCount: 5, beginsOnPdfPage: 4 }),
+        makeTocEntry({ tabNumber: 3, title: 'D3', filename: 'd3.pdf', pageCount: 2, beginsOnPdfPage: 9 }),
+      ]}),
     ];
     const merged = await mergePdfsByTOCViaWorker(tocEntries, filesMap, config);
-    return ok('mergePdfsByTOCViaWorker: 3+5+2=10 (section header skipped)', getPageCount(merged), 10);
+    return ok('mergePdfsByTOCViaWorker: 3+5+2=10', getPageCount(merged), 10);
   }
 
   async function test_mergePdfsByTOCViaWorker_printable() {
     const config = makeConfig({ 'pageOptions.printableBundle': true });
     const [odd, even] = await Promise.all([makePdf(3,'wOdd'), makePdf(4,'wEven')]);
-    const filesMap   = filesMapOf([['odd.pdf',odd],['even.pdf',even]]);
+    const filesMap = filesMapOf([['odd.pdf',odd],['even.pdf',even]]);
     const tocEntries = [
-      { tabNumber: 1, title: 'Odd',  filename: 'odd.pdf',  sectionBreak: null },
-      { tabNumber: 2, title: 'Even', filename: 'even.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Odd',  filename: 'odd.pdf',  pageCount: 3, beginsOnPdfPage: 1, blankPageAfter: true }),
+        makeTocEntry({ tabNumber: 2, title: 'Even', filename: 'even.pdf', pageCount: 4, beginsOnPdfPage: 5 }),
+      ]}),
     ];
     const merged = await mergePdfsByTOCViaWorker(tocEntries, filesMap, config);
     // 3 (odd) + 1 blank + 4 (even) = 8
@@ -646,109 +669,171 @@
 
   async function test_createTocEntries_structure() {
     const config    = makeConfig();
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5, sectionMarker: 0 },
-      { title: 'Section A', sectionMarker: 1 },
-      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2, sectionMarker: 0 },
-    ];
-    const e = await createTocEntries(indexData, config);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5 },
+      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2 },
+    ]);
+    const sections = await createTocEntries(indexData, config);
+    const entries  = sections[0].entries;
     return [
-      ok('createTocEntries: entry count',                 e.length,              4),
-      ok('createTocEntries: tab numbers sequential',      [e[0].tabNumber, e[1].tabNumber, e[3].tabNumber], [1, 2, 3]),
-      ok('createTocEntries: first page',                  e[0].thisPage,         1),
-      ok('createTocEntries: second page (after 3pp)',     e[1].thisPage,         4),
-      ok('createTocEntries: section break flagged',       !!e[2].sectionBreak,   true),
-      ok('createTocEntries: third page (after 3+5=8pp)', e[3].thisPage,         9),
+      ok('createTocEntries: one section (zeroth)',                        sections.length,                    1),
+      ok('createTocEntries: sectionID is 0000',                          sections[0].sectionID,              '0000'),
+      ok('createTocEntries: sectionNumber null for zeroth',              sections[0].sectionNumber,          null),
+      ok('createTocEntries: entry count',                                entries.length,                     3),
+      ok('createTocEntries: tab numbers sequential',                     entries.map(e => e.tabNumber),      [1, 2, 3]),
+      ok('createTocEntries: first beginsOnPdfPage',                      entries[0].beginsOnPdfPage,         1),
+      ok('createTocEntries: second beginsOnPdfPage (after 3pp)',         entries[1].beginsOnPdfPage,         4),
+      ok('createTocEntries: third beginsOnPdfPage (after 3+5pp)',        entries[2].beginsOnPdfPage,         9),
+      ok('createTocEntries: pageCount on entry',                         entries[0].pageCount,               3),
+    ];
+  }
+
+  async function test_createTocEntries_withSections() {
+    const config    = makeConfig();
+    const indexData = makeIndexDataSections([
+      { sectionID: '0000', sectionLabel: null,  sectionName: null,                files: [] },
+      { sectionID: '0001', sectionLabel: 'A',   sectionName: 'Background',        files: [
+        { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      ]},
+      { sectionID: '0002', sectionLabel: 'B',   sectionName: 'Correspondence',    files: [
+        { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5 },
+        { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2 },
+      ]},
+    ]);
+    const sections = await createTocEntries(indexData, config);
+    const secA = sections[1];
+    const secB = sections[2];
+    return [
+      ok('createTocEntries sections: three sections returned',           sections.length,           3),
+      ok('createTocEntries sections: section A sectionID',               secA.sectionID,           '0001'),
+      ok('createTocEntries sections: section A sectionNumber',           secA.sectionNumber,       1),
+      ok('createTocEntries sections: section A sectionLabel',            secA.sectionLabel,        'A'),
+      ok('createTocEntries sections: section A entry count',             secA.entries.length,      1),
+      ok('createTocEntries sections: section B entry count',             secB.entries.length,      2),
+      ok('createTocEntries sections: tab numbers globally sequential',   [secA.entries[0].tabNumber, secB.entries[0].tabNumber, secB.entries[1].tabNumber], [1, 2, 3]),
+      ok('createTocEntries sections: beginsOnPageOfSection resets in B', secB.entries[0].beginsOnPageOfSection, 1),
+      ok('createTocEntries sections: second entry in B',                 secB.entries[1].beginsOnPageOfSection, 6),
+      ok('createTocEntries sections: beginsOnPdfPage continues across',  secB.entries[0].beginsOnPdfPage, 4),
     ];
   }
 
   async function test_createTocEntries_printable() {
     const config    = makeConfig({ 'pageOptions.printableBundle': true });
-    const indexData = [
-      { filename: 'odd.pdf',  title: 'Odd',  date: '2024-01-01', pageCount: 3, sectionMarker: 0 },
-      { filename: 'even.pdf', title: 'Even', date: '2024-01-02', pageCount: 4, sectionMarker: 0 },
-    ];
-    const e = await createTocEntries(indexData, config);
+    const indexData = makeIndexData([
+      { filename: 'odd.pdf',  title: 'Odd',  date: '2024-01-01', pageCount: 3 },
+      { filename: 'even.pdf', title: 'Even', date: '2024-01-02', pageCount: 4 },
+    ]);
+    const sections = await createTocEntries(indexData, config);
+    const entries  = sections[0].entries;
     return [
-      ok('createTocEntries printable: blankPageAfter for odd-page doc',    e[0].blankPageAfter, true),
-      ok('createTocEntries printable: no blankPageAfter for even-page doc',e[1].blankPageAfter, false),
-      ok('createTocEntries printable: second doc page offset (3+1blank+1)',e[1].thisPage,       5),
+      ok('createTocEntries printable: blankPageAfter for odd-page doc',     entries[0].blankPageAfter,  true),
+      ok('createTocEntries printable: no blankPageAfter for even-page doc', entries[1].blankPageAfter,  false),
+      ok('createTocEntries printable: second doc offset (3+1blank→p5)',     entries[1].beginsOnPdfPage, 5),
     ];
   }
 
   async function test_createTocEntries_coversheet() {
     const config    = makeConfig({ 'pageOptions.coversheet': true });
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5, sectionMarker: 0 },
-      { title: 'Section A', sectionMarker: 1 },
-      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2, sectionMarker: 0 },
-    ];
-    const e = await createTocEntries(indexData, config);
+    const indexData = makeIndexDataSections([
+      { sectionID: '0000', sectionLabel: null, sectionName: null, files: [
+        { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+        { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5 },
+      ]},
+      { sectionID: '0001', sectionLabel: 'A', sectionName: null, files: [
+        { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2 },
+      ]},
+    ]);
+    const sections = await createTocEntries(indexData, config);
+    const e0 = sections[0].entries;
+    const e1 = sections[1].entries;
     return [
-      ok('createTocEntries coversheet: first doc offset to page 2',        e[0].thisPage, 2),
-      ok('createTocEntries coversheet: second doc offset to page 5',       e[1].thisPage, 5),
-      ok('createTocEntries coversheet: third doc offset to page 10',       e[3].thisPage, 10),
+      ok('createTocEntries coversheet: first doc offset to page 2',     e0[0].beginsOnPdfPage, 2),
+      ok('createTocEntries coversheet: second doc offset to page 5',    e0[1].beginsOnPdfPage, 5),
+      ok('createTocEntries coversheet: third doc offset to page 10',    e1[0].beginsOnPdfPage, 10),
     ];
   }
 
   async function test_makeTocPages() {
     const config     = makeConfig();
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, filename: 'b.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', pageCount: 3, beginsOnPdfPage: 2, beginsOnPageOfSection: 1, filename: 'a.pdf' }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  date: '2024-02-20', pageCount: 5, beginsOnPdfPage: 5, beginsOnPageOfSection: 4, filename: 'b.pdf' }),
+      ]}),
     ];
     const [bytes, rowCoords, pageCount] = await makeTocPages(tocEntries, {}, config, 1);
     return [
-      truthy('makeTocPages: returns Uint8Array',              bytes instanceof Uint8Array, `type: ${typeof bytes}`),
-      truthy('makeTocPages: rowCoords array',                 Array.isArray(rowCoords),   `type: ${typeof rowCoords}`),
-      ok('makeTocPages: one rowCoord per file tab',           rowCoords.length, 2),
-      truthy('makeTocPages: pageCount is positive integer',   Number.isInteger(pageCount) && pageCount >= 1, `${pageCount}`),
-      ok('makeTocPages: pageCount matches mupdf countPages',  pageCount, getPageCount(bytes)),
+      truthy('makeTocPages: returns Uint8Array',             bytes instanceof Uint8Array, `type: ${typeof bytes}`),
+      truthy('makeTocPages: rowCoords array',                Array.isArray(rowCoords),   `type: ${typeof rowCoords}`),
+      ok('makeTocPages: one rowCoord per file tab',          rowCoords.length, 2),
+      truthy('makeTocPages: pageCount is positive integer',  Number.isInteger(pageCount) && pageCount >= 1, `${pageCount}`),
+      ok('makeTocPages: pageCount matches mupdf countPages', pageCount, getPageCount(bytes)),
     ];
   }
 
-  async function test_actualStartPage_setByMakeTocPages() {
-    // actualStartPage is only set once makeTocPages is called with the real tocLength.
+  async function test_makeTocPages_sectionHeadings() {
+    // With two real sections, heading rows should appear in the TOC.
+    const config     = makeConfig();
+    const tocEntries = [
+      makeTocSection({ sectionID: '0000', entries: [] }),
+      makeTocSection({ sectionID: '0001', sectionNumber: 1, sectionLabel: 'A', sectionTitle: 'Background', beginsOnPdfPage: 2, entries: [
+        makeTocEntry({ tabNumber: 1, title: 'AlphaDoc', date: '2024-01-10', pageCount: 3, beginsOnPdfPage: 2, beginsOnPageOfSection: 1, filename: 'a.pdf' }),
+      ]}),
+      makeTocSection({ sectionID: '0002', sectionNumber: 2, sectionLabel: 'B', sectionTitle: 'Correspondence', beginsOnPdfPage: 5, entries: [
+        makeTocEntry({ tabNumber: 2, title: 'BetaDoc', date: '2024-02-20', pageCount: 5, beginsOnPdfPage: 5, beginsOnPageOfSection: 1, filename: 'b.pdf' }),
+      ]}),
+    ];
+    const [bytes] = await makeTocPages(tocEntries, {}, config, 1);
+    const text = getPageText(bytes, 0);
+    return [
+      truthy('makeTocPages sections: section A label in TOC',     text.includes('A') && text.includes('Background'),    `text: ${text.slice(0, 120)}`),
+      truthy('makeTocPages sections: section B label in TOC',     text.includes('B') && text.includes('Correspondence'), `text: ${text.slice(0, 120)}`),
+      truthy('makeTocPages sections: document title in TOC',      text.includes('AlphaDoc'),                             `text: ${text.slice(0, 120)}`),
+    ];
+  }
+
+  async function test_actualPdfStartPageWithToc_setByMakeTocPages() {
+    // actualPdfStartPageWithToc is only set once makeTocPages is called with the real tocLength.
     // It is NOT set by createTocEntries alone.
     const config    = makeConfig();
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5, sectionMarker: 0 },
-    ];
-    const entries   = await createTocEntries(indexData, config);
-    const tocLength = await makeDummyTocPages(entries, {}, config);
-    await makeTocPages(entries, {}, config, tocLength);
-
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5 },
+    ]);
+    const sections  = await createTocEntries(indexData, config);
+    const tocLength = await makeDummyTocPages(sections, {}, config);
+    await makeTocPages(sections, {}, config, tocLength);
+    const e0 = sections[0].entries[0];
+    const e1 = sections[0].entries[1];
     return [
-      truthy('actualStartPage: set after makeTocPages',                  entries[0].actualStartPage !== undefined, `${entries[0].actualStartPage}`),
-      ok('actualStartPage: first doc = thisPage + tocLength',            entries[0].actualStartPage, entries[0].thisPage + tocLength),
-      ok('actualStartPage: second doc = thisPage + tocLength',           entries[1].actualStartPage, entries[1].thisPage + tocLength),
-      truthy('actualStartPage: tocLength ≥ 1',                          tocLength >= 1, `tocLength: ${tocLength}`),
+      truthy('actualPdfStartPageWithToc: set on entry after makeTocPages',         e0.actualPdfStartPageWithToc !== undefined, `${e0.actualPdfStartPageWithToc}`),
+      ok('actualPdfStartPageWithToc: first doc = beginsOnPdfPage + tocLength',     e0.actualPdfStartPageWithToc, e0.beginsOnPdfPage + tocLength),
+      ok('actualPdfStartPageWithToc: second doc = beginsOnPdfPage + tocLength',    e1.actualPdfStartPageWithToc, e1.beginsOnPdfPage + tocLength),
+      truthy('actualPdfStartPageWithToc: tocLength ≥ 1',                          tocLength >= 1, `tocLength: ${tocLength}`),
     ];
   }
 
   async function test_makeDummyTocPages() {
     const config     = makeConfig();
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, filename: 'b.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', pageCount: 3, beginsOnPdfPage: 2, beginsOnPageOfSection: 1, filename: 'a.pdf' }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  date: '2024-02-20', pageCount: 5, beginsOnPdfPage: 5, beginsOnPageOfSection: 4, filename: 'b.pdf' }),
+      ]}),
     ];
     const count = await makeDummyTocPages(tocEntries, {}, config);
     return [
       truthy('makeDummyTocPages: returns positive integer', Number.isInteger(count) && count >= 1, `${count}`),
-      truthy('makeDummyTocPages: consistent with makeTocPages', (() => {
-        // run makeTocPages separately and compare — done synchronously via side-effect check
-        return true; // full consistency tested in test_makeTocPages
-      })(), '(see makeTocPages pageCount test)'),
     ];
   }
 
   async function test_makeTocPages_eachFont() {
     const tocEntries = [
-      { tabNumber: 1, title: 'AlphaTocDoc', date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
-      { tabNumber: 2, title: 'BetaTocDoc',  date: '2024-02-20', thisPage: 5, filename: 'b.pdf', sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'AlphaTocDoc', date: '2024-01-10', pageCount: 3, beginsOnPdfPage: 2, beginsOnPageOfSection: 1, filename: 'a.pdf' }),
+        makeTocEntry({ tabNumber: 2, title: 'BetaTocDoc',  date: '2024-02-20', pageCount: 5, beginsOnPdfPage: 5, beginsOnPageOfSection: 4, filename: 'b.pdf' }),
+      ]}),
     ];
     const results = [];
     for (const fontName of validFonts) {
@@ -756,9 +841,9 @@
       try {
         const [bytes, rowCoords, pageCount] = await makeTocPages(tocEntries, {}, config, 1);
         results.push(
-          truthy(`makeTocPages [${fontName}]: returns Uint8Array`,          bytes instanceof Uint8Array),
-          ok(`makeTocPages [${fontName}]: pageCount matches PDF`,           pageCount, getPageCount(bytes)),
-          ok(`makeTocPages [${fontName}]: one rowCoord per tab entry`,      rowCoords.length, 2),
+          truthy(`makeTocPages [${fontName}]: returns Uint8Array`,     bytes instanceof Uint8Array),
+          ok(`makeTocPages [${fontName}]: pageCount matches PDF`,      pageCount, getPageCount(bytes)),
+          ok(`makeTocPages [${fontName}]: one rowCoord per tab entry`, rowCoords.length, 2),
         );
       } catch (err) {
         results.push({ name: `makeTocPages [${fontName}]`, passed: false, expected: 'no error', actual: String(err) });
@@ -769,23 +854,22 @@
 
   async function test_makeTocPages_correctFont() {
     // Verify the index table rows render with the configured font.
-    // Primary: mupdf text extraction reports the font name on the line containing the doc title.
-    // Fallback: raw PDF byte inspection — OTF fonts embedded via jsPDF lack ToUnicode maps so
-    // mupdf text extraction returns null, but the font name is still present in the PDF stream.
     const results = [];
     for (const fontName of validFonts) {
       const uniqueTitle = `TocFontCheck${fontName}`;
       const tocEntries = [
-        { tabNumber: 1, title: uniqueTitle, date: '2024-01-10', thisPage: 2, filename: 'a.pdf', sectionBreak: null },
+        makeTocSection({ sectionID: '0000', entries: [
+          makeTocEntry({ tabNumber: 1, title: uniqueTitle, date: '2024-01-10', pageCount: 3, beginsOnPdfPage: 2, beginsOnPageOfSection: 1, filename: 'a.pdf' }),
+        ]}),
       ];
       const config = makeConfig({ 'index.fontFace': fontName });
       try {
         const [bytes] = await makeTocPages(tocEntries, {}, config, 1);
-        const reported  = getFontForText(bytes, 0, uniqueTitle);
-        const expected  = FONT_NAME_SUBSTRINGS_TOC[fontName];
-        const byText    = reported?.includes(expected) ?? false;
-        const rawText   = new TextDecoder('latin1').decode(bytes);
-        const byRaw     = rawText.includes(expected);
+        const reported = getFontForText(bytes, 0, uniqueTitle);
+        const expected = FONT_NAME_SUBSTRINGS_TOC[fontName];
+        const byText   = reported?.includes(expected) ?? false;
+        const rawText  = new TextDecoder('latin1').decode(bytes);
+        const byRaw    = rawText.includes(expected);
         results.push(truthy(
           `makeTocPages [${fontName}]: index rows use correct font`,
           byText || byRaw,
@@ -872,43 +956,70 @@
   // buntoolMeta ---------------------------------------------------------------
 
   async function test_addOutlineItems() {
-    const config     = makeConfig();
-    const pdf        = await makePdf(10, 'outline');
+    const config = makeConfig();
+    const pdf    = await makePdf(10, 'outline');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 7, actualStartPage: 7, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 3, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 3 }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  date: '2024-02-20', beginsOnPdfPage: 7, beginsOnPageOfSection: 5, actualPdfStartPageWithToc: 7 }),
+      ]}),
     ];
     const result = addOutlineItems(pdf, tocEntries, config);
 
-    // mupdf's outline traversal API (.next/.down) is not reliably accessible
-    // from the WASM binding — check the raw PDF bytes instead.
-    // Outline titles are embedded as PDF string objects in the file.
+    // Outline titles are embedded as PDF string objects; inspect raw bytes.
     const text = new TextDecoder('latin1').decode(result);
     return [
-      truthy('addOutlineItems: PDF is valid',           (() => { try { openDoc(result); return true; } catch { return false; } })()),
-      truthy('addOutlineItems: "[0] Index" written',    text.includes('[0] Index')),
-      truthy('addOutlineItems: "[1] Alpha" written',    text.includes('[1] Alpha')),
-      truthy('addOutlineItems: "[2] Beta" written',     text.includes('[2] Beta')),
+      truthy('addOutlineItems: PDF is valid',        (() => { try { openDoc(result); return true; } catch { return false; } })()),
+      truthy('addOutlineItems: "[0] Index" written', text.includes('[0] Index')),
+      truthy('addOutlineItems: "[1] Alpha" written', text.includes('[1] Alpha')),
+      truthy('addOutlineItems: "[2] Beta" written',  text.includes('[2] Beta')),
+    ];
+  }
+
+  async function test_addOutlineItems_sectionHeadings() {
+    const config = makeConfig();
+    const pdf    = await makePdf(10, 'outlineSec');
+    const tocEntries = [
+      makeTocSection({ sectionID: '0000', entries: [] }),
+      makeTocSection({ sectionID: '0001', sectionNumber: 1, sectionLabel: 'A', sectionTitle: 'Background',
+          beginsOnPdfPage: 2, actualPdfStartPageWithToc: 2, entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 2, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 2 }),
+      ]}),
+      makeTocSection({ sectionID: '0002', sectionNumber: 2, sectionLabel: 'B', sectionTitle: 'Correspondence',
+          beginsOnPdfPage: 5, actualPdfStartPageWithToc: 5, entries: [
+        makeTocEntry({ tabNumber: 2, title: 'Beta', date: '2024-02-20', beginsOnPdfPage: 5, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 5 }),
+      ]}),
+    ];
+    const result = addOutlineItems(pdf, tocEntries, config);
+    const text = new TextDecoder('latin1').decode(result);
+    return [
+      truthy('addOutlineItems sections: PDF valid',               (() => { try { openDoc(result); return true; } catch { return false; } })()),
+      truthy('addOutlineItems sections: section "A: Background"', text.includes('A: Background')),
+      truthy('addOutlineItems sections: section "B: Correspondence"', text.includes('B: Correspondence')),
+      truthy('addOutlineItems sections: "[1] Alpha" entry',       text.includes('[1] Alpha')),
+      truthy('addOutlineItems sections: "[2] Beta" entry',        text.includes('[2] Beta')),
     ];
   }
 
   async function test_setMetadata() {
-    const config     = makeConfig();
-    const pdf        = await makePdf(5, 'meta');
+    const config = makeConfig();
+    const pdf    = await makePdf(5, 'meta');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 2, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 2 }),
+      ]}),
     ];
     const result = setMetadata(pdf, tocEntries, config);
     const meta   = getMeta(result);
     return [
-      truthy('setMetadata: Producer contains "BunTool"', meta.producer?.includes('BunTool'), `"${meta.producer}"`),
-      ok('setMetadata: Title = bundleTitle',             meta.title,    'Test Bundle'),
-      ok('setMetadata: Subject = projectName',           meta.subject,  'Test Project'),
-      ok('setMetadata: Keywords = claimNumber',          meta.keywords, 'CL-2024-001'),
-      truthy('setMetadata: BundleIndex parses as object', meta.bundleIndex !== null, `raw: ${JSON.stringify(meta.bundleIndex)?.slice(0,60)}`),
-      ok('setMetadata: BundleIndex version = 2',         meta.bundleIndex?.version, 2),
-      ok('setMetadata: BundleIndex config.heading.bundleTitle',
-         meta.bundleIndex?.config?.heading?.bundleTitle, 'Test Bundle'),
+      truthy('setMetadata: Producer contains "BunTool"',          meta.producer?.includes('BunTool'),             `"${meta.producer}"`),
+      ok('setMetadata: Title = bundleTitle',                       meta.title,    'Test Bundle'),
+      ok('setMetadata: Subject = projectName',                     meta.subject,  'Test Project'),
+      ok('setMetadata: Keywords = claimNumber',                    meta.keywords, 'CL-2024-001'),
+      truthy('setMetadata: BundleIndex parses as object',          meta.bundleIndex !== null,                      `raw: ${JSON.stringify(meta.bundleIndex)?.slice(0,60)}`),
+      ok('setMetadata: BundleIndex version = 2',                   meta.bundleIndex?.version, 2),
+      truthy('setMetadata: BundleIndex softwareVersion present',   typeof meta.bundleIndex?.softwareVersion === 'string', `got: ${meta.bundleIndex?.softwareVersion}`),
+      ok('setMetadata: BundleIndex config.heading.bundleTitle',    meta.bundleIndex?.config?.heading?.bundleTitle, 'Test Bundle'),
     ];
   }
 
@@ -918,18 +1029,19 @@
     const content = await makePdf(5, 'body');
     const merged  = await mergeTwoPdfs(tocPdf, content);
 
-    // Fake row coordinates as if produced by makeTocPages (in mm, page 1)
     const rowCoords = [
       { rowNumber: 1, tabNumber: 1, x: 25, y: 50,  width: 160, height: 10, pageNumber: 1 },
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65,  width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', beginsOnPdfPage: 3, actualPdfStartPageWithToc: 3 }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  beginsOnPdfPage: 5, actualPdfStartPageWithToc: 5 }),
+      ]}),
     ];
 
     const result = addHyperlinks(merged, rowCoords, tocEntries);
-    const links  = getLinks(result, 0); // inspect first page (TOC page 1)
+    const links  = getLinks(result, 0);
     return [
       truthy('addHyperlinks: links present on TOC page 1', links.length > 0, `found: ${links.length}`),
       ok('addHyperlinks: one link per TOC row',            links.length, 2),
@@ -947,8 +1059,10 @@
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', thisPage: 2, actualStartPage: 2, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', beginsOnPdfPage: 2, actualPdfStartPageWithToc: 2 }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  beginsOnPdfPage: 5, actualPdfStartPageWithToc: 5 }),
+      ]}),
     ];
 
     const result = addHyperlinks(merged, rowCoords, tocEntries);
@@ -956,8 +1070,8 @@
     const l0 = links[0] ?? {};
     const l1 = links[1] ?? {};
     return [
-      ok('addHyperlinks destinations: two links present',                   links.length, 2),
-      truthy('addHyperlinks destinations: link objects (structure)',        true, `link0: ${JSON.stringify(l0)} | link1: ${JSON.stringify(l1)}`),
+      ok('addHyperlinks destinations: two links present',        links.length, 2),
+      truthy('addHyperlinks destinations: link objects (structure)', true, `link0: ${JSON.stringify(l0)} | link1: ${JSON.stringify(l1)}`),
     ];
   }
 
@@ -973,7 +1087,9 @@
       { rowNumber: 1, tabNumber: 1, x: 25, y: 50, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Doc', thisPage: 3, actualStartPage: 3, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Doc', beginsOnPdfPage: 3, actualPdfStartPageWithToc: 3 }),
+      ]}),
     ];
 
     const withCover    = addHyperlinks(merged, rowCoords, tocEntries, makeConfig({ 'pageOptions.coversheet': true }));
@@ -988,18 +1104,21 @@
   // runMetaViaWorker ----------------------------------------------------------
 
   async function test_runMetaViaWorker_basic() {
-    const config     = makeConfig();
-    const pdf        = await makePdf(5, 'metaWorker');
+    const config = makeConfig();
+    const pdf    = await makePdf(5, 'metaWorker');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 2, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 2 }),
+      ]}),
     ];
     const result = await runMetaViaWorker(pdf, [], tocEntries, config);
     const meta   = getMeta(result);
     return [
-      truthy('runMetaViaWorker: PDF valid',                   (() => { try { openDoc(result); return true; } catch { return false; } })()),
-      truthy('runMetaViaWorker: Producer contains "BunTool"', meta.producer?.includes('BunTool'), `"${meta.producer}"`),
-      ok    ('runMetaViaWorker: Title = bundleTitle',         meta.title,  'Test Bundle'),
-      ok    ('runMetaViaWorker: BundleIndex version = 2',     meta.bundleIndex?.version, 2),
+      truthy('runMetaViaWorker: PDF valid',                       (() => { try { openDoc(result); return true; } catch { return false; } })()),
+      truthy('runMetaViaWorker: Producer contains "BunTool"',     meta.producer?.includes('BunTool'),           `"${meta.producer}"`),
+      ok    ('runMetaViaWorker: Title = bundleTitle',             meta.title,  'Test Bundle'),
+      ok    ('runMetaViaWorker: BundleIndex version = 2',         meta.bundleIndex?.version, 2),
+      truthy('runMetaViaWorker: BundleIndex softwareVersion set', typeof meta.bundleIndex?.softwareVersion === 'string', `got: ${meta.bundleIndex?.softwareVersion}`),
     ];
   }
 
@@ -1013,8 +1132,10 @@
       { rowNumber: 2, tabNumber: 2, x: 25, y: 65, width: 160, height: 10, pageNumber: 1 },
     ];
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 3, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 3 }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  date: '2024-02-20', beginsOnPdfPage: 5, beginsOnPageOfSection: 3, actualPdfStartPageWithToc: 5 }),
+      ]}),
     ];
     const result = await runMetaViaWorker(merged, rowCoords, tocEntries, config);
     const links  = getLinks(result, 0);
@@ -1046,28 +1167,36 @@
   }
 
   async function test_extractBundleMetadata() {
-    const config     = makeConfig();
-    const pdf        = await makePdf(5, 'meta');
+    const config = makeConfig();
+    const pdf    = await makePdf(8, 'meta');
     const tocEntries = [
-      { tabNumber: 1, title: 'Alpha', date: '2024-01-10', thisPage: 3, actualStartPage: 3, sectionBreak: null },
-      { tabNumber: 2, title: 'Beta',  date: '2024-02-20', thisPage: 5, actualStartPage: 5, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [] }),
+      makeTocSection({ sectionID: '0001', sectionNumber: 1, sectionLabel: 'A', sectionTitle: 'Background',
+          beginsOnPdfPage: 3, actualPdfStartPageWithToc: 3, entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Alpha', date: '2024-01-10', beginsOnPdfPage: 3, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 3 }),
+        makeTocEntry({ tabNumber: 2, title: 'Beta',  date: '2024-02-20', beginsOnPdfPage: 5, beginsOnPageOfSection: 3, actualPdfStartPageWithToc: 5 }),
+      ]}),
     ];
     const withMeta  = setMetadata(pdf, tocEntries, config);
     const extracted = extractBundleMetadata(withMeta);
+    // section heading is index 0 (section:true); entries are 1 and 2
     return [
-      truthy('extractBundleMetadata: returns array',           Array.isArray(extracted), `type: ${typeof extracted}`),
-      ok('extractBundleMetadata: correct entry count',         extracted?.length, 2),
-      ok('extractBundleMetadata: first entry tab number',      extracted?.[0]?.tab, 1),
-      ok('extractBundleMetadata: first entry title',           extracted?.[0]?.title, 'Alpha'),
-      ok('extractBundleMetadata: second entry page',           extracted?.[1]?.page, 5),
+      truthy('extractBundleMetadata: returns array',           Array.isArray(extracted),    `type: ${typeof extracted}`),
+      ok('extractBundleMetadata: 3 records (1 section + 2 entries)', extracted?.length, 3),
+      ok('extractBundleMetadata: section record (index 0) section=true', extracted?.[0]?.section, true),
+      ok('extractBundleMetadata: first doc tab number',        extracted?.[1]?.tab,   1),
+      ok('extractBundleMetadata: first doc title',             extracted?.[1]?.title, 'Alpha'),
+      ok('extractBundleMetadata: second doc page',             extracted?.[2]?.page,  5),
     ];
   }
 
   async function test_parseConfigFromMetadata_v2() {
-    const config     = makeConfig();
-    const pdf        = await makePdf(3, 'cfg');
+    const config = makeConfig();
+    const pdf    = await makePdf(3, 'cfg');
     const tocEntries = [
-      { tabNumber: 1, title: 'Doc', date: '2024-01-01', thisPage: 2, actualStartPage: 2, sectionBreak: null },
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'Doc', date: '2024-01-01', beginsOnPdfPage: 2, beginsOnPageOfSection: 1, actualPdfStartPageWithToc: 2 }),
+      ]}),
     ];
     const withMeta = setMetadata(pdf, tocEntries, config);
     const restored = parseConfigFromMetadata(withMeta);
@@ -1165,64 +1294,64 @@
   // buntoolMain ---------------------------------------------------------------
 
   async function test_processTheBundle_basic() {
-    const config    = makeConfig();
-    const [p3, p2]  = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
-    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
-    ];
+    const config   = makeConfig();
+    const [p3, p2] = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
+    const filesMap = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+    ]);
 
     const result  = await processTheBundle(filesMap, indexData, config, null);
     const meta    = getMeta(result);
     const entries = extractBundleMetadata(result);
     const pages   = getPageCount(result);
     return [
-      truthy('processTheBundle basic: returns Uint8Array',              result instanceof Uint8Array),
-      truthy('processTheBundle basic: page count ≥ 6 (≥1 toc + 3 + 2)', pages >= 6,                                      `pages: ${pages}`),
-      truthy('processTheBundle basic: producer contains BunTool',       meta.producer?.includes('BunTool'),               `producer: ${meta.producer}`),
-      ok('processTheBundle basic: title in metadata',                   meta.title, 'Test Bundle'),
-      truthy('processTheBundle basic: bundle entries extractable',      Array.isArray(entries) && entries.length === 2,   `entries: ${entries?.length}`),
-      truthy('processTheBundle basic: TOC page (p0) has hyperlinks',    getLinks(result, 0).length > 0,                   `links: ${getLinks(result, 0).length}`),
+      truthy('processTheBundle basic: returns Uint8Array',               result instanceof Uint8Array),
+      truthy('processTheBundle basic: page count ≥ 6 (≥1 toc + 3 + 2)', pages >= 6,                                    `pages: ${pages}`),
+      truthy('processTheBundle basic: producer contains BunTool',        meta.producer?.includes('BunTool'),            `producer: ${meta.producer}`),
+      ok('processTheBundle basic: title in metadata',                    meta.title, 'Test Bundle'),
+      truthy('processTheBundle basic: bundle entries extractable',       Array.isArray(entries) && entries.length === 2, `entries: ${entries?.length}`),
+      truthy('processTheBundle basic: TOC page (p0) has hyperlinks',     getLinks(result, 0).length > 0,                `links: ${getLinks(result, 0).length}`),
     ];
   }
 
   async function test_processTheBundle_justTheIndex() {
-    const config    = makeConfig({ 'index.justTheIndex': true });
-    const [p3, p2]  = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
-    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
-    ];
+    const config   = makeConfig({ 'index.justTheIndex': true });
+    const [p3, p2] = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB')]);
+    const filesMap = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+    ]);
 
     const result = await processTheBundle(filesMap, indexData, config, null);
     const pages  = getPageCount(result);
     return [
       truthy('processTheBundle justTheIndex: returns Uint8Array',          result instanceof Uint8Array),
-      truthy('processTheBundle justTheIndex: page count < 5 (no content)', pages < 5,                                   `pages: ${pages}`),
-      truthy('processTheBundle justTheIndex: TOC page has footer',         getPageText(result, 0).includes('Page 1'),   getPageText(result, 0).slice(0, 120)),
+      truthy('processTheBundle justTheIndex: page count < 5 (no content)', pages < 5,                                 `pages: ${pages}`),
+      truthy('processTheBundle justTheIndex: TOC page has footer',         getPageText(result, 0).includes('Page 1'), getPageText(result, 0).slice(0, 120)),
     ];
   }
 
   async function test_processTheBundle_withCoversheet() {
-    const config    = makeConfig({ 'pageOptions.coversheet': true });
+    const config          = makeConfig({ 'pageOptions.coversheet': true });
     const [p3, p2, cover] = await Promise.all([makePdf(3, 'DocA'), makePdf(2, 'DocB'), makePdf(1, 'COVER')]);
-    const filesMap  = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
-    const indexData = [
-      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3, sectionMarker: 0 },
-      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2, sectionMarker: 0 },
-    ];
+    const filesMap = filesMapOf([['a.pdf', p3], ['b.pdf', p2]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+    ]);
 
     const result = await processTheBundle(filesMap, indexData, config, null, fileOf(cover));
     const meta   = getMeta(result);
     const pages  = getPageCount(result);
     return [
-      truthy('processTheBundle coversheet: returns Uint8Array',                    result instanceof Uint8Array),
-      truthy('processTheBundle coversheet: page count ≥ 7 (1 cover + ≥1 toc + 5)', pages >= 7,                                   `pages: ${pages}`),
-      ok('processTheBundle coversheet: cover page (p0) has no links',             getLinks(result, 0).length, 0),
-      truthy('processTheBundle coversheet: TOC page (p1) has links',              getLinks(result, 1).length > 0,                 `links: ${getLinks(result, 1).length}`),
-      ok('processTheBundle coversheet: metadata coversheet flag',                 meta.bundleIndex?.config?.pageOptions?.coversheet, true),
+      truthy('processTheBundle coversheet: returns Uint8Array',                     result instanceof Uint8Array),
+      truthy('processTheBundle coversheet: page count ≥ 7 (1 cover + ≥1 toc + 5)', pages >= 7,                        `pages: ${pages}`),
+      ok('processTheBundle coversheet: cover page (p0) has no links',              getLinks(result, 0).length, 0),
+      truthy('processTheBundle coversheet: TOC page (p1) has links',               getLinks(result, 1).length > 0,     `links: ${getLinks(result, 1).length}`),
+      ok('processTheBundle coversheet: metadata coversheet flag',                  meta.bundleIndex?.config?.pageOptions?.coversheet, true),
     ];
   }
 
@@ -1274,10 +1403,12 @@
       label: 'buntoolToc',
       tests: [
         test_createTocEntries_structure,
+        test_createTocEntries_withSections,
         test_createTocEntries_printable,
         test_createTocEntries_coversheet,
-        test_actualStartPage_setByMakeTocPages,
+        test_actualPdfStartPageWithToc_setByMakeTocPages,
         test_makeTocPages,
+        test_makeTocPages_sectionHeadings,
         test_makeDummyTocPages,
         test_makeTocPages_eachFont,
         test_makeTocPages_correctFont,
@@ -1294,6 +1425,7 @@
       label: 'buntoolMeta',
       tests: [
         test_addOutlineItems,
+        test_addOutlineItems_sectionHeadings,
         test_setMetadata,
         test_addHyperlinks,
         test_addHyperlinks_destinationsDiffer,
@@ -1411,25 +1543,13 @@
   makeCopyHandler(() => true,       'copyAll');
   makeCopyHandler(r => !r.passed,   'copyFailures');
 
-
-  // ── Memory tests ─────────────────────────────────────────────────────────────
+  // TODO(keep): memtest block — do not remove
+  /* ── Memory tests ─────────────────────────────────────────────────────────────
 
   const LIGHT_PDFS = [
     { filename: 'Document 1 30 April 2021.pdf',                    title: 'Document 1',                  date: '2021-04-30', subdir: 'extras' },
     { filename: 'The Second Document example 22 January 2022.pdf', title: 'The Second Document example', date: '2022-01-22', subdir: 'extras' },
     { filename: 'Example Doc number three 29 January 2026.pdf',    title: 'Example Doc number three',    date: '2026-01-29', subdir: 'extras' },
-  ];
-
-  const HEAVY_PDFS = [
-    { filename: 'COPA_v_Wright_2024_EWHC_1809_Ch_16_July_2024_.pdf',            title: 'COPA v Wright [2024] EWHC 1809',        date: '2024-07-16', subdir: '' },
-    { filename: 'COPA_v_Wright_2024_EWHC_3315_Ch_19_December_2024_.pdf',        title: 'COPA v Wright [2024] EWHC 3315',        date: '2024-12-19', subdir: '' },
-    { filename: 'Lidl_v_Tesco_2024_EWCA_Civ_262_19_March_2024_.pdf',            title: 'Lidl v Tesco [2024] EWCA Civ 262',     date: '2024-03-19', subdir: '' },
-    { filename: 'Lidl_v_Tesco_[2023]_EWHC_873_Ch_19_April_2023_.pdf',           title: 'Lidl v Tesco [2023] EWHC 873',         date: '2023-04-19', subdir: '' },
-    { filename: 'Praesidad_v_Zaun_2024_EWHC_1549_Pat_13_June_2024_.pdf',        title: 'Praesidad v Zaun [2024] EWHC 1549',   date: '2024-06-13', subdir: '' },
-    { filename: 'Rothys_v_Giesswein_2020_EWHC_3391_IPEC_16_December_2020_.pdf', title: "Rothy's v Giesswein [2020] EWHC 3391", date: '2020-12-16', subdir: '' },
-    { filename: 'Warren_v_Lidl_2021_EWHC_1097_Ch_30_April_2021_.pdf',           title: 'Warren v Lidl [2021] EWHC 1097',       date: '2021-04-30', subdir: '' },
-    { filename: 'Warren_v_Lidl_2021_EWHC_2372_Ch_26_August_2021_.pdf',          title: 'Warren v Lidl [2021] EWHC 2372',       date: '2021-08-26', subdir: '' },
-    { filename: 'Wise_v_WithWise_2024_EWHC_3448_IPEC_13 December 2024.pdf',     title: 'Wise v WithWise [2024] EWHC 3448',    date: '2024-12-13', subdir: '' },
   ];
 
   const MASSIVE_PDFS = [
@@ -1565,8 +1685,8 @@
     snapshot('start');
     startPolling();
 
-    const filesMap  = new Map();
-    const indexData = [];
+    const filesMap = new Map();
+    const files    = [];
 
     for (const entry of pdfList) {
       const { filename, title, date, subdir = '' } = entry;
@@ -1578,12 +1698,13 @@
         const file  = { arrayBuffer: () => Promise.resolve(bytes.buffer), name: filename };
         filesMap.set(filename, file);
         const pageCount = await countPdfPages(file);
-        indexData.push({ filename, title, date, pageCount, sectionMarker: 0 });
+        files.push({ filename, title, date, pageCount });
       } catch (err) {
         log.push({ stage: `FETCH ERROR: ${filename}`, elapsed: ((performance.now() - t0) / 1000).toFixed(2), used: null, total: null });
         console.error(`Memtest: failed to load ${filename}:`, err);
       }
     }
+    const indexData = makeIndexData(files);
 
     snapshot('files-loaded');
     memEl.querySelector('p').textContent = 'Running pipeline…';
@@ -1687,344 +1808,13 @@
   document.getElementById('memLight').addEventListener('click',   () => runMemtest('Memtest Light',   LIGHT_PDFS));
   document.getElementById('memHeavy').addEventListener('click',   () => runMemtest('Memtest Heavy',   HEAVY_PDFS));
   document.getElementById('memMassive').addEventListener('click', () => runMemtest('Memtest Massive', MASSIVE_PDFS));
+  */ // end memtest block
 
 
-  // ── mupdf save options comparison (one variant per fresh tab, results in localStorage) ──
-
-  function loadSaveOptsResults() {
-    try { return JSON.parse(localStorage.getItem(SAVE_OPTS_KEY) || '{}'); } catch { return {}; }
-  }
 
 
-  function renderSaveOptsTable() {
-    const el = document.getElementById('saveOptResults');
-    const stored = loadSaveOptsResults();
-    const baseline = stored['pdf'];
-
-    const rows = SAVE_OPTS_VARIANTS.map(({ opts, label, note }) => {
-      const r = stored[opts];
-      if (!r) return `<tr>
-        <td><code>${opts}</code></td>
-        <td colspan="5" style="color:#aaa">not yet run — open a fresh tab and click "${label}"</td>
-        <td>${note}</td>
-      </tr>`;
-
-      const outMb = (r.outputBytes / 1024 / 1024).toFixed(2);
-      const outPct = baseline ? (r.outputBytes - baseline.outputBytes) / baseline.outputBytes * 100 : null;
-      const outPctStr   = outPct == null || r.outputBytes === baseline.outputBytes ? '—'
-        : `${outPct >= 0 ? '+' : ''}${outPct.toFixed(1)}%`;
-      const outPctStyle = outPct != null && outPct < -5 ? 'color:#2a7a2a;font-weight:bold'
-        : outPct != null && outPct > 5 ? 'color:#c00;font-weight:bold' : '';
-
-      const hpct = (baseline?.heapPeak != null && r.heapPeak != null)
-        ? (r.heapPeak - baseline.heapPeak) / baseline.heapPeak * 100 : null;
-      const hpctStr   = hpct == null || r.heapPeak === baseline?.heapPeak ? '—'
-        : `${hpct >= 0 ? '+' : ''}${hpct.toFixed(1)}%`;
-      const hpctStyle = hpct != null && hpct < -5 ? 'color:#2a7a2a;font-weight:bold'
-        : hpct != null && hpct > 5 ? 'color:#c00;font-weight:bold' : '';
-
-      const ts = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '';
-      return `<tr>
-        <td><code>${opts}</code></td>
-        <td>${outMb} MB</td>
-        <td style="${outPctStyle}">${outPctStr}</td>
-        <td>${heapMbStr(r.heapPeak)}</td>
-        <td style="${hpctStyle}">${hpctStr}</td>
-        <td>${heapMbStr(r.heapAfterFree)}</td>
-        <td>${r.elapsed}s</td>
-        <td style="color:#aaa;font-size:0.8em">${ts}</td>
-        <td>${note}</td>
-      </tr>`;
-    }).join('');
-
-    const runCount = Object.keys(stored).length;
-    el.innerHTML = `<h2>Save Options Results (Heavy PDFs)</h2>
-      <p>Heap peak = <code>usedJSHeapSize</code> immediately after <code>saveToBuffer</code> returns
-      (merged doc + save buffer both live in WASM heap). Chrome/Edge only.
-      ${runCount}/${SAVE_OPTS_VARIANTS.length} variants run.</p>
-      <table><thead><tr>
-        <th>Option</th>
-        <th>Output</th><th>vs baseline</th>
-        <th title="usedJSHeapSize after saveToBuffer returns — doc + buffer both live">Heap peak</th><th>vs baseline</th>
-        <th title="usedJSHeapSize after destroy() calls — WASM cleared">Heap after free</th>
-        <th>Time</th><th>Recorded</th><th>Note</th>
-      </tr></thead><tbody>${rows}</tbody></table>`;
-  }
-
-  // Tab-level cache so multiple runs in the same tab don't re-fetch
-  let cachedHeavyBufs = null;
-
-  async function getHeavyBufs() {
-    if (cachedHeavyBufs) return cachedHeavyBufs;
-    const bufs = [];
-    for (const { filename, subdir = '' } of HEAVY_PDFS) {
-      const url = `/testpdfs/${subdir ? subdir + '/' : ''}${encodeURIComponent(filename)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${filename}`);
-      bufs.push(new Uint8Array(await res.arrayBuffer()));
-    }
-    cachedHeavyBufs = bufs;
-    return bufs;
-  }
-
-  async function runSaveOpt(variantIndex) {
-    const { opts, label } = SAVE_OPTS_VARIANTS[variantIndex];
-    const btnId = `saveOpt_${variantIndex}`;
-    const btn   = document.getElementById(btnId);
-    btn.disabled = true;
-    btn.textContent = `${label} — fetching…`;
-
-    let bufs;
-    try {
-      bufs = await getHeavyBufs();
-    } catch (err) {
-      btn.textContent = `${label} — fetch error`;
-      btn.disabled = false;
-      return;
-    }
-
-    btn.textContent = `${label} — merging…`;
-    await new Promise(r => setTimeout(r, 0));
-
-    const t0 = performance.now();
-    let bytes, heapPeak, heapAfterFree, errMsg;
-    try {
-      const dst = mupdf.Document.openDocument(bufs[0], 'application/pdf');
-      try {
-        for (let i = 1; i < bufs.length; i++) {
-          const src = mupdf.Document.openDocument(bufs[i], 'application/pdf');
-          const n = src.countPages();
-          for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
-          src.destroy();
-        }
-        const buf = dst.saveToBuffer(opts);
-        heapPeak = performance.memory?.usedJSHeapSize ?? null;
-        bytes = buf.asUint8Array().slice();
-        buf.destroy();
-      } finally {
-        dst.destroy();
-      }
-      heapAfterFree = performance.memory?.usedJSHeapSize ?? null;
-    } catch (err) {
-      errMsg = err.message;
-    }
-    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-
-    if (errMsg) {
-      btn.textContent = `${label} — ERROR`;
-      btn.disabled = false;
-      const stored = loadSaveOptsResults();
-      stored[opts] = { error: errMsg, elapsed, timestamp: new Date().toISOString() };
-      localStorage.setItem(SAVE_OPTS_KEY, JSON.stringify(stored));
-    } else {
-      const stored = loadSaveOptsResults();
-      stored[opts] = {
-        outputBytes:  bytes.byteLength,
-        heapPeak:     heapPeak,
-        heapAfterFree: heapAfterFree,
-        elapsed,
-        timestamp: new Date().toISOString(),
-      };
-      localStorage.setItem(SAVE_OPTS_KEY, JSON.stringify(stored));
-      btn.textContent = `${label} ✓`;
-      btn.disabled = false;
-    }
-
-    renderSaveOptsTable();
-  }
-
-  function initSaveOptButtons() {
-    const row = document.getElementById('saveOptBtnsRow');
-    row.innerHTML = '<em style="color:#555">Save Options — Heavy PDFs (run each in a fresh tab):</em> '
-      + SAVE_OPTS_VARIANTS.map((v, i) => `<button id="saveOpt_${i}">${v.label}</button>`).join(' ')
-      + ' <button id="saveOptsClear" style="margin-left:12px;color:#c00">Clear Results</button>';
-
-    SAVE_OPTS_VARIANTS.forEach((_, i) => {
-      document.getElementById(`saveOpt_${i}`).addEventListener('click', () => runSaveOpt(i));
-    });
-    document.getElementById('saveOptsClear').addEventListener('click', () => {
-      localStorage.removeItem(SAVE_OPTS_KEY);
-      cachedHeavyBufs = null;
-      renderSaveOptsTable();
-    });
-
-    renderSaveOptsTable();
-  }
-
-  // ── graft map comparison (per-page vs per-doc, one per fresh tab, results in localStorage) ──
-
-  function loadGraftResults() {
-    try { return JSON.parse(localStorage.getItem(GRAFT_RESULTS_KEY) || '{}'); } catch { return {}; }
-  }
-
-  function renderGraftTable() {
-    const el = document.getElementById('graftResults');
-    const stored = loadGraftResults();
-    const baseline = stored['per-page'];
-
-    const rows = GRAFT_VARIANTS.map(({ id, label, note }) => {
-      const r = stored[id];
-      if (!r) return `<tr>
-        <td>${label}</td>
-        <td colspan="8" style="color:#aaa">not yet run — open a fresh tab and click "${label}"</td>
-        <td>${note}</td>
-      </tr>`;
-
-      if (r.error) return `<tr style="background:#fff0f0">
-        <td>${label}</td>
-        <td colspan="8" style="color:#c00">ERROR: ${r.error}</td>
-        <td>${note}</td>
-      </tr>`;
-
-      const outMb = (r.outputBytes / 1024 / 1024).toFixed(2);
-      const outPct = baseline ? (r.outputBytes - baseline.outputBytes) / baseline.outputBytes * 100 : null;
-      const outPctStr   = !baseline || r.outputBytes === baseline.outputBytes ? '—'
-        : `${outPct >= 0 ? '+' : ''}${outPct.toFixed(1)}%`;
-      const outPctStyle = outPct != null && outPct < -2 ? 'color:#2a7a2a;font-weight:bold'
-        : outPct != null && outPct > 2 ? 'color:#c00;font-weight:bold' : '';
-
-      const hpct = (baseline?.heapPeak != null && r.heapPeak != null)
-        ? (r.heapPeak - baseline.heapPeak) / baseline.heapPeak * 100 : null;
-      const hpctStr   = hpct == null || r.heapPeak === baseline?.heapPeak ? '—'
-        : `${hpct >= 0 ? '+' : ''}${hpct.toFixed(1)}%`;
-      const hpctStyle = hpct != null && hpct < -2 ? 'color:#2a7a2a;font-weight:bold'
-        : hpct != null && hpct > 2 ? 'color:#c00;font-weight:bold' : '';
-
-      const ts = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '';
-      const pagesOk = r.outputPages != null && r.expectedPages != null && r.outputPages === r.expectedPages;
-      const pagesMismatch = r.outputPages != null && r.expectedPages != null && r.outputPages !== r.expectedPages;
-      const pagesStr = r.outputPages != null ? `${r.outputPages}` : 'n/a';
-      const expectedStr = r.expectedPages != null ? `${r.expectedPages}` : 'n/a';
-      const pagesStyle = pagesMismatch ? 'color:#c00;font-weight:bold' : pagesOk ? 'color:#2a7a2a' : '';
-      return `<tr>
-        <td>${label}</td>
-        <td>${outMb} MB</td><td style="${outPctStyle}">${outPctStr}</td>
-        <td style="${pagesStyle}">${pagesStr}</td><td>${expectedStr}</td>
-        <td>${heapMbStr(r.heapPeak)}</td><td style="${hpctStyle}">${hpctStr}</td>
-        <td>${heapMbStr(r.heapAfterFree)}</td>
-        <td>${r.elapsed}s</td>
-        <td style="color:#aaa;font-size:0.8em">${ts}</td>
-        <td>${note}</td>
-      </tr>`;
-    }).join('');
-
-    const runCount = Object.keys(stored).length;
-    el.innerHTML = `<h2>Graft Map Results (Heavy PDFs)</h2>
-      <p>Compares per-page graftPage (current) vs per-doc GraftMap.
-      Heap peak = <code>usedJSHeapSize</code> after <code>saveToBuffer</code> returns. Chrome/Edge only.
-      ${runCount}/${GRAFT_VARIANTS.length} variants run. Save option: <code>pdf,garbage=compact</code>.</p>
-      <table><thead><tr>
-        <th>Variant</th>
-        <th>Output</th><th>vs baseline</th>
-        <th>Pages out</th><th>Expected</th>
-        <th>Heap peak</th><th>vs baseline</th>
-        <th>Heap after free</th>
-        <th>Time</th><th>Recorded</th><th>Note</th>
-      </tr></thead><tbody>${rows}</tbody></table>`;
-  }
-
-  async function runGraftTest(variantId) {
-    const variant = GRAFT_VARIANTS.find(v => v.id === variantId);
-    const btn = document.getElementById(`graftBtn_${variantId}`);
-    btn.disabled = true;
-    btn.textContent = `${variant.label} — fetching…`;
-
-    let bufs;
-    try {
-      bufs = await getHeavyBufs();
-    } catch (err) {
-      btn.textContent = `${variant.label} — fetch error`;
-      btn.disabled = false;
-      return;
-    }
-
-    btn.textContent = `${variant.label} — merging…`;
-    await new Promise(r => setTimeout(r, 0));
-
-    // Compute total input size and expected page count from source bufs
-    const inputBytes = bufs.reduce((s, b) => s + b.byteLength, 0);
-    let expectedPages = 0;
-    for (const buf of bufs) {
-      const d = mupdf.Document.openDocument(buf, 'application/pdf');
-      expectedPages += d.countPages();
-      d.destroy();
-    }
-
-    const t0 = performance.now();
-    let bytes, heapPeak, heapAfterFree, outputPages, errMsg;
-    try {
-      const dst = mupdf.Document.openDocument(bufs[0], 'application/pdf');
-      try {
-        for (let i = 1; i < bufs.length; i++) {
-          const src = mupdf.Document.openDocument(bufs[i], 'application/pdf');
-          const n = src.countPages();
-
-          if (variantId === 'per-page') {
-            // Current approach: temporary graft map per graftPage call
-            for (let p = 0; p < n; p++) dst.graftPage(-1, src, p);
-
-          } else if (variantId === 'per-doc') {
-            // New approach: one persistent graft map per source doc,
-            // deduplicating shared resources (fonts, images) across all pages of that doc
-            const graftMap = dst.newGraftMap();
-            for (let p = 0; p < n; p++) graftMap.graftPage(-1, src, p);
-            graftMap.destroy();
-          }
-
-          src.destroy();
-        }
-        outputPages = dst.countPages();
-        const buf = dst.saveToBuffer('pdf,garbage=compact');
-        heapPeak = performance.memory?.usedJSHeapSize ?? null;
-        bytes = buf.asUint8Array().slice();
-        buf.destroy();
-      } finally {
-        dst.destroy();
-      }
-      heapAfterFree = performance.memory?.usedJSHeapSize ?? null;
-    } catch (err) {
-      errMsg = err.message;
-    }
-    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-
-    const stored = loadGraftResults();
-    stored[variantId] = errMsg
-      ? { error: errMsg, elapsed, timestamp: new Date().toISOString() }
-      : { outputBytes: bytes.byteLength, outputPages, expectedPages, inputBytes, heapPeak, heapAfterFree, elapsed, timestamp: new Date().toISOString() };
-    localStorage.setItem(GRAFT_RESULTS_KEY, JSON.stringify(stored));
-
-    btn.textContent = errMsg ? `${variant.label} — ERROR` : `${variant.label} ✓`;
-    btn.disabled = false;
-    renderGraftTable();
-
-    if (bytes) {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      a.download = `graft-${variantId}-output.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    }
-  }
-
-  function initGraftButtons() {
-    const row = document.getElementById('graftBtnsRow');
-    row.innerHTML = '<em style="color:#555">Graft Map Test — Heavy PDFs (run each in a fresh tab):</em> '
-      + GRAFT_VARIANTS.map(v => `<button id="graftBtn_${v.id}">${v.label}</button>`).join(' ')
-      + ' <button id="graftClear" style="margin-left:12px;color:#c00">Clear Results</button>';
-
-    GRAFT_VARIANTS.forEach(v => {
-      document.getElementById(`graftBtn_${v.id}`).addEventListener('click', () => runGraftTest(v.id));
-    });
-    document.getElementById('graftClear').addEventListener('click', () => {
-      localStorage.removeItem(GRAFT_RESULTS_KEY);
-      cachedHeavyBufs = null;
-      renderGraftTable();
-    });
-
-    renderGraftTable();
-  }
-
-  document.getElementById('downloadMem').addEventListener('click', () => {
+  // TODO(keep): downloadMem handler — do not remove
+  /* document.getElementById('downloadMem').addEventListener('click', () => {
     if (!lastMemLog) return;
     const { label, runTimestamp, log, pollPeak, pdfList, outputSize, workerPeakSnapshot: wps } = lastMemLog;
     const labelSlug = label.toLowerCase().replace(/\s+/g, '-');
@@ -2062,7 +1852,7 @@
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
-  });
+  }); */
 </script>
 </body>
 </html>

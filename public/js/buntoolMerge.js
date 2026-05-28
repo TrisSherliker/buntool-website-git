@@ -81,32 +81,29 @@ export async function mergePdfsByTOC(tocEntries, filesMap, config) {
 
   console.log(`Starting PDF merge (mupdf). tocEntries: `, tocEntries);
 
-  for (const entry of tocEntries) {
-    if (entry.sectionBreak) {
-      console.log(`Skipping section header '${entry.title}' in PDF merging`);
-      continue;
-    }
+  for (const section of tocEntries) {
+    for (const entry of section.entries) {
+      const pdfFile = filesMap.get(entry.filename);
+      if (!pdfFile) throw new Error(`File not found in filesMap: ${entry.filename}`);
 
-    const pdfFile = filesMap.get(entry.filename);
-    if (!pdfFile) throw new Error(`File not found in filesMap: ${entry.filename}`);
+      const srcBytes = new Uint8Array(await pdfFile.arrayBuffer());
+      console.log(`Processing entry: '${entry.title}' (filename: '${entry.filename}')`);
 
-    const srcBytes = new Uint8Array(await pdfFile.arrayBuffer());
-    console.log(`Processing entry: '${entry.title}' (filename: '${entry.filename}')`);
-
-    if (dst === null) {
-      // First document: open it directly as the destination
-      dst = mupdf.Document.openDocument(srcBytes, "application/pdf");
-      if (printable && dst.countPages() % 2 === 1) {
-        console.log(`Adding blank page after '${entry.filename}' (odd page count)`);
-        await appendBlankPage(dst);
-      }
-    } else {
-      // Subsequent documents: open as source, graft into destination, destroy immediately
-      const src = mupdf.Document.openDocument(srcBytes, "application/pdf");
-      const pageCount = graftAllAndDestroy(dst, src);
-      if (printable && pageCount % 2 === 1) {
-        console.log(`Adding blank page after '${entry.filename}' (${pageCount} pages)`);
-        await appendBlankPage(dst);
+      if (dst === null) {
+        // First document: open it directly as the destination
+        dst = mupdf.Document.openDocument(srcBytes, "application/pdf");
+        if (printable && dst.countPages() % 2 === 1) {
+          console.log(`Adding blank page after '${entry.filename}' (odd page count)`);
+          await appendBlankPage(dst);
+        }
+      } else {
+        // Subsequent documents: open as source, graft into destination, destroy immediately
+        const src = mupdf.Document.openDocument(srcBytes, "application/pdf");
+        const pageCount = graftAllAndDestroy(dst, src);
+        if (printable && pageCount % 2 === 1) {
+          console.log(`Adding blank page after '${entry.filename}' (${pageCount} pages)`);
+          await appendBlankPage(dst);
+        }
       }
     }
   }
@@ -167,13 +164,14 @@ export async function mergePdfsByTOCViaWorker(tocEntries, filesMap, config) {
   // .arrayBuffer() returns a copy — the File objects in filesMap remain intact for re-bundling.
   const fileEntries = [];
   const transferables = [];
-  for (const entry of tocEntries) {
-    if (entry.sectionBreak) continue;
-    const file = filesMap.get(entry.filename);
-    if (!file) throw new Error(`File not found in filesMap: ${entry.filename}`);
-    const buffer = await file.arrayBuffer();
-    fileEntries.push({ filename: entry.filename, buffer });
-    transferables.push(buffer);
+  for (const section of tocEntries) {
+    for (const entry of section.entries) {
+      const file = filesMap.get(entry.filename);
+      if (!file) throw new Error(`File not found in filesMap: ${entry.filename}`);
+      const buffer = await file.arrayBuffer();
+      fileEntries.push({ filename: entry.filename, buffer });
+      transferables.push(buffer);
+    }
   }
 
   return runWorkerOp(
