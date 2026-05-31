@@ -330,7 +330,11 @@ export async function handleBundleRestore(file) {
     }
 
     if (state.isSectioned) {
-      createSection0000HeaderRow(getDefaultSection0000(), restoreLabel0000, restoreName0000);
+      const section0000 = getDefaultSection0000();
+      if (section0000?.querySelector('tr.file-row')) {
+        createSection0000HeaderRow(section0000, restoreLabel0000, restoreName0000);
+        ensureEmptyPlaceholder(section0000);
+      }
     }
 
     const coversheetBytes = extractedFiles.get('coversheet.pdf');

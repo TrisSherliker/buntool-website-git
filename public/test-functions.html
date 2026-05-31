@@ -1179,14 +1179,16 @@
     ];
     const withMeta  = setMetadata(pdf, tocEntries, config);
     const extracted = extractBundleMetadata(withMeta);
-    // section heading is index 0 (section:true); entries are 1 and 2
+    // sections format: array of {sectionID, sectionLabel, sectionName, files[]}
     return [
-      truthy('extractBundleMetadata: returns array',           Array.isArray(extracted),    `type: ${typeof extracted}`),
-      ok('extractBundleMetadata: 3 records (1 section + 2 entries)', extracted?.length, 3),
-      ok('extractBundleMetadata: section record (index 0) section=true', extracted?.[0]?.section, true),
-      ok('extractBundleMetadata: first doc tab number',        extracted?.[1]?.tab,   1),
-      ok('extractBundleMetadata: first doc title',             extracted?.[1]?.title, 'Alpha'),
-      ok('extractBundleMetadata: second doc page',             extracted?.[2]?.page,  5),
+      truthy('extractBundleMetadata: returns array',                  Array.isArray(extracted),            `type: ${typeof extracted}`),
+      ok('extractBundleMetadata: 2 sections (0000 + 0001)',           extracted?.length,                   2),
+      ok('extractBundleMetadata: first section sectionID',            extracted?.[0]?.sectionID,           '0000'),
+      ok('extractBundleMetadata: second section sectionID',           extracted?.[1]?.sectionID,           '0001'),
+      ok('extractBundleMetadata: second section label',               extracted?.[1]?.sectionLabel,        'A'),
+      ok('extractBundleMetadata: second section has 2 files',         extracted?.[1]?.files?.length,       2),
+      ok('extractBundleMetadata: first file title',                   extracted?.[1]?.files?.[0]?.title,   'Alpha'),
+      ok('extractBundleMetadata: second file page',                   extracted?.[1]?.files?.[1]?.page,    5),
     ];
   }
 
@@ -1311,7 +1313,7 @@
       truthy('processTheBundle basic: page count ≥ 6 (≥1 toc + 3 + 2)', pages >= 6,                                    `pages: ${pages}`),
       truthy('processTheBundle basic: producer contains BunTool',        meta.producer?.includes('BunTool'),            `producer: ${meta.producer}`),
       ok('processTheBundle basic: title in metadata',                    meta.title, 'Test Bundle'),
-      truthy('processTheBundle basic: bundle entries extractable',       Array.isArray(entries) && entries.length === 2, `entries: ${entries?.length}`),
+      truthy('processTheBundle basic: bundle entries extractable',       Array.isArray(entries) && entries[0]?.files?.length === 2, `sections: ${entries?.length}, files: ${entries?.[0]?.files?.length}`),
       truthy('processTheBundle basic: TOC page (p0) has hyperlinks',     getLinks(result, 0).length > 0,                `links: ${getLinks(result, 0).length}`),
     ];
   }

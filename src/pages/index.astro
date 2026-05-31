@@ -5,11 +5,7 @@ import Footer from '../components/Footer.astro';
 ---
 
 <Layout title="BunTool - Free Court Bundle Creator" description="Create professional court bundles - Free, privacy-first, fast, and easy to use.">
-	<Header currentPath="/" /> -	<!-- Temporary banner - remove after April 30, 2026 -->
-	<div id="version-banner" class="bg-green-600 text-white text-center py-2 px-4 text-sm hidden">
-		<span>Welcome to the new BunTool! It  has recently been upgraded to improve privacy. If you have any comments or  thoughts about the new app, please  <a href="mailto:tris@sherliker.net" class="underline font-semibold hover:text-blue-200">share them by email</a></span>.
-		<button onclick="this.parentElement.classList.add('hidden')" class="ml-4 text-blue-200 hover:text-white font-bold">&times;</button>
-	</div>
+	<Header currentPath="/" />
 	<script>
 		// Show banner only until end mapray 2026
 		if (new Date() < new Date('2026-05-01')) {
@@ -136,7 +132,7 @@ import Footer from '../components/Footer.astro';
 
 				<div class="max-w-3xl mx-auto space-y-6 text-lg text-gray-700">
 					<p>
-						<strong>BunTool respects your privacy.</strong> It's here to help court hearings run more smoothly, not a data farm: we don't want your private information. BunTool is designed to make sure your data stays on your machine: 
+						<strong>BunTool respects your privacy.</strong> It's here to help court hearings run more smoothly, not a data farm: we don't want your private information. BunTool is designed to make sure your data stays on your machine:
 						<ul>
 							<li><svg class="inline-block w-4 h-4 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg> No login or account needed
 							<li> <svg class="inline-block w-4 h-4 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>  No uploading of any files or information
@@ -147,7 +143,7 @@ import Footer from '../components/Footer.astro';
 						</ul>
 						It's just a tool you can use. That's why there's no cookie banner or GDPR notice: We comply with GDPR by not recording your data. For more information, see the <a href="/legal" class="text-slate-700 hover:text-slate-900 underline font-medium">Privacy information</a>.
 					</p>
-					
+
 					<div class="text-center mt-8">
 						<a href="/app" class="inline-flex items-center px-8 py-4 bg-pink-500 hover:bg-pink-600 text-white font-semibold rounded-lg shadow-lg transition">
 							<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

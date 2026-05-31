@@ -141,32 +141,18 @@ function doSetMetadata(pdfBytes, tocEntries, cv) {
   doc.setMetaData('Subject',  cv['heading.projectName']  || '');
   doc.setMetaData('Keywords', cv['heading.claimNumber']  || '');
 
-  const buntoolIndexMetadata = [];
-  let metaIndex = 0;
-  for (const section of tocEntries) {
-    if (section.sectionID !== '0000') {
-      buntoolIndexMetadata.push({
-        index:    metaIndex++,
-        tab:      null,
-        title:    [section.sectionLabel, section.sectionTitle].filter(Boolean).join(': ') || '',
-        date:     null,
-        section:  true,
-        page:     section.actualPdfStartPageWithToc || section.beginsOnPdfPage,
-        filename: null,
-      });
-    }
-    for (const entry of section.entries) {
-      buntoolIndexMetadata.push({
-        index:    metaIndex++,
-        tab:      entry.tabNumber,
-        title:    entry.title,
-        date:     entry.date,
-        section:  false,
-        page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
-        filename: `${entry.tabNumber}. ${entry.title} (${entry.date}).pdf`,
-      });
-    }
-  }
+  const buntoolIndexMetadata = tocEntries.map(section => ({
+    sectionID:    section.sectionID,
+    sectionLabel: section.sectionLabel || '',
+    sectionName:  section.sectionTitle || '',
+    files: section.entries.map(entry => ({
+      tab:      entry.tabNumber,
+      filename: entry.filename,
+      title:    entry.title,
+      date:     entry.date,
+      page:     entry.actualPdfStartPageWithToc || entry.beginsOnPdfPage,
+    })),
+  }));
 
   doc.setMetaData('info:BundleIndex', JSON.stringify({
     version: 2,

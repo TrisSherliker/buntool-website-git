@@ -265,6 +265,7 @@ export function setMetadata(pdfBytes, tocEntries, config) {
     sectionLabel: section.sectionLabel || '',
     sectionName:  section.sectionTitle || '',
     files: section.entries.map(entry => ({
+      tab:      entry.tabNumber,
       filename: entry.filename,
       title:    entry.title,
       date:     entry.date,
