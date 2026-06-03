@@ -4,8 +4,13 @@
 
 Features with an obvious cost-benefit updside
 
+- [ ] Templating system for Family court
+  - [ ] User flow needs an extra heirarchy in the /app/ route
+  - [ ] choose default or specific court
+  - [ ] claim no, coversheet
+  - [ ] specific rules
+  - [ ] include claim number check for different tribunals
 - [x] Memory cleanliness. Face up to the mupdf memory copies.
-- [ ] Save local filesystem view of old bundles, restore
 - [x] Handle scanned files with rotation tags
 - [x] Tutorial function
 - [x] Coversheet option
@@ -24,22 +29,19 @@ Features with an obvious cost-benefit updside
 Good ideas which are complicated to implement
 
 - [ ] Coversheet creator for bundles
-- [ ] Templating system for different tribunals
-  - [ ] choose default or specific court
-  - [ ] claim no, coversheet
-  - [ ] specific rules
-  - [ ] include claim number check for different tribunals
-- [ ] Section-based page numbering for compatibility with Family court non-financial bundles
-  - [ ] this needed quite a big architectural change
-  - [ ] and therefore
-  - [ ] deserves more footprint here
-- [ ] sort files within sections in frontend (qol but requires custom sort behaviour)
-- [ ] Witness statement coversheet maker
+- [ ] if docs are password protected, detect that at validation time and prompt for password. 
+- [ ] Save local filesystem view of old bundles, restore
+- [x] Section-based page numbering for compatibility with Family court non-financial bundles
+  - [x] this needed quite a big architectural change
+  - [x] and therefore
+  - [x] deserves more footprint here
+- [x] sort files within sections in frontend (qol but requires custom sort behaviour)
 
 ## Long term at best
 
 Features that may be impossble or cumbersome to develop without compromising on privacy or freedom
 
+- [ ] Witness statement coversheet maker
 - [ ] OCR Documents (tesseract.js if not getTextContent())
 - [ ] MS Word file handling
-- [ ] Image file handling
+- [ ] Image file handling and conversion

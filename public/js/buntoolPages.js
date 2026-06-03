@@ -90,7 +90,12 @@ export async function validateAndCountPages(pdfBytes) {
     const pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
     return { pageCount: pdfDoc.getPageCount() };
   } catch (err) {
-    return { error: err.message ?? 'Not a valid PDF' };
+    try {
+      const pdfDoc = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true, password: '' });
+      return { pageCount: pdfDoc.getPageCount() };
+    } catch {
+      return { error: err.message ?? 'Not a valid PDF' };
+    }
   }
 }
 
@@ -103,7 +108,12 @@ export async function validateAndCountPages(pdfBytes) {
  */
 export async function validateCoverPage(file) {
   const pdfBytes = new Uint8Array(await file.arrayBuffer());
-  const inputPdf = await pdflib.PDFDocument.load(pdfBytes);
+  let inputPdf;
+  try {
+    inputPdf = await pdflib.PDFDocument.load(pdfBytes);
+  } catch {
+    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { password: '' });
+  }
   if (inputPdf.getPageCount() === 1) {
     return pdfBytes;
   }
