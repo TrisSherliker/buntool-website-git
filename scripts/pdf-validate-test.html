@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDF Validation Test</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; max-width: 900px; }
+    h1 { font-size: 1.2rem; }
+    label { display: block; margin-bottom: 1rem; }
+    #results { margin-top: 1.5rem; }
+    .lib { margin-bottom: 1.5rem; border: 1px solid #ccc; padding: 1rem; border-radius: 4px; }
+    .lib h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+    .row { display: flex; gap: 1rem; margin-bottom: 0.3rem; }
+    .key { color: #555; min-width: 280px; }
+    .val.ok  { color: #0a0; }
+    .val.err { color: #c00; }
+    .val.warn { color: #a60; }
+  </style>
+</head>
+<body>
+  <h1>PDF Validation Test — pdf-lib (cantoo) &amp; MuPDF</h1>
+  <label>
+    Choose a PDF:
+    <input type="file" accept="application/pdf" id="fileInput">
+  </label>
+  <div id="results"></div>
+
+  <script type="module">
+    import * as pdflib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm';
+    import * as mupdf  from 'https://cdn.jsdelivr.net/npm/mupdf@1.27.0/dist/mupdf.js';
+
+    function row(key, value, status) {
+      return `<div class="row"><span class="key">${key}</span><span class="val ${status ?? ''}">${value}</span></div>`;
+    }
+
+    async function testPdfLib(bytes) {
+      const results = [];
+
+      // 1. Plain load
+      let plainDoc = null;
+      try {
+        plainDoc = await pdflib.PDFDocument.load(bytes);
+        results.push(row('load (no options) — throws?', 'no', 'ok'));
+        results.push(row('isEncrypted', String(plainDoc.isEncrypted), plainDoc.isEncrypted ? 'warn' : 'ok'));
+        results.push(row('getPageCount()', String(plainDoc.getPageCount()), 'ok'));
+      } catch (e) {
+        results.push(row('load (no options) — throws?', 'yes: ' + e.message, 'err'));
+      }
+
+      // 2. ignoreEncryption: true, no password
+      let ignoreDoc = null;
+      try {
+        ignoreDoc = await pdflib.PDFDocument.load(bytes, { ignoreEncryption: true });
+        results.push(row('load ({ ignoreEncryption: true }) — throws?', 'no', 'ok'));
+        results.push(row('isEncrypted', String(ignoreDoc.isEncrypted), ignoreDoc.isEncrypted ? 'warn' : 'ok'));
+        results.push(row('getPageCount()', String(ignoreDoc.getPageCount()), 'ok'));
+      } catch (e) {
+        results.push(row('load ({ ignoreEncryption: true }) — throws?', 'yes: ' + e.message, 'err'));
+      }
+
+      // 3. ignoreEncryption: true + empty password
+      let emptyPwDoc = null;
+      try {
+        emptyPwDoc = await pdflib.PDFDocument.load(bytes, { ignoreEncryption: true, password: '' });
+        results.push(row('load ({ ignoreEncryption: true, password: \'\' }) — throws?', 'no', 'ok'));
+        results.push(row('isEncrypted', String(emptyPwDoc.isEncrypted), emptyPwDoc.isEncrypted ? 'warn' : 'ok'));
+        results.push(row('getPageCount()', String(emptyPwDoc.getPageCount()), 'ok'));
+      } catch (e) {
+        results.push(row('load ({ ignoreEncryption: true, password: \'\' }) — throws?', 'yes: ' + e.message, 'err'));
+      }
+
+      return results.join('');
+    }
+
+    function testMuPdf(bytes) {
+      const results = [];
+      try {
+        const doc = mupdf.Document.openDocument(new Uint8Array(bytes), 'application/pdf');
+        results.push(row('openDocument — throws?', 'no', 'ok'));
+        try {
+          const n = doc.countPages();
+          results.push(row('countPages()', String(n), 'ok'));
+        } catch (e) {
+          results.push(row('countPages() — throws?', 'yes: ' + e.message, 'err'));
+        }
+        try {
+          const needsPassword = doc.needsPassword?.();
+          results.push(row('needsPassword()', String(needsPassword), needsPassword ? 'warn' : 'ok'));
+        } catch {
+          results.push(row('needsPassword()', 'method not available', 'warn'));
+        }
+        doc.destroy();
+      } catch (e) {
+        results.push(row('openDocument — throws?', 'yes: ' + e.message, 'err'));
+      }
+      return results.join('');
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const bytes = await file.arrayBuffer();
+
+      const resultsEl = document.getElementById('results');
+      resultsEl.innerHTML = '<p>Running…</p>';
+
+      const pdfLibHtml = await testPdfLib(bytes);
+      const mupdfHtml  = testMuPdf(bytes);
+
+      resultsEl.innerHTML = `
+        <div class="lib">
+          <h2>@cantoo/pdf-lib@2.6.5</h2>
+          ${pdfLibHtml}
+        </div>
+        <div class="lib">
+          <h2>mupdf@1.27.0</h2>
+          ${mupdfHtml}
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/+esm'
 import jspdfAutotable from 'https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.7/+esm'
 import Config from './buntoolConfig.js';
 import { validFonts } from './buntoolConfig.js';
+import { getFontSettings } from './buntoolFontSettings.js';
 
 const autoTable = jspdfAutotable;
 
@@ -256,177 +257,33 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
       config.updateOptions({ index: { fontFace: 'sansSerif' } });
     }
 
-    switch (config.getOption('index.fontFace')) {
-      
-      case "times": {
-        //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/timesalt/CharisSILR.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('CharisSILR.ttf', base64SerifFont);
-        doc.addFont('CharisSILR.ttf', 'CharisSILR', 'normal');
-        fontForIndex = 'CharisSILR';
+    // Look up font file paths, jsPDF names, and pt sizes from buntoolFontSettings.js
+    const fontDef = getFontSettings(config.getOption('index.fontFace'));
 
-        //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/timesalt/CharisSILB.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifTitleFont = btoa(
-          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('CharisSILB.ttf', base64SerifTitleFont);
-        doc.addFont('CharisSILB.ttf', 'CharisSILB', 'bold');
-        fontForTitle = 'CharisSILB';
+    //Get and set main font:
+    fontForIndexBytes = await fetch(fontDef.regular.url).then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+    const base64IndexFont = btoa(
+      new Uint8Array(fontForIndexBytes).reduce((s, b) => s + String.fromCharCode(b), '')
+    );
+    doc.addFileToVFS(fontDef.regular.vfsName, base64IndexFont);
+    doc.addFont(fontDef.regular.vfsName, fontDef.regular.fontName, 'normal');
+    fontForIndex = fontDef.regular.fontName;
 
-        //set font sizes for serif:
-        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
-        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
-        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
-        //set table font size:
-        tocInternalConfig.font.sizeTable = { large: 13, medium: 12, small: 10 } [indexFontSize] || 12;
-      break; }
+    //Get and set title font:
+    fontForTitleBytes = await fetch(fontDef.bold.url).then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
+    const base64TitleFont = btoa(
+      new Uint8Array(fontForTitleBytes).reduce((s, b) => s + String.fromCharCode(b), '')
+    );
+    doc.addFileToVFS(fontDef.bold.vfsName, base64TitleFont);
+    doc.addFont(fontDef.bold.vfsName, fontDef.bold.fontName, 'bold');
+    fontForTitle = fontDef.bold.fontName;
 
-      case "helvetica": {
-        //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/arialalt/liberation-sans/LiberationSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('LiberationSans-Regular.ttf', base64SerifFont);
-        doc.addFont('LiberationSans-Regular.ttf', 'LiberationSans-Regular', 'normal');
-        fontForIndex = 'LiberationSans-Regular';
-
-        //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/arialalt/liberation-sans/LiberationSans-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifTitleFont = btoa(
-          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('LiberationSans-Bold.ttf', base64SerifTitleFont);
-        doc.addFont('LiberationSans-Bold.ttf', 'LiberationSans-Bold', 'bold');
-        fontForTitle = 'LiberationSans-Bold';
-
-          //set font sizes for sans-serif:
-          tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
-          tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
-          tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
-          //set table font size:
-          tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
-      break; }
-
-      case "serif": {
-        //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/serif/NotoSerif-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('NotoSerif.ttf', base64SerifFont);
-        doc.addFont('NotoSerif.ttf', 'NotoSerif', 'normal');
-        fontForIndex = 'NotoSerif';
-
-        //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/serif/NotoSerif-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64SerifTitleFont = btoa(
-          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('NotoSerifBold.ttf', base64SerifTitleFont);
-        doc.addFont('NotoSerifBold.ttf', 'NotoSerifBold', 'bold');
-        fontForTitle = 'NotoSerifBold';
-
-        //set font sizes for serif:
-        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
-        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
-        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
-        //set table font size:
-        tocInternalConfig.font.sizeTable = { large: 13, medium: 12, small: 10 } [indexFontSize] || 12;
-      break; }
-
-      case "sansSerif": {
-          fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-          const base64SansFont = btoa(
-            new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-          );
-          doc.addFileToVFS('PlusJakartaSans.ttf', base64SansFont);
-          doc.addFont('PlusJakartaSans.ttf', 'PlusJakartaSans', 'normal');
-          fontForIndex = 'PlusJakartaSans';
-
-          fontForTitleBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-          const base64SansTitleFont = btoa(
-            new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-          );
-          doc.addFileToVFS('PlusJakartaSansBold.ttf', base64SansTitleFont);
-          doc.addFont('PlusJakartaSansBold.ttf', 'PlusJakartaSansBold', 'bold');
-          fontForTitle = 'PlusJakartaSansBold';
-
-          //set font sizes for sans-serif:
-          tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
-          tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
-          tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
-          //set table font size:
-          tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
-      break; }
-
-      case "monospaced": {
-        //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/mono/UbuntuMono-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64MonoFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('UbuntuMono.ttf', base64MonoFont);
-        doc.addFont('UbuntuMono.ttf', 'UbuntuMono', 'normal');
-        fontForIndex = 'UbuntuMono';
-
-        //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/mono/UbuntuMono-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64MonoTitleFont = btoa(
-          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('UbuntuMonoBold.ttf', base64MonoTitleFont);
-        doc.addFont('UbuntuMonoBold.ttf', 'UbuntuMonoBold', 'bold');
-        fontForTitle = 'UbuntuMonoBold';
-        //set font sizes for mono:
-        tocInternalConfig.font.sizeClaimNumber = { large: 16, medium: 14, small: 12 }[titleFontSize] || 14;
-        tocInternalConfig.font.sizeTitle = { large: 24, medium: 22, small: 20 } [titleFontSize] || 22;
-        tocInternalConfig.font.sizeProject = { large: 18, medium: 16, small: 14 } [titleFontSize] || 16;
-        //set table font size:
-        tocInternalConfig.font.sizeTable = { large: 12, medium: 11, small: 10 } [indexFontSize] || 11;
-      break; }
-
-
-      case "traditional": {
-        //Get and set main font:
-        fontForIndexBytes = await fetch('/fonts/trad/static/EBGaramond-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64TradFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('EBGaramond.ttf', base64TradFont);
-        doc.addFont('EBGaramond.ttf', 'EBGaramond', 'normal');
-        fontForIndex = 'EBGaramond';
-
-        //Get and set title font:
-        fontForTitleBytes = await fetch('/fonts/trad/static/EBGaramond-Bold.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64TradTitleFont = btoa(
-          new Uint8Array(fontForTitleBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('EBGaramondBold.ttf', base64TradTitleFont);
-        doc.addFont('EBGaramondBold.ttf', 'EBGaramondBold', 'bold');
-        fontForTitle = 'EBGaramondBold';
-        //set font sizes for trad:
-        tocInternalConfig.font.sizeClaimNumber = { large: 18, medium: 16, small: 14 }[titleFontSize] || 16;
-        tocInternalConfig.font.sizeTitle = { large: 26, medium: 24, small: 22 } [titleFontSize] || 24;
-        tocInternalConfig.font.sizeProject = { large: 20, medium: 18, small: 16 } [titleFontSize] || 18;
-        //set table font size:
-        tocInternalConfig.font.sizeTable = { large: 14, medium: 13, small: 12 } [indexFontSize] || 13;
-      break; }
-
-      default: {
-        fontForIndexBytes = await fetch('/fonts/sans/static/PlusJakartaSans-Regular.ttf').then(res => { if (!res.ok) throw new Error(`Font fetch failed: ${res.url} (${res.status})`); return res.arrayBuffer(); });
-        const base64DefaultFont = btoa(
-          new Uint8Array(fontForIndexBytes).reduce((s,b)=> s+String.fromCharCode(b), '')
-        );
-        doc.addFileToVFS('PlusJakartaSans.ttf', base64DefaultFont);
-        doc.addFont('PlusJakartaSans.ttf', 'PlusJakartaSans', 'normal');
-        fontForIndex = 'PlusJakartaSans';
-      break; }
-    }
+    //set font sizes:
+    tocInternalConfig.font.sizeClaimNumber = fontDef.sizes.claimNumber[titleFontSize] ?? fontDef.sizes.claimNumber.medium;
+    tocInternalConfig.font.sizeTitle       = fontDef.sizes.title[titleFontSize]       ?? fontDef.sizes.title.medium;
+    tocInternalConfig.font.sizeProject     = fontDef.sizes.project[titleFontSize]     ?? fontDef.sizes.project.medium;
+    //set table font size:
+    tocInternalConfig.font.sizeTable       = fontDef.sizes.table[indexFontSize]       ?? fontDef.sizes.table.medium;
 
     doc.setFont(fontForIndex);
 

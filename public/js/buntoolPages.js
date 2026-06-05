@@ -91,7 +91,7 @@ export async function validateAndCountPages(pdfBytes) {
     return { pageCount: pdfDoc.getPageCount() };
   } catch (err) {
     try {
-      const pdfDoc = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true, password: '' });
+      const pdfDoc = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
       return { pageCount: pdfDoc.getPageCount() };
     } catch {
       return { error: err.message ?? 'Not a valid PDF' };
@@ -112,7 +112,7 @@ export async function validateCoverPage(file) {
   try {
     inputPdf = await pdflib.PDFDocument.load(pdfBytes);
   } catch {
-    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { password: '' });
+    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
   }
   if (inputPdf.getPageCount() === 1) {
     return pdfBytes;
@@ -251,7 +251,7 @@ export async function addPageNumberingToPdf(pdfDocBytes, config, tocEntries = nu
     }
   }
 
-  //setup the gubbins
+  //setup the gubbiask ns
   const pdfDoc = await pdflib.PDFDocument.load(pdfDocBytes);
   const pages = pdfDoc.getPages();
   pdfDoc.registerFontkit(fontkit);
