@@ -289,7 +289,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
 
     // Get page dimensions
     const pageWidth = doc.internal.pageSize.getWidth();
-    const borderToggle = { top: 0, right: 0, bottom: 0.1, left: 0 };
+    const borderWidths = { top: 0.2, right: 0.2, bottom: 0.3, left: 0.2 };
 
     // Add Claim No, right-aligned at the top: 
     doc.setFontSize(tocInternalConfig.font.sizeClaimNumber);
@@ -481,7 +481,7 @@ export async function makeTocPages(tocEntries, options = {}, config, expectedToc
         lineColor: showBorders ? tocInternalConfig.color.text : false,
         // lineColor: tocInternalConfig.table.showBorders ? 40 : false,
         // lineWidth: tocInternalConfig.table.showBorders ? 0.1 : 0,
-        lineWidth: showBorders ? borderToggle : 0,
+        lineWidth: showBorders ? borderWidths : 0,
         font: fontForIndex,
         textColor: tocInternalConfig.color.text,
         lineHeight: lineHeight

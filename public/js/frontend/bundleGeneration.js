@@ -4,7 +4,7 @@ import { stripUnsuitableChars, uniqueFilename } from './utils.js';
 import { buildIndexData, makeFileRow } from './fileRows.js';
 import { ensureEmptyPlaceholder, removeEmptyPlaceholder } from './fileRows.js';
 import { showProcessingOverlay, hideProcessingOverlay, showBundleReadyState } from './bundleUI.js';
-import { showErrorModal, showMissingInfoModal, isMemoryError } from './modals.js';
+import { showErrorModal, showMissingInfoModal, isMemoryError, isLoadingError } from './modals.js';
 import { createSectionTbody, createSection0000HeaderRow } from './sections.js';
 import { setCoversheetSelected } from './coversheet.js';
 import { saveNow } from '../buntoolAutosave.js';
@@ -166,12 +166,14 @@ export async function handleFormSubmit(e, form) {
       return;
     }
     console.error('[FRONTEND ERROR] Bundle generation failed:', error);
-    const errorType = error.message === '__timeout__' ? 'timeout' : isMemoryError(error) ? 'oom' : 'other';
+    const errorType = error.message === '__timeout__' ? 'timeout' : isMemoryError(error) ? 'oom' : isLoadingError(error) ? 'loadErr' : 'other';
     logBundleEvent({ event: 'error', uuid: bundleUuid, duration_ms: Date.now() - bundleTsStart, error_type: errorType, error_message: error.message === '__timeout__' ? undefined : error.message, error_stack: error.stack ? error.stack.slice(0, 800) : undefined, page_count: inputPageCount || undefined, total_size_mb: Math.round(inputSizeMb * 10) / 10 });
     if (error.message === '__timeout__') {
       showErrorModal({ title: 'Bundle generation timed out', message: 'Your bundle took too long to generate (more than 120 seconds). The browser may be running low on memory, or you may have a very large bundle. Try closing other tabs, or split your documents into smaller batches.' });
     } else if (errorType === 'oom') {
       showErrorModal({ title: 'Not enough memory', message: 'Your browser ran out of memory processing this bundle. This isn\'t an error in BunTool, but to do with the memory avaiable in your computer. It usually happens when a bundle is very large, or you have many tabs or apps open. Try splitting your documents into smaller batches, or close other tabs / apps to free up memory.' });
+    } else if (errorType === 'loadErr') {
+      showErrorModal({ title: 'Connection error', message: 'Loading error - Please check your internet connection and try again. If this error persists please let us know via the contact page.'});
     } else {
       showErrorModal({ title: 'Bundle generation failed', message: 'Something went wrong while creating your bundle. If this keeps happening, please send a bug report with the details below.', error });
     }
@@ -220,6 +222,8 @@ export async function runPreviewIndex() {
     console.error('[FRONTEND ERROR] Index preview failed:', error);
     if (error.message === '__timeout__') {
       showErrorModal({ title: 'Index preview timed out', message: 'The index preview took too long to generate. The browser may be running low on memory. Try closing other tabs.' });
+    } else if (isLoadingError(error)) {
+      showErrorModal({ title: 'Connection error', message: 'Loading error - Please check your internet connection and try again. If this error persists please let us know via the contact page.' });
     } else {
       showErrorModal({ title: 'Index preview failed', message: 'Something went wrong while generating the index preview. If this keeps happening, please send a bug report with the details below.', error });
     }

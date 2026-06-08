@@ -10,6 +10,18 @@ export function isFileMissingError(error) {
     || msg.includes('no such file');
 }
 
+export function isLoadingError(error) {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('error loading dynamically')
+    || msg.includes('dynamically imported module')
+    || msg.includes('failed to fetch')
+    || msg.includes('networkerror')
+    || msg.includes('network connection')
+    || msg.includes('font fetch failed');
+}
+
+
 export function isMemoryError(error) {
   if (!error) return false;
   const msg = (error.message || '').toLowerCase();
