@@ -26,7 +26,7 @@ Creating a legal bundle with BunTool is simple and takes just a few minutes. Fol
 
 You'll need all your documents ready as PDFs on your computer (or whichever device you're using).
 
-You can save time by naming the files with ther dates and document names, for example `1 October 2026 Particulars of Claim.pdf` or `Claim Form 01-10-2026`. BunTool can pick up on most date formats, so don't worry about the exact date style.
+You can save time by naming the files with their dates and document names, for example `1 October 2026 Particulars of Claim.pdf` or `Claim Form 01-10-2026`. BunTool can pick up on most date formats, so don't worry about the exact date style.
 
 ## How many volumes do you need?
 
@@ -55,6 +55,8 @@ BunTool will automatically extract dates from filenames where possible and sugge
 - **Edit titles:** Titles will automatically be taken from the filename you saved the document with at first, but you can click on any title to edit it. 
 - **Add dates:** Edit document dates if needed using the date picker 
 - **Section breaks:** Optionally add section markers to group related documents together
+
+You can also add sections, dividing your documents into divisions within the index, and allowing page numbering to be restarted within each section.
 
 ## Create Bundle
 
