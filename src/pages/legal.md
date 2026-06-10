@@ -7,7 +7,7 @@ title: "Legal - BunTool"
 
 ## Privacy
 
-BunTool collects no data about any users. There are no cookies or analytics about your data. Files and information never leave your device - BunTool doesn't want your data and doesn't want your private documents. This means BunTool uses:
+BunTool collects no data about any users, and uses as few third parties as possible to deliver the site content and host minimal technical logs. There are no cookies or analytics about your data. Files and information never leave your device - BunTool doesn't want your data and doesn't want your private documents. This means BunTool uses:
 
 - No personal information
 - No document content is sent to BunTool
@@ -17,7 +17,7 @@ BunTool collects no data about any users. There are no cookies or analytics abou
 - No third-party analytics
 - You don't even need to log in.
 
-We can see *that* links on this website have been used and pages visited, but have no idea *who* did it or what was processed. Some servers also report aggregated information about the country or rough geographical regions that users originated from, but nothing further. 
+We can see *that* links on this website have been used and pages visited, but have no idea *who* did it or what was processed. Some servers also report aggregated information about the country or rough geographical regions that users originated from. BunTool is hosted on CloudFlare, which will collect things like IP address and routing information to connect you to the website. Cloudflare operates its own privacy policy [here](https://www.cloudflare.com/en-gb/privacypolicy/), and users of BunTool are "End Users" for the purpose of that policy. 
 
 All bundle processing happens entirely in your web browser on your own device. BunTool is designed so that your files:
 - Do not leave your computer
@@ -25,7 +25,7 @@ All bundle processing happens entirely in your web browser on your own device. B
 - Are not stored anywhere except your device
 - Are processed only in your browser's memory
 
-### What is tracked?
+### What is tracked within BunTool?
 
 When a bundle is requested, the app logs: 
 
@@ -37,13 +37,15 @@ When a bundle is requested, the app logs:
 
 Also by default, the web hosting provider tracks a basic count of how many visits/requests were made to the website over time and the general location (eg 'United Kingdom'), but no other analytics are used. If you run BunTool from a different server, no logging is triggered at all.
 
-### How do you save data without tracking?
+### How do you save bundle data without tracking?
 
 Neat, isn't it? BunTool autosaves your progress inside your browser, so again all saves are local to your computer and don't involve any uploading or any sharing of personal data. To avoid taking up too much space, saves are purged if they grow large or numerous.
 
+If you wanted to erase that storage, you can do it in your browser settings and still benefit from BunTool's ability to re-upload a bundle and split it into its individual documents. 
+
 ### GDPR Compliance
 
-We comply with GDPR by not collecting or processing any personal data. There is no need for cookie banners or consent forms because we simply don't collect anything. Since we don't collect any data about you, there is no data to:
+We comply with GDPR by not collecting or processing any personal data. There is no need for cookie banners or consent forms because we simply don't collect anything. Since we don't collect any data about you, there is no data within BunTool to:
 
 - Access
 - Correct
@@ -56,11 +58,13 @@ If you want to see the data that's stored in your browser locally, you can do th
 - Look at the `Storage` tab (Firefox) or `Application` tab (Chrome) to see the locally stored-data in Local Storage and IndexedDB
 - You can also verify there that there are no cookies.
 
+BunTool isn't in control of the information collected by Cloudflare as a hosting provider and internet infrastructure company, which ought to be minimal and is governed by Cloudflare's policies linked above.
+
 ## Terms and conditions and other legal notices
 
 ### Not Legal Advice
 
-Nothing on this website constitutes legal advice. BunTool is a personal project of its author and is not produced in the capacity of legal advisor or in connection with any professional activity or any company or partnership.
+Nothing on this website constitutes legal advice. BunTool is a personal project of its author and is not produced in the capacity of legal advisor or in connection with any professional activity or any company or partnership. 
 
 ### Intellectual property and Software License
 

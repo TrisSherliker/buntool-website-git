@@ -1,9 +1,35 @@
 # Development roadmap
 
+## Privacy improvements
+
+In the spirit of cutting off as many third parties as possible,
+
+- [ ] Move from Val.Town logging to an owned enpoint and trim file errors {S4-5}
+- [ ] Host dependencies directly with cdns as fallback {S3}
+- [ ] Clean up console messages of user data for better privacy on shared machines {F8}
+- Caching: 
+  - [ ] Fix caching to hash-validate at server and in _headers {S2} 
+  - [ ] Tune long-cache for slow assets like fonts {F4}
+
+## BugFixes {with tags}
+
+- [ ] Sanitise imported strings via sections.js {S1}
+- [ ] Dates
+  - [ ] US Date format {B1} {B9}
+  - [ ] Review date parsing logic and chrono-node fallback {B3}
+- [ ] Extend per-section numbering to new metaWorker architecture {B2}
+- [ ] Error handling of encrypted PDFs is tricky {B5}
+- [ ] timeout extension to 240s and match in modal {B4}
+
 ## High priority features
 
 Features with an obvious cost-benefit updside
-
+- [ ] Clean up and commit bash scripts/release.sh
+- [ ] Testing suite at deploy time {F1}
+- [ ] UX improvements 
+  - [ ] for modals {F5}{F6}
+  - [ ] skip beforeunload where unnecessary {F8}
+  - [ ] 
 - [ ] Templating system for Family court
   - [ ] User flow needs an extra heirarchy in the /app/ route
   - [ ] choose default or specific court
