@@ -53,14 +53,15 @@
   import * as pdflib from 'https://cdn.jsdelivr.net/npm/@cantoo/pdf-lib@2.6.5/+esm'
 
   import { countPdfPages, mergeTwoPdfs, addPageNumberingToPdf, validateCoverPage,
-           addPageNumberingViaWorker, footerWorkerPeaks }
+           addPageNumberingViaWorker, footerWorkerPeaks, validateAndCountPages }
     from './js/buntoolPages.js'
   import { addHyperlinks, addOutlineItems, setMetadata,
            runMetaViaWorker, metaWorkerPeaks }
     from './js/buntoolMeta.js'
   import { createTocEntries, makeTocPages, makeDummyTocPages }
     from './js/buntoolToc.js'
-  import { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata, removePageNumbering }
+  import { extractBundleMetadata, splitBundlePdf, parseConfigFromMetadata, removePageNumbering,
+           normaliseBundleMetadata, stripBundleIndexAnnotations }
     from './js/buntoolRestore.js'
   import { processTheBundle }
     from './js/buntoolMain.js'
@@ -83,37 +84,26 @@
   // document.getElementById('memMassive').disabled = false;
 
 
-  // ── Mock Config ──────────────────────────────────────────────────────────────
+  // ── Test Config factory ──────────────────────────────────────────────────────
+  // Builds a REAL Config instance (not a mock) so tests run against production
+  // validation and defaults. Overrides use dotted key paths; an unknown key
+  // throws, so a typo fails the test instead of silently returning undefined.
   function makeConfig(overrides = {}) {
-    const defaults = {
-      'pageOptions.printableBundle':        false,
-      'pageOptions.coversheet':             false,
-      'pageNumbering.footerPrefix':         '',
-      'pageNumbering.alignment':            'centre',
-      'pageNumbering.numberingStyle':       'PageX',
-      'pageNumbering.footerFont':           'sansSerif',
-      'pageNumbering.footerFontSize':       'medium',
-      'pageNumbering.pageNumberColour':     'black',
-      'pageNumbering.pageNumberPerSection': false,
-      'heading.bundleTitle':                'Test Bundle',
-      'heading.projectName':                'Test Project',
-      'heading.claimNumber':                'CL-2024-001',
-      'heading.confidential':               false,
-      'heading.fontSize':                   'medium',
-      'index.fontFace':                     'sansSerif',
-      'index.dateStyle':                    'DD Mon. YYYY',
-      'index.outlineItemStyle':             'plain',
-      'index.fontSize':                     'medium',
-      'index.showTableBorders':             false,
-      'index.justTheIndex':                 false,
-      'index.sectionPrefix':                'Section',
-    };
-    return {
-      getOption:         (key) => key in overrides ? overrides[key] : defaults[key],
-      updateOptions:     () => {},
-      validateStructure: () => {},
-      validateOptions:   () => {},
-    };
+    const config = new Config();
+    config.updateOptions({
+      heading:       { bundleTitle: 'Test Bundle', projectName: 'Test Project', claimNumber: 'CL-2024-001' },
+      pageNumbering: { footerFont: 'sansSerif', alignment: 'centre' },
+      index:         { fontFace: 'sansSerif', dateStyle: 'DD Mon. YYYY', outlineItemStyle: 'plain',
+                       showTableBorders: false, sectionPrefix: 'Section' },
+    });
+    for (const [key, value] of Object.entries(overrides)) {
+      if (config.getOption(key) === null) throw new Error(`makeConfig: unknown config option "${key}"`);
+      const [section, field] = key.split('.');
+      config.updateOptions({ [section]: { [field]: value } });
+    }
+    config.validateStructure();
+    config.validateOptions();
+    return config;
   }
 
   // ── IndexData / tocEntries builders ─────────────────────────────────────────
@@ -246,6 +236,36 @@
     } catch { return ''; }
   }
 
+  // Adds a hidden BundleIndexData annotation to page 0 the way pre-2.11.2
+  // setMetadata did: appended, without removing any existing ones.
+  function addRawBundleAnnotation(bytes, contentsString) {
+    const doc  = openDoc(bytes);
+    const page = doc.loadPage(0);
+    const annot = page.createAnnotation('FreeText');
+    annot.setContents(contentsString);
+    annot.setRect([0, 0, 0, 0]);
+    annot.setOpacity(0);
+    annot.setFlags(2);
+    annot.setHiddenForEditing(true);
+    page.destroy();
+    const buf = doc.saveToBuffer('incremental');
+    const out = buf.asUint8Array().slice();
+    buf.destroy();
+    doc.destroy();
+    return out;
+  }
+
+  // Counts BundleIndexData annotations on a page.
+  function countBundleAnnots(bytes, pageIndex = 0) {
+    try {
+      const page = openDoc(bytes).loadPage(pageIndex);
+      return page.getAnnotations().filter(a => {
+        const c = a.getContents();
+        return typeof c === 'string' && c.includes('BundleIndexData');
+      }).length;
+    } catch { return -1; }
+  }
+
   function getMeta(bytes) {
     const doc = openDoc(bytes);
     return {
@@ -330,6 +350,19 @@
     const bytes = await makePdf(7, 'count');
     const count = await countPdfPages(fileOf(bytes));
     return ok('countPdfPages', count, 7);
+  }
+
+  async function test_validateAndCountPages_goodAndBad() {
+    const good     = await makePdf(3, 'vcp');
+    const goodRes  = await validateAndCountPages(good);
+    const garbage  = new TextEncoder().encode('This is not a PDF, just text pretending to be one.');
+    const badRes   = await validateAndCountPages(garbage);
+    const truncRes = await validateAndCountPages(good.slice(0, 60)); // valid header, body gone
+    return [
+      ok('validateAndCountPages: valid PDF counted',                goodRes.pageCount, 3),
+      truthy('validateAndCountPages: garbage rejected with error',   typeof badRes.error === 'string',   JSON.stringify(badRes)),
+      truthy('validateAndCountPages: truncated PDF rejected with error', typeof truncRes.error === 'string', JSON.stringify(truncRes)),
+    ];
   }
 
   async function test_mergeTwoPdfs() {
@@ -1023,6 +1056,26 @@
     ];
   }
 
+  async function test_setMetadata_removesStaleAnnotations() {
+    // A coversheet restored from an earlier bundle carries that bundle's hidden
+    // annotation back in; setMetadata must replace it, never accumulate.
+    const config = makeConfig();
+    let pdf = await makePdf(4, 'stale');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2.9.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"old1.pdf","title":"Old 1","date":"","page":2}]}]');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2.10.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"old2.pdf","title":"Old 2","date":"","page":3}]}]');
+    const tocEntries = [
+      makeTocSection({ sectionID: '0000', entries: [
+        makeTocEntry({ tabNumber: 1, title: 'New', filename: 'new.pdf', beginsOnPdfPage: 2, actualPdfStartPageWithToc: 2 }),
+      ]}),
+    ];
+    const result    = setMetadata(pdf, tocEntries, config);
+    const extracted = extractBundleMetadata(result);
+    return [
+      ok('setMetadata stale annots: both stale annotations replaced by one', countBundleAnnots(result), 1),
+      ok('setMetadata stale annots: extracted map is the new one',           extracted?.[0]?.files?.[0]?.filename, 'new.pdf'),
+    ];
+  }
+
   async function test_addHyperlinks() {
     // Build: 2-page TOC PDF + 5-page content, merged
     const tocPdf  = await makePdf(2, 'toc');
@@ -1292,6 +1345,170 @@
     ];
   }
 
+  async function test_splitBundlePdf_coversheetAnnotationStripped() {
+    // Bundle: 1 cover + 1 TOC + 2 doc = 4 pages, hidden annotation on the cover page.
+    // The extracted coversheet must not carry the annotation into the next bundle.
+    let bundleBytes = await makePdf(4, 'cs-strip');
+    bundleBytes = addRawBundleAnnotation(bundleBytes, 'BundleIndexData v2.11.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"a.pdf","title":"Doc A","date":"","page":3}]}]');
+    const metadata = [
+      { tab: 1, title: 'Doc A', date: '', section: false, page: 3, filename: 'a.pdf' },
+    ];
+    const result = await splitBundlePdf(bundleBytes, metadata, true);
+    return [
+      truthy('splitBundlePdf coversheet strip: coversheet extracted',                  result.has('coversheet.pdf')),
+      ok('splitBundlePdf coversheet strip: no BundleIndexData annotation on coversheet', countBundleAnnots(result.get('coversheet.pdf')), 0),
+      ok('splitBundlePdf coversheet strip: coversheet still 1 page',                   getPageCount(result.get('coversheet.pdf')), 1),
+    ];
+  }
+
+  async function test_extractBundleMetadata_prefersNewest() {
+    // Bundles produced before stale annotations were deleted at build time carry
+    // several BundleIndexData annotations, oldest first. The newest map must win.
+    let pdf = await makePdf(3, 'multi-annot');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2.10.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"old.pdf","title":"Old","date":"","page":2}]}]');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2.11.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"new.pdf","title":"New","date":"","page":3}]}]');
+    const extracted = extractBundleMetadata(pdf);
+    return [
+      ok('extractBundleMetadata newest: filename from newest annotation', extracted?.[0]?.files?.[0]?.filename, 'new.pdf'),
+      ok('extractBundleMetadata newest: page from newest annotation',     extracted?.[0]?.files?.[0]?.page,     3),
+    ];
+  }
+
+  async function test_extractBundleMetadata_skipsMalformed() {
+    // A malformed annotation must not abort extraction — the last parseable one wins.
+    let pdf = await makePdf(2, 'malformed-annot');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2.10.0: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[{"tab":1,"filename":"good.pdf","title":"Good","date":"","page":2}]}]');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v9.9.9: [{"bad" "json"}]');
+    const extracted = extractBundleMetadata(pdf);
+    return [
+      truthy('extractBundleMetadata malformed: still returns a map', Array.isArray(extracted), `type: ${typeof extracted}`),
+      ok('extractBundleMetadata malformed: last parseable annotation used', extracted?.[0]?.files?.[0]?.filename, 'good.pdf'),
+    ];
+  }
+
+  async function test_extractBundleMetadata_nonBundle() {
+    const pdf = await makePdf(2, 'plain-pdf');
+    return ok('extractBundleMetadata: null for a PDF with no BunTool data', extractBundleMetadata(pdf), null);
+  }
+
+  async function test_splitBundlePdf_printable_blankAbsorption() {
+    // Pins down CURRENT printable-mode restore behaviour: split cuts at the next
+    // document's start page, so the padding blank after an odd-paged document is
+    // absorbed into that document's extracted file. If splitting is ever taught
+    // to trim padding blanks, update these expectations deliberately.
+    const config   = makeConfig({ 'pageOptions.printableBundle': true });
+    const [a, b]   = await Promise.all([makePdf(3, 'PrA'), makePdf(2, 'PrB')]);
+    const filesMap = filesMapOf([['a.pdf', a], ['b.pdf', b]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+    ]);
+    const bundle = await processTheBundle(filesMap, indexData, config, null);
+    const meta   = extractBundleMetadata(bundle);
+    const split  = await splitBundlePdf(bundle, meta, false);
+    const aBytes = split.get('a.pdf');
+    const absorbedText = aBytes ? getPageText(aBytes, 3).trim() : 'n/a';
+    return [
+      ok('splitBundlePdf printable: odd-paged doc absorbs its padding blank (3+1 pages)', aBytes ? getPageCount(aBytes) : 0, 4),
+      truthy('splitBundlePdf printable: absorbed page is blank after footer removal',     absorbedText === '', `page 4 text: "${absorbedText.slice(0, 40)}"`),
+      ok('splitBundlePdf printable: even-paged doc unchanged (2 pages)',                  split.has('b.pdf') ? getPageCount(split.get('b.pdf')) : 0, 2),
+    ];
+  }
+
+  async function test_stripBundleIndexAnnotations() {
+    let pdf = await makePdf(2, 'strip-fn');
+    // An unrelated visible annotation that must survive the strip
+    {
+      const doc  = openDoc(pdf);
+      const page = doc.loadPage(0);
+      const a = page.createAnnotation('FreeText');
+      a.setContents('user note — not buntool data');
+      a.setRect([10, 10, 110, 40]);
+      page.destroy();
+      const buf = doc.saveToBuffer('incremental');
+      pdf = buf.asUint8Array().slice();
+      buf.destroy();
+      doc.destroy();
+    }
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v1: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[]}]');
+    pdf = addRawBundleAnnotation(pdf, 'BundleIndexData v2: [{"sectionID":"0000","sectionLabel":"","sectionName":"","files":[]}]');
+
+    const stripped  = stripBundleIndexAnnotations(pdf);
+    const remaining = openDoc(stripped).loadPage(0).getAnnotations();
+    const clean     = await makePdf(1, 'clean');
+    return [
+      ok('stripBundleIndexAnnotations: both BunTool annotations removed (deletion must re-fetch handles)', countBundleAnnots(stripped), 0),
+      ok('stripBundleIndexAnnotations: unrelated annotation preserved', remaining.filter(a => (a.getContents() || '').includes('user note')).length, 1),
+      ok('stripBundleIndexAnnotations: page count unchanged',           getPageCount(stripped), 2),
+      truthy('stripBundleIndexAnnotations: no-op input returned as-is', stripBundleIndexAnnotations(clean) === clean),
+    ];
+  }
+
+  async function test_restoreCycle_pageMapStaysCurrent() {
+    // Regression for the stale-page-map bug: produce with coversheet → restore →
+    // replace a document → produce again with the RESTORED coversheet → restore.
+    // The second restore must split at the new layout's boundaries, and the new
+    // bundle must carry exactly one BundleIndexData annotation.
+    const config = makeConfig({ 'pageOptions.coversheet': true });
+    const [docA, docB, cover] = await Promise.all([makePdf(2, 'CycA'), makePdf(3, 'CycB'), makePdf(1, 'CycCover')]);
+
+    // Day 1: produce v1
+    const filesV1 = filesMapOf([['a.pdf', docA], ['b.pdf', docB]]);
+    const indexV1 = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 2 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 3 },
+    ]);
+    const bundleV1 = await processTheBundle(filesV1, indexV1, config, null, fileOf(cover));
+
+    // Restore v1
+    const metaV1  = extractBundleMetadata(bundleV1);
+    const splitV1 = await splitBundlePdf(bundleV1, metaV1, true);
+
+    // Day 2: replace b.pdf (3pp) with c.pdf (5pp), reuse restored docs + coversheet
+    const docC    = await makePdf(5, 'CycC');
+    const filesV2 = filesMapOf([['a.pdf', splitV1.get('a.pdf')], ['c.pdf', docC]]);
+    const indexV2 = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 2 },
+      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 5 },
+    ]);
+    const bundleV2 = await processTheBundle(filesV2, indexV2, config, null, fileOf(splitV1.get('coversheet.pdf')));
+
+    // Restore v2 — must reflect the replacement at the correct boundaries
+    const metaV2  = extractBundleMetadata(bundleV2);
+    const splitV2 = await splitBundlePdf(bundleV2, metaV2, true);
+    const flatV2  = (metaV2 ?? []).flatMap(s => s.files ?? []);
+    return [
+      ok('restore cycle: bundle v2 has exactly one BundleIndexData annotation', countBundleAnnots(bundleV2), 1),
+      truthy('restore cycle: v2 map lists the replacement doc',                 flatV2.some(f => f.filename === 'c.pdf'), `files: ${flatV2.map(f => f.filename).join(', ')}`),
+      ok('restore cycle: a.pdf splits to 2 pages',                              getPageCount(splitV2.get('a.pdf')), 2),
+      ok('restore cycle: c.pdf splits to 5 pages',                              getPageCount(splitV2.get('c.pdf')), 5),
+    ];
+  }
+
+  function test_normaliseBundleMetadata_legacyFlat() {
+    const legacy = [
+      { section: false, filename: 'pre.pdf', title: 'Preamble',  date: '',           page: 2 },
+      { section: true,  title: 'A: Background' },
+      { section: false, filename: 'a1.pdf',  title: 'First',     date: '2024-01-01', page: 3 },
+      { section: true,  title: 'Correspondence' },
+      { section: false, filename: 'b1.pdf',  title: 'Letter',    date: '',           page: 6 },
+    ];
+    const sections = normaliseBundleMetadata(legacy);
+    return [
+      ok('normalise legacy: 3 sections (0000 + 2)',          sections.length, 3),
+      ok('normalise legacy: pre-section file lands in 0000', sections[0].files[0]?.filename, 'pre.pdf'),
+      ok('normalise legacy: short prefix split into label',  sections[1].sectionLabel, 'A'),
+      ok('normalise legacy: name after colon',               sections[1].sectionName,  'Background'),
+      ok('normalise legacy: unlabelled title kept whole',    sections[2].sectionName,  'Correspondence'),
+      ok('normalise legacy: file lands in its section',      sections[2].files[0]?.filename, 'b1.pdf'),
+    ];
+  }
+
+  function test_normaliseBundleMetadata_passthrough() {
+    const canonical = [{ sectionID: '0001', sectionLabel: 'A', sectionName: 'X', files: [] }];
+    return truthy('normalise passthrough: sections format returned unchanged', normaliseBundleMetadata(canonical) === canonical);
+  }
+
 
   // buntoolMain ---------------------------------------------------------------
 
@@ -1358,12 +1575,100 @@
   }
 
 
+  // page-map invariant -----------------------------------------------------------
+  // The embedded metadata's page numbers ARE the restore feature's cut points, so
+  // every `page` value must point at the physical page where that document's first
+  // page actually landed in the final bundle. This is the invariant that breaks
+  // when TOC-length prediction, blank-page accounting, or coversheet offsets drift
+  // out of sync with the real merged layout.
+
+  // Asserts the invariant for every document in a produced bundle.
+  // expectedDocs: [{ filename, label }] where label is the makePdf page-marker prefix.
+  function checkPageMapInvariant(name, bundleBytes, expectedDocs) {
+    const meta  = extractBundleMetadata(bundleBytes);
+    const files = (meta ?? []).flatMap(s => s.files ?? []);
+    const results = [
+      ok(`${name}: metadata lists ${expectedDocs.length} documents`, files.length, expectedDocs.length),
+    ];
+    for (const { filename, label } of expectedDocs) {
+      const entry  = files.find(f => f.filename === filename);
+      const marker = `${label} p1/`;
+      const text   = entry ? getPageText(bundleBytes, entry.page - 1) : '';
+      results.push(truthy(
+        `${name}: "${filename}" starts at its metadata page (${entry?.page ?? 'missing'})`,
+        text.includes(marker),
+        `looked for "${marker}" on bundle page ${entry?.page}; found: "${text.trim().slice(0, 60)}"`
+      ));
+    }
+    return results;
+  }
+
+  async function test_pageMapInvariant_plain() {
+    const config = makeConfig();
+    const [a, b, c] = await Promise.all([makePdf(3, 'InvA'), makePdf(2, 'InvB'), makePdf(4, 'InvC')]);
+    const filesMap  = filesMapOf([['a.pdf', a], ['b.pdf', b], ['c.pdf', c]]);
+    const indexData = makeIndexDataSections([
+      { sectionID: '0000', sectionLabel: null, sectionName: null, files: [
+        { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      ]},
+      { sectionID: '0001', sectionLabel: 'A', sectionName: 'Background', files: [
+        { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+        { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 4 },
+      ]},
+    ]);
+    const bundle = await processTheBundle(filesMap, indexData, config, null);
+    return checkPageMapInvariant('page map (plain)', bundle, [
+      { filename: 'a.pdf', label: 'InvA' },
+      { filename: 'b.pdf', label: 'InvB' },
+      { filename: 'c.pdf', label: 'InvC' },
+    ]);
+  }
+
+  async function test_pageMapInvariant_coversheet() {
+    const config = makeConfig({ 'pageOptions.coversheet': true });
+    const [a, b, cover] = await Promise.all([makePdf(3, 'InvCsA'), makePdf(2, 'InvCsB'), makePdf(1, 'InvCover')]);
+    const filesMap  = filesMapOf([['a.pdf', a], ['b.pdf', b]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 2 },
+    ]);
+    const bundle = await processTheBundle(filesMap, indexData, config, null, fileOf(cover));
+    return [
+      truthy('page map (coversheet): cover is physical page 1', getPageText(bundle, 0).includes('InvCover p1/'), getPageText(bundle, 0).trim().slice(0, 60)),
+      ...checkPageMapInvariant('page map (coversheet)', bundle, [
+        { filename: 'a.pdf', label: 'InvCsA' },
+        { filename: 'b.pdf', label: 'InvCsB' },
+      ]),
+    ];
+  }
+
+  async function test_pageMapInvariant_printable() {
+    // Odd-paged documents get padding blanks in printable mode; the page map must
+    // account for every inserted blank.
+    const config = makeConfig({ 'pageOptions.printableBundle': true });
+    const [a, b, c] = await Promise.all([makePdf(3, 'InvPrA'), makePdf(1, 'InvPrB'), makePdf(2, 'InvPrC')]);
+    const filesMap  = filesMapOf([['a.pdf', a], ['b.pdf', b], ['c.pdf', c]]);
+    const indexData = makeIndexData([
+      { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
+      { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 1 },
+      { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2 },
+    ]);
+    const bundle = await processTheBundle(filesMap, indexData, config, null);
+    return checkPageMapInvariant('page map (printable)', bundle, [
+      { filename: 'a.pdf', label: 'InvPrA' },
+      { filename: 'b.pdf', label: 'InvPrB' },
+      { filename: 'c.pdf', label: 'InvPrC' },
+    ]);
+  }
+
+
   // ── Test registry ────────────────────────────────────────────────────────────
   const GROUPS = [
     {
       label: 'buntoolPages',
       tests: [
         test_countPdfPages,
+        test_validateAndCountPages_goodAndBad,
         test_mergeTwoPdfs,
         test_mergePdfsByTOC,
         test_mergePdfsByTOC_printable,
@@ -1429,6 +1734,7 @@
         test_addOutlineItems,
         test_addOutlineItems_sectionHeadings,
         test_setMetadata,
+        test_setMetadata_removesStaleAnnotations,
         test_addHyperlinks,
         test_addHyperlinks_destinationsDiffer,
         test_addHyperlinks_coversheetOffset,
@@ -1441,12 +1747,21 @@
       tests: [
         test_removePageNumbering_removesFooter,
         test_extractBundleMetadata,
+        test_extractBundleMetadata_prefersNewest,
+        test_extractBundleMetadata_skipsMalformed,
+        test_extractBundleMetadata_nonBundle,
         test_parseConfigFromMetadata_v2,
         test_parseConfigFromMetadata_fallback,
         test_parseConfigFromMetadata_fallback_confidential,
         test_splitBundlePdf,
         test_splitBundlePdf_withSectionBreaks,
         test_splitBundlePdf_withCoversheet,
+        test_splitBundlePdf_coversheetAnnotationStripped,
+        test_splitBundlePdf_printable_blankAbsorption,
+        test_stripBundleIndexAnnotations,
+        test_normaliseBundleMetadata_legacyFlat,
+        test_normaliseBundleMetadata_passthrough,
+        test_restoreCycle_pageMapStaysCurrent,
       ],
     },
     {
@@ -1455,6 +1770,14 @@
         test_processTheBundle_basic,
         test_processTheBundle_justTheIndex,
         test_processTheBundle_withCoversheet,
+      ],
+    },
+    {
+      label: 'page-map invariant (produce ↔ restore consistency)',
+      tests: [
+        test_pageMapInvariant_plain,
+        test_pageMapInvariant_coversheet,
+        test_pageMapInvariant_printable,
       ],
     },
   ];
@@ -1524,6 +1847,9 @@
     lastResults = allResults;
     document.getElementById('copyAll').disabled = false;
     document.getElementById('copyFailures').disabled = allResults.every(r => r.passed);
+
+    // Machine-readable results, for driving this page from automation
+    window.__buntoolTestResults = { total, passed, failed: total - passed, results: allResults };
   }
 
   function makeCopyHandler(filterFn, btnId) {
@@ -1544,6 +1870,9 @@
   document.getElementById('runAll').addEventListener('click', runAll);
   makeCopyHandler(() => true,       'copyAll');
   makeCopyHandler(r => !r.passed,   'copyFailures');
+
+  // Headless / pre-push mode: ?autorun starts the suite as soon as WASM is ready
+  if (new URLSearchParams(location.search).has('autorun')) runAll();
 
   // TODO(keep): memtest block — do not remove
   /* ── Memory tests ─────────────────────────────────────────────────────────────

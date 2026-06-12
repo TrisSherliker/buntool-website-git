@@ -101,7 +101,8 @@ export async function validateAndCountPages(pdfBytes) {
 
 /**
  * Validates a coversheet PDF and returns its first page as a Uint8Array.
- * If the file has more than one page, only the first page is extracted.
+ * The page is always copied into a fresh PDF document which cleans
+ * off detritus which otherwise clogs up muPDF. Drops file embeds, too
  * @param {File} file - The PDF file to use as a coversheet
  * @returns {Promise<Uint8Array>} The first page of the PDF as a Uint8Array
  * @throws {Error} If the file cannot be loaded as a valid PDF
@@ -110,12 +111,9 @@ export async function validateCoverPage(file) {
   const pdfBytes = new Uint8Array(await file.arrayBuffer());
   let inputPdf;
   try {
-    inputPdf = await pdflib.PDFDocument.load(pdfBytes);
+    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { throwOnInvalidObject: false });
   } catch {
-    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-  }
-  if (inputPdf.getPageCount() === 1) {
-    return pdfBytes;
+    inputPdf = await pdflib.PDFDocument.load(pdfBytes, { throwOnInvalidObject: false, ignoreEncryption: true });
   }
   const singlePagePdf = await pdflib.PDFDocument.create();
   const [firstPage] = await singlePagePdf.copyPages(inputPdf, [0]);
