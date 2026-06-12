@@ -87,6 +87,10 @@ export function extractBundleMetadata(pdfBytes) {
     firstPage = doc.loadPage(0);
     const annotations = firstPage.getAnnotations();
 
+    // Bundles with old metadata may have multiple BundleIndexData annots.
+    // Use the most recent.
+    let newestMetadata = null;
+
     for (const annot of annotations) {
       const contents = annot.getContents();
       if (typeof contents === 'string' && contents.includes("BundleIndexData")) {
@@ -131,10 +135,16 @@ export function extractBundleMetadata(pdfBytes) {
         }
 
         const jsonString = contents.substring(startIdx, endIdx);
-        const parsed = JSON.parse(jsonString);
-        return Array.isArray(parsed) ? parsed : [parsed];
+        try {
+          const parsed = JSON.parse(jsonString);
+          newestMetadata = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (parseError) {
+          console.warn('Skipping unparseable BundleIndexData annotation:', parseError.message);
+        }
       }
     }
+
+    if (newestMetadata) return newestMetadata;
 
     console.warn('No BunTool metadata found in PDF');
     return null;
@@ -265,7 +275,8 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
       const coversheetDoc = await PDFDocument.create();
       const [coversheetPage] = await coversheetDoc.copyPages(bundlePdf, [0]);
       coversheetDoc.addPage(coversheetPage);
-      const coversheetBytes = await coversheetDoc.save();
+      let coversheetBytes = await coversheetDoc.save();
+      coversheetBytes = stripBundleIndexAnnotations(coversheetBytes);
       extractedFiles.set('coversheet.pdf', coversheetBytes);
       console.log('  ✓ Extracted: coversheet.pdf (bundle page 1)');
     }
@@ -276,6 +287,55 @@ export async function splitBundlePdf(bundleBytes, metadata, hasCoversheet = fals
   } catch (error) {
     console.error('Error splitting bundle PDF:', error);
     throw new Error(`Failed to split bundle: ${error.message}`);
+  }
+}
+
+/**
+ * Removes hidden BundleIndexData annotations from a PDF. The extracted coversheet
+ * is a copy of bundle page 1 where metadata is annotated. Remove annot to avoid polluting
+ * future runs
+ * 
+ * @param {Uint8Array} pdfBytes - The PDF as a Uint8Array
+ * @returns {Uint8Array} The PDF with BundleIndexData annotations removed
+ */
+export function stripBundleIndexAnnotations(pdfBytes) {
+  let doc = null;
+  try {
+    doc = mupdf.Document.openDocument(new Uint8Array(pdfBytes), "application/pdf");
+    let removed = 0;
+
+    for (let i = 0; i < doc.countPages(); i++) {
+      const page = doc.loadPage(i);
+      // Deleting invalidates the other annotation handles in the same snapshot,
+      // so re-fetch the list after each deletion rather than iterating it.
+      let matching = page.getAnnotations().filter(a => {
+        const contents = a.getContents();
+        return typeof contents === 'string' && contents.includes("BundleIndexData");
+      });
+      while (matching.length > 0) {
+        page.deleteAnnotation(matching[0]);
+        removed++;
+        matching = page.getAnnotations().filter(a => {
+          const contents = a.getContents();
+          return typeof contents === 'string' && contents.includes("BundleIndexData");
+        });
+      }
+      page.destroy();
+    }
+
+    if (removed === 0) return pdfBytes;
+
+    const saved = doc.saveToBuffer("incremental");
+    console.log(`Stripped ${removed} BundleIndexData annotation(s)`);
+    const result = saved.asUint8Array().slice();
+    saved.destroy();
+    return result;
+
+  } catch (error) {
+    console.error('Error stripping BundleIndexData annotations:', error);
+    return pdfBytes;
+  } finally {
+    doc?.destroy();
   }
 }
 

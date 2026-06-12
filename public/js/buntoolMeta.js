@@ -304,8 +304,20 @@ export function setMetadata(pdfBytes, tocEntries, config) {
     },
   }));
 
-  // add invisibile annotation to first page which stores buntoolIndex as metadata (the annot itself is empty):  
+  // add invisibile annotation to first page which stores buntoolIndex as metadata (the annot itself is empty):
   const firstPage = doc.loadPage(0);
+  // A coversheet extracted from a previous bundle would retain the old hidden
+  // BundleIndexData annotation. Those need scrubbing. But each deletion removes the other
+  // annotation handles so they need to be fetched every time.
+  const isBundleIndexAnnot = (a) => {
+    const contents = a.getContents();
+    return typeof contents === 'string' && contents.includes("BundleIndexData");
+  };
+  let staleAnnots = firstPage.getAnnotations().filter(isBundleIndexAnnot);
+  while (staleAnnots.length > 0) {
+    firstPage.deleteAnnotation(staleAnnots[0]);
+    staleAnnots = firstPage.getAnnotations().filter(isBundleIndexAnnot);
+  }
   const metadataAnnotation = firstPage.createAnnotation("FreeText")
   metadataAnnotation.setContents(`BundleIndexData v${BUNTOOL_VERSION}: ${JSON.stringify(buntoolIndexMetadata)}`);
   metadataAnnotation.setRect([0, 0, 0, 0]); // set to zero size
