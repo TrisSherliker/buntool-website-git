@@ -23,23 +23,90 @@ import { makeBlankPage } from './buntoolPages.js';
  * Grafts all pages from srcDoc into dstDoc, then destroys srcDoc.
  * Uses the built-in dstDoc.graftPage which correctly resolves inherited
  * page attributes (MediaBox, Rotate, Resources) from parent Pages nodes.
+ * graftPage does not carry /Annots across, so source documents are baked before
+ * grafting (see openSourceDocument) and links are rebuilt by copyPageLinks.
  * @param {Object} dstDoc - mupdf destination document
  * @param {Object} srcDoc - mupdf source document (will be destroyed)
  * @returns {number} The number of pages grafted
  */
 function graftAllAndDestroy(dstDoc, srcDoc) {
   const pageCount = srcDoc.countPages();
+  const pageOffset = dstDoc.countPages();
   const graftMap = dstDoc.newGraftMap();
   for (let i = 0; i < pageCount; i++) graftMap.graftPage(-1, srcDoc, i);
   graftMap.destroy();
+  // Second pass, once every page of this document exists in dstDoc, so that links
+  // pointing forward within the document can resolve their target page.
+  for (let i = 0; i < pageCount; i++) copyPageLinks(dstDoc, srcDoc, i, pageOffset + i, pageOffset);
   srcDoc.destroy();
   return pageCount;
 }
 
+
+/**
+ * bake annotations on pages to allow grafting to carry across.
+ *
+ * @param {Uint8Array} bytes - the source PDF
+ * @returns {Object} mupdf document, annotations and form fields flattened
+ */
+function openSourceDocument(bytes) {
+  const doc = mupdf.Document.openDocument(bytes, "application/pdf");
+  try {
+    doc.bake(true, true);
+  } catch (error) {
+    // A document mupdf cannot bake still merges — it just arrives without its annotations.
+    console.warn('Could not flatten annotations for a source document:', error);
+  }
+  return doc;
+}
+
+/**
+ * Rebuilds a source page's links on the corresponding page in dstDoc, or will not survive graft.
+ *
+ * @param {Object} dstDoc - mupdf destination document
+ * @param {Object} srcDoc - mupdf source document
+ * @param {number} srcIndex - zero-based page index in srcDoc
+ * @param {number} dstIndex - zero-based index of the corresponding page in dstDoc
+ * @param {number} pageOffset - zero-based dstDoc index at which this source document starts
+ */
+function copyPageLinks(dstDoc, srcDoc, srcIndex, dstIndex, pageOffset) {
+  let srcPage = null;
+  let dstPage = null;
+  try {
+    // only links survive baking
+    const srcAnnots = srcDoc.findPage(srcIndex).get('Annots');
+    if (!srcAnnots.isArray() || srcAnnots.length === 0) return;
+
+    srcPage = srcDoc.loadPage(srcIndex);
+    const links = srcPage.getLinks();
+    if (links.length === 0) return;
+
+    dstPage = dstDoc.loadPage(dstIndex);
+    for (const link of links) {
+      try {
+        let uri = link.getURI();
+        if (!uri) continue;
+        if (!link.isExternal()) {
+          const dest = srcDoc.resolveLinkDestination(uri);
+          dest.page += pageOffset;
+          uri = dstDoc.formatLinkURI(dest);
+        }
+        dstPage.createLink(link.getBounds(), uri);
+      } catch (error) {
+        console.warn(`Could not copy a link on source page ${srcIndex + 1}:`, error);
+      }
+    }
+  } catch (error) {
+    console.warn(`Could not copy links from source page ${srcIndex + 1}:`, error);
+  } finally {
+    srcPage?.destroy();
+    dstPage?.destroy();
+  }
+}
+
 /**
  * Saves a mupdf document to a Uint8Array on the JS heap, then destroys both the
- * save buffer and the document. Always call this instead of saveToBuffer directly
- * to ensure cleanup.
+ * save buffer and the document. 
  * @param {Object} doc - mupdf document (will be destroyed)
  * @returns {Uint8Array} The saved PDF bytes (on JS heap, safe to hold)
  */
@@ -65,8 +132,7 @@ async function appendBlankPage(dstDoc) {
 
 /**
  * Merges multiple PDF files according to the order specified in the TOC entries.
- * Each source document is destroyed immediately after its pages are grafted, keeping
- * peak memory at ~(destination + 1 source) rather than all sources simultaneously.
+ * Each source document is destroyed immediately after its pages are grafted, for mem managemnet
  *
  * Drop-in replacement for mergePdfsByTOC in buntoolPages.js.
  *
@@ -91,14 +157,14 @@ export async function mergePdfsByTOC(tocEntries, filesMap, config) {
 
       if (dst === null) {
         // First document: open it directly as the destination
-        dst = mupdf.Document.openDocument(srcBytes, "application/pdf");
+        dst = openSourceDocument(srcBytes);
         if (printable && dst.countPages() % 2 === 1) {
           console.log(`Adding blank page after '${entry.filename}' (odd page count)`);
           await appendBlankPage(dst);
         }
       } else {
         // Subsequent documents: open as source, graft into destination, destroy immediately
-        const src = mupdf.Document.openDocument(srcBytes, "application/pdf");
+        const src = openSourceDocument(srcBytes);
         const pageCount = graftAllAndDestroy(dst, src);
         if (printable && pageCount % 2 === 1) {
           console.log(`Adding blank page after '${entry.filename}' (${pageCount} pages)`);

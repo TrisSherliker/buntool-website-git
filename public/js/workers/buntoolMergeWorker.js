@@ -24,11 +24,70 @@ console.log('[MergeWorker] mupdf imported, ready =', typeof mupdf.ready);
 
 function graftAllAndDestroy(dstDoc, srcDoc) {
   const pageCount = srcDoc.countPages();
+  const pageOffset = dstDoc.countPages();
   const graftMap = dstDoc.newGraftMap();
   for (let i = 0; i < pageCount; i++) graftMap.graftPage(-1, srcDoc, i);
   graftMap.destroy();
+  // Second pass, once every page of this document exists in dstDoc, so that links
+  // pointing forward within the document can resolve their target page.
+  for (let i = 0; i < pageCount; i++) copyPageLinks(dstDoc, srcDoc, i, pageOffset + i, pageOffset);
   srcDoc.destroy();
   return pageCount;
+}
+
+// Opens one of the user's documents, flattening annotations and form fields into the page
+// content so that they survive grafting — graftPage does not copy /Annots, and mupdf offers
+// no option to make it do so. Free for documents with no annotations. Only the user's own
+// documents are baked: baking BunTool's own TOC/coversheet/payload in mergeTwoPdfs would
+// discard the hidden annotation carrying the bundle's index metadata.
+function openSourceDocument(bytes) {
+  const doc = mupdf.Document.openDocument(bytes, "application/pdf");
+  try {
+    doc.bake(true, true);
+  } catch (error) {
+    // A document mupdf cannot bake still merges — it just arrives without its annotations.
+    console.warn('[MergeWorker] could not flatten annotations for a source document:', error);
+  }
+  return doc;
+}
+
+// Links are the one thing baking does not handle (mupdf's bake skips Subtype /Link, and
+// graftPage then drops it), and they cannot be graft-copied because an internal destination
+// references a source page object. External links are recreated with their URI; internal ones
+// are re-pointed at the page they now occupy. Never throws.
+function copyPageLinks(dstDoc, srcDoc, srcIndex, dstIndex, pageOffset) {
+  let srcPage = null;
+  let dstPage = null;
+  try {
+    // After baking, links are all that /Annots still holds — no annotations, no work to do.
+    const srcAnnots = srcDoc.findPage(srcIndex).get('Annots');
+    if (!srcAnnots.isArray() || srcAnnots.length === 0) return;
+
+    srcPage = srcDoc.loadPage(srcIndex);
+    const links = srcPage.getLinks();
+    if (links.length === 0) return;
+
+    dstPage = dstDoc.loadPage(dstIndex);
+    for (const link of links) {
+      try {
+        let uri = link.getURI();
+        if (!uri) continue;
+        if (!link.isExternal()) {
+          const dest = srcDoc.resolveLinkDestination(uri);
+          dest.page += pageOffset;
+          uri = dstDoc.formatLinkURI(dest);
+        }
+        dstPage.createLink(link.getBounds(), uri);
+      } catch (error) {
+        console.warn(`[MergeWorker] could not copy a link on source page ${srcIndex + 1}:`, error);
+      }
+    }
+  } catch (error) {
+    console.warn(`[MergeWorker] could not copy links from source page ${srcIndex + 1}:`, error);
+  } finally {
+    srcPage?.destroy();
+    dstPage?.destroy();
+  }
 }
 
 function saveAndDestroy(doc) {
@@ -68,13 +127,13 @@ function doMergePdfsByTOC(fileEntries, printable) {
     const srcBytes = new Uint8Array(buffer);
 
     if (dst === null) {
-      dst = mupdf.Document.openDocument(srcBytes, "application/pdf");
+      dst = openSourceDocument(srcBytes);
       if (printable && dst.countPages() % 2 === 1) {
         const blankDoc = mupdf.Document.openDocument(makeBlankPage(), "application/pdf");
         graftAllAndDestroy(dst, blankDoc);
       }
     } else {
-      const src = mupdf.Document.openDocument(srcBytes, "application/pdf");
+      const src = openSourceDocument(srcBytes);
       const pageCount = graftAllAndDestroy(dst, src);
       if (printable && pageCount % 2 === 1) {
         const blankDoc = mupdf.Document.openDocument(makeBlankPage(), "application/pdf");
