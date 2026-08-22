@@ -33,6 +33,7 @@ export async function processFiles(files, targetTbody) {
   }
 
   let validatedCount = 0;
+  const filesWithRedactions = [];
   for (const file of files) {
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const key = uniqueFilename(file.name, state.filesMap);
@@ -59,6 +60,7 @@ export async function processFiles(files, targetTbody) {
       continue;
     }
     const pageCount = validation.pageCount;
+    if (validation.redactedPages?.length) filesWithRedactions.push(file.name);
 
     const materializedFile = new File([fileBytes], file.name, { type: 'application/pdf' });
     state.filesMap.set(key, materializedFile);
@@ -84,13 +86,32 @@ export async function processFiles(files, targetTbody) {
     totalSizeMbNow += f.size / (1024 * 1024);
     totalPagesNow  += state.frontendInputData[fn]?.pageCount ?? 0;
   }
+  // Both warnings share one modal, so they are gathered and shown together. Redaction comes
+  // first: it is the one with consequences beyond the size of the bundle.
+  const warnings = [];
+
+  if (filesWithRedactions.length > 0) {
+    const uniqueNames = [...new Set(filesWithRedactions)];
+    warnings.push({
+      title: '⚠️ Unapplied redaction markers',
+      message: `Warning: one or more uploaded documents contain "Redaction" markers (annotations) which have not been permanently applied. If you intended to redact this document, it is worth checking the redactions have been properly applied as otherwise the text will remain visible and/or searchable. This applies to the following filenames: ${uniqueNames.join(', ')}`,
+    });
+  }
+
   if (totalPagesNow > 1000 || totalSizeMbNow > 100) {
     const parts = [];
     if (totalPagesNow  > 1000) parts.push(`${totalPagesNow} pages`);
     if (totalSizeMbNow > 100)  parts.push(`${totalSizeMbNow.toFixed(1)} MB`);
-    showUploadWarningModal({
+    warnings.push({
       title: '⚠️ Very large bundle',
       message: `Your documents total ${parts.join(' and ')}. It's very rare for single court bundles to exceed 1000 pages or 100 MB. You may want to consider splitting the documents into separate volumes (e.g. "Bundle A" and "Bundle B"). If you proceed, BunTool may take longer than usual to process.`,
+    });
+  }
+
+  if (warnings.length > 0) {
+    showUploadWarningModal({
+      title: warnings[0].title,
+      message: warnings.map(w => w.message).join('  '),
     });
   }
 }

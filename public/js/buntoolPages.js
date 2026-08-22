@@ -81,22 +81,56 @@ export async function countPdfPages(file) {
 }
 
 /**
+ * Finds pages carrying redaction markers that have never been applied.
+ *
+ * A /Redact annotation marks an intention to redact: applying it (in Acrobat, Foxit etc.)
+ * removes the content underneath and deletes the annotation. So any /Redact annotation still
+ * present is by definition unapplied, and the text beneath it is still in the document.
+ *
+ * Never throws — a document whose annotations cannot be read reports none, rather than
+ * blocking the upload.
+ *
+ * @param {Object} pdfDoc - a loaded pdf-lib PDFDocument
+ * @returns {number[]} one-based page numbers carrying unapplied redaction markers
+ */
+function findUnappliedRedactions(pdfDoc) {
+  const redactedPages = [];
+  pdfDoc.getPages().forEach((page, pageIndex) => {
+    try {
+      const annots = page.node.Annots();
+      if (!annots) return;
+      for (let i = 0; i < annots.size(); i++) {
+        const annot = annots.lookup(i);
+        if (!(annot instanceof pdflib.PDFDict)) continue;
+        if (annot.get(pdflib.PDFName.of('Subtype')) === pdflib.PDFName.of('Redact')) {
+          redactedPages.push(pageIndex + 1);
+          return;
+        }
+      }
+    } catch {
+      // Unreadable annotations on this page — skip it and keep checking the rest.
+    }
+  });
+  return redactedPages;
+}
+
+/**
  * Validates a PDF and returns its page count in a single pdf-lib load.
  * @param {Uint8Array} pdfBytes
- * @returns {Promise<{pageCount: number}|{error: string}>}
+ * @returns {Promise<{pageCount: number, redactedPages: number[]}|{error: string}>}
  */
 export async function validateAndCountPages(pdfBytes) {
+  let pdfDoc;
   try {
-    const pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
-    return { pageCount: pdfDoc.getPageCount() };
+    pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
   } catch (err) {
     try {
-      const pdfDoc = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-      return { pageCount: pdfDoc.getPageCount() };
+      pdfDoc = await pdflib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
     } catch {
       return { error: err.message ?? 'Not a valid PDF' };
     }
   }
+  return { pageCount: pdfDoc.getPageCount(), redactedPages: findUnappliedRedactions(pdfDoc) };
 }
 
 /**
