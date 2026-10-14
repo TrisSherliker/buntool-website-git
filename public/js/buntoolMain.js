@@ -16,6 +16,7 @@ import {
 import {
   addPageNumberingViaWorker,
   validateCoverPage,
+  makeBlankPage,
   } from './buntoolPages.js';
 import { 
   mergeTwoPdfsViaWorker as mergeTwoPdfs, 
@@ -147,6 +148,11 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     throw error;
   }
 
+  // decide whether to generate a blank page for the TOC if the number of pages is odd
+  const shouldPadTheIndex = config.getOption('pageOptions.printableBundle') 
+    && (expectedLengthOfToc + (validatedCoversheet ? 1 : 0)) % 2 !== 0;  
+  expectedLengthOfToc += shouldPadTheIndex ? 1 : 0;
+
   console.log('[6/13] Generating TOC pages...');
   let tocPdf, tocTableRowCoordinates;
   try {
@@ -171,6 +177,18 @@ export async function processTheBundle(filesMap, indexData, config, onProgress, 
     return justIndexPdf;
   }
   onProgress?.('Merging documents…');
+
+  if (shouldPadTheIndex) {
+    console.log('[6.5/13] Adding blank page to TOC for even page count...');
+    try {
+      const blankPagePdf = await makeBlankPage(config);
+      tocPdf = await mergeTwoPdfs(tocPdf, blankPagePdf);
+      console.log(`[6.5/13]...done - TOC PDF size with blank page: ${tocPdf?.length || 0} bytes`);
+    } catch (error) {
+      console.error('[ERROR] Failed to add blank page to TOC: ', error.message);
+      throw error;
+    }
+  }
 
 // PDF HANDLING:
   console.log('[7/13] Merging input PDFs...');
