@@ -100,8 +100,18 @@ async function doAddPageNumbering(buffer, cv, pageLabels = []) {
     const footerText = `​​${footerLabelText ? `${footerLabelText} ` : ''}${baseFooterText}`;
 
     const marginSidePadding = 30;
-    const { width, height } = thisPage.getSize();
-    const rotation = thisPage.getRotation().angle;
+    let width, height, rotation;
+      try {
+        ({ width, height } = thisPage.getSize());
+        rotation = thisPage.getRotation().angle;
+      } catch (err) {
+        console.warn(
+          `[FooterWorker] Page ${pageIdx + 1}: could not read size/rotation (${err.message}); using A4`
+        );
+        width = 595.28; // A4 width in points
+        height = 841.89; // A4 height in points
+        rotation = 0; // assume no rotation
+      }
     const footerAxisSize = (rotation === 90 || rotation === 270) ? height : width;
 
     let leftEdgeOfLabel;
