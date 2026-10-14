@@ -725,7 +725,7 @@
   async function test_createTocEntries_withSections() {
     const config    = makeConfig();
     const indexData = makeIndexDataSections([
-      { sectionID: '0000', sectionLabel: null,  sectionName: null,                files: [] },
+      { sectionID: '0000', sectionLabel: '',     sectionName: '',                files: [] },
       { sectionID: '0001', sectionLabel: 'A',   sectionName: 'Background',        files: [
         { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
       ]},
@@ -769,11 +769,11 @@
   async function test_createTocEntries_coversheet() {
     const config    = makeConfig({ 'pageOptions.coversheet': true });
     const indexData = makeIndexDataSections([
-      { sectionID: '0000', sectionLabel: null, sectionName: null, files: [
+      { sectionID: '0000', sectionLabel: '', sectionName: '', files: [
         { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
         { filename: 'b.pdf', title: 'Beta',  date: '2024-02-20', pageCount: 5 },
       ]},
-      { sectionID: '0001', sectionLabel: 'A', sectionName: null, files: [
+      { sectionID: '0001', sectionLabel: 'A', sectionName: '', files: [
         { filename: 'c.pdf', title: 'Gamma', date: '2024-03-30', pageCount: 2 },
       ]},
     ]);
@@ -1575,6 +1575,25 @@
   }
 
 
+  async function test_processTheBundle_printableOddIndexPadding() {
+    const config = makeConfig({ "pageOptions.printableBundle": true });
+    const doc = await makePdf(1, "OddPadDoc");
+    const filesMap = filesMapOf([["odd.pdf", doc]]);
+    const indexData = makeIndexData([
+      { filename: "odd.pdf", title: "Odd Page Document", date: "", pageCount: 1 },
+    ]);
+
+    const bundle = await processTheBundle(filesMap, indexData, config, null);
+    return [
+      ok("printable odd-index padding: TOC and content padding produce 4 pages", getPageCount(bundle), 4),
+      truthy("printable odd-index padding: inserted TOC page contains no document content",
+        !getPageText(bundle, 1).includes("OddPadDoc"), getPageText(bundle, 1).trim().slice(0, 60)),
+      ...checkPageMapInvariant("printable odd-index padding", bundle, [
+        { filename: "odd.pdf", label: "OddPadDoc" },
+      ]),
+    ];
+  }
+
   // page-map invariant -----------------------------------------------------------
   // The embedded metadata's page numbers ARE the restore feature's cut points, so
   // every `page` value must point at the physical page where that document's first
@@ -1608,7 +1627,7 @@
     const [a, b, c] = await Promise.all([makePdf(3, 'InvA'), makePdf(2, 'InvB'), makePdf(4, 'InvC')]);
     const filesMap  = filesMapOf([['a.pdf', a], ['b.pdf', b], ['c.pdf', c]]);
     const indexData = makeIndexDataSections([
-      { sectionID: '0000', sectionLabel: null, sectionName: null, files: [
+      { sectionID: '0000', sectionLabel: '', sectionName: '', files: [
         { filename: 'a.pdf', title: 'Alpha', date: '2024-01-10', pageCount: 3 },
       ]},
       { sectionID: '0001', sectionLabel: 'A', sectionName: 'Background', files: [
@@ -1770,6 +1789,7 @@
         test_processTheBundle_basic,
         test_processTheBundle_justTheIndex,
         test_processTheBundle_withCoversheet,
+        test_processTheBundle_printableOddIndexPadding,
       ],
     },
     {
