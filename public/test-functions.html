@@ -365,6 +365,20 @@
     ];
   }
 
+  async function test_validateAndCountPages_recoversMissingPagesTree() {
+    const response = await fetch("/test-fixtures/bitcoin-broken.pdf");
+    if (!response.ok) throw new Error(`Fixture fetch failed: HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const doc = await pdflib.PDFDocument.load(bytes, { throwOnInvalidObject: false });
+    let pageTreeFailed = false;
+    try { doc.getPageCount(); } catch { pageTreeFailed = true; }
+    const result = await validateAndCountPages(bytes);
+    return [
+      truthy("broken fixture triggers page-tree failure", pageTreeFailed),
+      ok("validateAndCountPages recovers count from page objects", result.pageCount, 9),
+    ];
+  }
+
   async function test_mergeTwoPdfs() {
     const a = await makePdf(3, 'A');
     const b = await makePdf(5, 'B');
@@ -1688,6 +1702,7 @@
       tests: [
         test_countPdfPages,
         test_validateAndCountPages_goodAndBad,
+        test_validateAndCountPages_recoversMissingPagesTree,
         test_mergeTwoPdfs,
         test_mergePdfsByTOC,
         test_mergePdfsByTOC_printable,
