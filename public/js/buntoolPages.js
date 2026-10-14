@@ -121,6 +121,9 @@ function findUnappliedRedactions(pdfDoc) {
  */
 export async function validateAndCountPages(pdfBytes) {
   let pdfDoc;
+  let pageCount = 0;
+  let pageEnumerate = 0;
+  let redactedPages = [];
   try {
     pdfDoc = await pdflib.PDFDocument.load(pdfBytes);
   } catch (err) {
@@ -130,7 +133,35 @@ export async function validateAndCountPages(pdfBytes) {
       return { error: err.message ?? 'Not a valid PDF' };
     }
   }
-  return { pageCount: pdfDoc.getPageCount(), redactedPages: findUnappliedRedactions(pdfDoc) };
+  try { redactedPages = findUnappliedRedactions(pdfDoc); } catch { redactedPages = []; }
+  try { 
+    pageCount = pdfDoc.getPageCount(); 
+  } catch(err) { 
+    console.log(`[WARN] Attempted count pages in PDF but getPageCount failed: ${err.message}`);
+    console.log(`[WARN] Attempting to count length of page array just in case…`);
+    try { pageEnumerate = pdfDoc.getPages().length; } 
+    catch (err) { 
+      console.log(`[WARN] Attempted count pages in PDF but getPages.length also failed: ${err.message}`);
+      console.log(`[WARN] Attempting to enumerate indirect objects to count pages…`);
+      try {
+        for (const [, object] of pdfDoc.context.enumerateIndirectObjects()) {
+          if (
+            object instanceof pdflib.PDFDict &&
+            object.get(pdflib.PDFName.of('Type'))?.toString() === '/Page'
+          ) {
+            pageEnumerate++;
+          }
+        }
+      } catch (err) {
+        console.error(`[ERROR] Page object enumeration failed: ${err.message}`);
+      }
+    }
+  }
+  pageCount = pageCount || pageEnumerate;
+  if (pageCount === 0) {
+    return { error: 'Malformed PDF has no pages OR failed to enumerate pages' };
+  }
+  return { pageCount, redactedPages };
 }
 
 /**
