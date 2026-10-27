@@ -124,7 +124,14 @@ export async function applySnapshot(snapshot) {
   // Restore config fields
   const c    = snapshot.config;
   const _set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val ?? ''; };
-  const _chk = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.checked = !!val; };
+  const _chk = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el || val === undefined) return;
+    el.checked = !!val;
+    if (['config-printableBundle', 'config-showTableBorders', 'config-pageNumberPerSection'].includes(id)) {
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
   _set('config-claimNumber',        c.claimNumber);
   _set('config-bundleTitle',        c.bundleTitle);
   _set('config-projectName',        c.projectName);

@@ -447,7 +447,7 @@
               <label class="relative inline-flex items-center cursor-pointer gap-2 mt-1">
                 <input type="checkbox" id="config-showTableBorders" class="sr-only peer" checked>
                 <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
-                <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
+                <span data-toggle-label class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
               </label>
               <p class="text-xs text-gray-500 mt-1">Show or hide grid lines in the index table.</p>
             </div>
@@ -579,9 +579,9 @@
                 Printable Mode
               </p>
               <label class="relative inline-flex items-center cursor-pointer gap-2 mt-1">
-                <input type="checkbox" id="config-printableBundle" class="sr-only peer" checked>
+                <input type="checkbox" id="config-printableBundle" class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
-                <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
+                <span data-toggle-label class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
               </label>
               <p class="text-xs text-gray-500 mt-1">Adds a blank page after odd-page documents for double-sided printing.</p>
             </div>
@@ -620,7 +620,7 @@
               <label class="relative inline-flex items-center cursor-pointer gap-2 mt-1">
                 <input type="checkbox" id="config-pageNumberPerSection" class="sr-only peer">
                 <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500 peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
-                <span class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
+                <span data-toggle-label class="text-xs text-gray-500 peer-checked:text-blue-600 transition">On</span>
               </label>
               <p class="text-xs text-gray-500 mt-1">Resets page numbers to 1 at the start of each section. Used for Family Court "Bates numbering" (e.g. C1, C2… D1, D2…).</p>
             </div>
@@ -1397,6 +1397,21 @@
     document.getElementById(`config-${group}`).value = defaultValue;
   }
 
+  const toggleInputs = [
+    'config-showTableBorders',
+    'config-printableBundle',
+    'config-pageNumberPerSection',
+  ].map(id => document.getElementById(id));
+
+  function updateToggleLabel(input) {
+    const label = input?.parentElement?.querySelector('[data-toggle-label]');
+    if (label) label.textContent = input.checked ? 'On' : 'Off';
+  }
+
+  toggleInputs.forEach(input => {
+    input?.addEventListener('change', () => updateToggleLabel(input));
+  });
+
   document.getElementById('reset-advanced-btn')?.addEventListener('click', () => {
     document.getElementById('config-fontFace').value = 'serif';
     document.getElementById('config-dateStyle').value = 'DD Mon. YYYY';
@@ -1411,8 +1426,9 @@
     resetGroup('pageNumberColour', 'black');
     document.getElementById('config-sectionPrefix').value = 'Section';
     document.getElementById('config-showTableBorders').checked = true;
-    document.getElementById('config-printableBundle').checked = true;
+    document.getElementById('config-printableBundle').checked = false;
     document.getElementById('config-pageNumberPerSection').checked = false;
+    toggleInputs.forEach(updateToggleLabel);
   });
 
   const DEFAULTS_KEY = 'buntool-default-config';
@@ -1486,6 +1502,7 @@
   window.hasDefaultConfig = () => !!localStorage.getItem(DEFAULTS_KEY);
 
   loadDefaultConfig();
+  toggleInputs.forEach(updateToggleLabel);
   updateDocState();
 </script>
 
